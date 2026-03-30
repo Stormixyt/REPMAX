@@ -12,20 +12,30 @@ export default function Auth() {
   const { signIn, signUp } = useAuth()
 
   async function checkWaitlistApproval(emailToCheck) {
-    const { data, error } = await supabase
-      .from('waitlist')
-      .select('approved')
-      .eq('email', emailToCheck.toLowerCase().trim())
-      .maybeSingle()
+    try {
+      const { data, error } = await supabase
+        .from('waitlist')
+        .select('approved')
+        .eq('email', emailToCheck.toLowerCase().trim())
+        .maybeSingle()
 
-    if (error) {
-      console.error('Waitlist check failed:', error)
-      return false
+      // If the waitlist table doesn't exist or query fails, let users through
+      if (error) {
+        console.warn('Waitlist check error (allowing access):', error.message)
+        return true
+      }
+
+      // No waitlist entry found — user never joined the waitlist
+      if (!data) {
+        return false
+      }
+
+      return data.approved === true
+    } catch (err) {
+      // If anything throws, don't block the user
+      console.warn('Waitlist check exception (allowing access):', err)
+      return true
     }
-
-    // No entry found or not approved
-    if (!data) return false
-    return data.approved === true
   }
 
   async function handleSubmit(e) {
@@ -39,7 +49,7 @@ export default function Auth() {
       // Check waitlist approval first
       const isApproved = await checkWaitlistApproval(cleanEmail)
       if (!isApproved) {
-        setError('Your access has not been approved yet. Please join the waitlist and wait for approval.')
+        setError('Your access has not been approved yet. Join the waitlist on the main page and wait for approval.')
         setLoading(false)
         return
       }

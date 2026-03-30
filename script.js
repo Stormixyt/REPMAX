@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initWaitlistForm();
   initCounterAnimation();
   initFakeSignupNotifications();
+  checkReturningUser();
 });
 
 /* --- Scroll Reveal --- */
@@ -129,6 +130,7 @@ function initWaitlistForm() {
                 <a href="/auth" style="display:inline-block;padding:14px 40px;background:#D4FF00;color:#070707;font-weight:800;border-radius:12px;text-decoration:none;font-size:0.95rem;transition:transform 0.2s">Open REPMAX</a>
               </div>
             `;
+            localStorage.setItem('repmax_waitlist_email', email);
             showToast('Access Granted!', 'You\'ve been approved. Let\'s go!');
             return;
           } else {
@@ -152,6 +154,7 @@ function initWaitlistForm() {
           });
 
           if (res.ok || res.status === 201) {
+            localStorage.setItem('repmax_waitlist_email', email);
             btn.textContent = 'You\'re In!';
             btn.style.background = '#22c55e';
             input.value = '';
@@ -351,3 +354,37 @@ window.addEventListener('mousemove', (e) => {
     g.style.transform = `translate(${x * factor}px, ${y * factor}px)`;
   });
 }, { passive: true });
+
+/* --- Check if returning user is approved --- */
+async function checkReturningUser() {
+  const savedEmail = localStorage.getItem('repmax_waitlist_email');
+  if (!savedEmail) return;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/waitlist?email=eq.${encodeURIComponent(savedEmail)}&select=approved`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      }
+    );
+    const data = await res.json();
+
+    if (data && data.length > 0 && data[0].approved) {
+      // User is approved — replace ALL waitlist forms with "You're Approved!"
+      document.querySelectorAll('.waitlist-form').forEach(form => {
+        form.innerHTML = `
+          <div style="text-align:center;width:100%">
+            <div style="font-size:1.2rem;font-weight:800;color:#D4FF00;margin-bottom:8px">You're Approved!</div>
+            <p style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:16px">Your access has been granted. Welcome to REPMAX.</p>
+            <a href="/auth" style="display:inline-block;padding:14px 40px;background:#D4FF00;color:#070707;font-weight:800;border-radius:12px;text-decoration:none;font-size:0.95rem">Open REPMAX</a>
+          </div>
+        `;
+      });
+    }
+  } catch (err) {
+    // Silently fail — don't disrupt the page
+  }
+}
