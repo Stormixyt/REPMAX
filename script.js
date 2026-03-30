@@ -102,36 +102,65 @@ function initWaitlistForm() {
       const btn = form.querySelector('button');
       const originalText = btn.textContent;
 
-      btn.textContent = 'Joining...';
+      btn.textContent = 'Checking...';
       btn.style.opacity = '0.7';
       btn.disabled = true;
 
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/waitlist`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({ email })
-        });
+        // First check if already on waitlist
+        const checkRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/waitlist?email=eq.${encodeURIComponent(email)}&select=approved`,
+          {
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+          }
+        );
+        const existing = await checkRes.json();
 
-        if (res.ok || res.status === 201) {
-          btn.textContent = 'You\'re In!';
-          btn.style.background = '#22c55e';
-          input.value = '';
-          input.placeholder = 'Check your email for updates';
-          showToast('Welcome to REPMAX!', 'You\'re on the early access list.');
-          incrementWaitlistCount();
-        } else if (res.status === 409) {
-          btn.textContent = 'Already Joined!';
-          btn.style.background = '#3b82f6';
-          input.value = '';
-          showToast('Already on the list!', 'You\'re already signed up.');
+        if (existing && existing.length > 0) {
+          if (existing[0].approved) {
+            // User is approved — show "Go to App" button
+            form.innerHTML = `
+              <div style="text-align:center;width:100%">
+                <div style="font-size:1.2rem;font-weight:800;color:#D4FF00;margin-bottom:8px">You're Approved!</div>
+                <p style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:16px">Your access has been granted. Welcome to REPMAX.</p>
+                <a href="/auth" style="display:inline-block;padding:14px 40px;background:#D4FF00;color:#070707;font-weight:800;border-radius:12px;text-decoration:none;font-size:0.95rem;transition:transform 0.2s">Open REPMAX</a>
+              </div>
+            `;
+            showToast('Access Granted!', 'You\'ve been approved. Let\'s go!');
+            return;
+          } else {
+            // Already on waitlist but not approved
+            btn.textContent = 'Already on the list!';
+            btn.style.background = '#3b82f6';
+            input.value = '';
+            showToast('Hang tight!', 'You\'re on the waitlist. We\'ll notify you when approved.');
+          }
         } else {
-          throw new Error('Failed');
+          // New signup
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/waitlist`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`,
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ email })
+          });
+
+          if (res.ok || res.status === 201) {
+            btn.textContent = 'You\'re In!';
+            btn.style.background = '#22c55e';
+            input.value = '';
+            input.placeholder = 'Check your email for updates';
+            showToast('Welcome to REPMAX!', 'You\'re on the early access list.');
+            incrementWaitlistCount();
+          } else {
+            throw new Error('Failed');
+          }
         }
       } catch (err) {
         btn.textContent = 'You\'re In!';
