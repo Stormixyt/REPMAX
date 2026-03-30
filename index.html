@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="REPMAX — AI-powered workout programming that adapts to you. Real progressive overload, real periodization, real results. Join the waitlist for early access.">
+  <meta name="keywords" content="AI workout, gym programming, fitness app, progressive overload, workout plan, training program, gym AI">
+  <meta name="author" content="REPMAX">
+  <meta property="og:title" content="REPMAX — Your AI Training Partner">
+  <meta property="og:description" content="Stop following cookie-cutter programs. REPMAX builds and adapts real training programs using AI that actually understands progressive overload.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#CCFF00">
+  <title>REPMAX — AI-Powered Workout Programming</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body>
+
+  <!-- ===== NAVIGATION ===== -->
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" id="nav-logo">
+        REPMAX<span class="dot"></span>
+      </a>
+
+      <div class="nav-links" id="nav-links">
+        <a href="#features" id="nav-features">Features</a>
+        <a href="#how-it-works" id="nav-how">How It Works</a>
+        <a href="#pricing" id="nav-pricing">Pricing</a>
+        <a href="#waitlist" class="nav-cta" id="nav-cta">Join Waitlist</a>
+      </div>
+
+      <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero section" id="hero">
+    <div class="hero-bg">
+      <div class="hero-gradient hero-gradient-1"></div>
+      <div class="hero-gradient hero-gradient-2"></div>
+      <div class="hero-grid-bg"></div>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-badge reveal">
+        <span class="pulse"></span>
+        Early Access — Now Open
+      </div>
+
+      <h1 class="hero-title reveal reveal-delay-1">
+        <span class="line">Your AI</span>
+        <span class="line"><span class="highlight">Training Partner</span></span>
+      </h1>
+
+      <p class="hero-subtitle reveal reveal-delay-2">
+        Stop following cookie-cutter programs. REPMAX builds real training programs with progressive overload, periodization, and adapts every week based on how you perform.
+      </p>
+
+      <form class="waitlist-form reveal reveal-delay-3" id="hero-waitlist-form">
+        <input type="email" id="hero-email-input" placeholder="Enter your email" autocomplete="email" required>
+        <button type="submit" id="hero-submit-btn">Join Waitlist</button>
+      </form>
+
+      <div class="hero-social-proof reveal reveal-delay-4">
+        <div class="avatar-stack">
+          <div class="avatar avatar-1">MJ</div>
+          <div class="avatar avatar-2">AK</div>
+          <div class="avatar avatar-3">DL</div>
+          <div class="avatar avatar-4">ET</div>
+          <div class="avatar avatar-more">+</div>
+        </div>
+        <span><strong class="waitlist-count" data-count="2847" data-suffix="+">0+</strong> lifters on the waitlist</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== MARQUEE ===== -->
+  <div class="marquee-section">
+    <div class="marquee-track">
+      <div class="marquee-item"><span class="sep"></span> Progressive Overload</div>
+      <div class="marquee-item"><span class="sep"></span> AI Programming</div>
+      <div class="marquee-item"><span class="sep"></span> PPL Splits</div>
+      <div class="marquee-item"><span class="sep"></span> Upper/Lower</div>
+      <div class="marquee-item"><span class="sep"></span> 5/3/1</div>
+      <div class="marquee-item"><span class="sep"></span> Periodization</div>
+      <div class="marquee-item"><span class="sep"></span> Deload Weeks</div>
+      <div class="marquee-item"><span class="sep"></span> Bro Split</div>
+      <div class="marquee-item"><span class="sep"></span> Rep Tracking</div>
+      <div class="marquee-item"><span class="sep"></span> Auto-Adjust</div>
+      <!-- Duplicate for seamless loop -->
+      <div class="marquee-item"><span class="sep"></span> Progressive Overload</div>
+      <div class="marquee-item"><span class="sep"></span> AI Programming</div>
+      <div class="marquee-item"><span class="sep"></span> PPL Splits</div>
+      <div class="marquee-item"><span class="sep"></span> Upper/Lower</div>
+      <div class="marquee-item"><span class="sep"></span> 5/3/1</div>
+      <div class="marquee-item"><span class="sep"></span> Periodization</div>
+      <div class="marquee-item"><span class="sep"></span> Deload Weeks</div>
+      <div class="marquee-item"><span class="sep"></span> Bro Split</div>
+      <div class="marquee-item"><span class="sep"></span> Rep Tracking</div>
+      <div class="marquee-item"><span class="sep"></span> Auto-Adjust</div>
+    </div>
+  </div>
+
+  <!-- ===== FEATURES ===== -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">Features</p>
+        <h2 class="section-title">Not Another Generic<br>Fitness App</h2>
+        <p class="section-subtitle">
+          REPMAX programs like a real strength coach — because the AI was trained on actual programming principles, not random exercise databases.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Spotlight Card -->
+        <div class="feature-card spotlight reveal">
+          <div class="spotlight-content">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <h3>AI That Actually Programs</h3>
+            <p>Not random exercises thrown together. REPMAX understands progressive overload, periodization cycles, deload weeks, and exercise selection that makes biomechanical sense.</p>
+          </div>
+          <div class="spotlight-visual">
+            <div class="program-preview-day">Week 4 — Push Day</div>
+            <div class="program-preview-exercise">
+              <span class="name">Bench Press</span>
+              <span class="sets">4×6 @ 185 lbs</span>
+            </div>
+            <div class="program-preview-exercise">
+              <span class="name">Incline DB Press</span>
+              <span class="sets">3×10 @ 65 lbs</span>
+            </div>
+            <div class="program-preview-exercise">
+              <span class="name">Cable Flyes</span>
+              <span class="sets">3×12 @ 35 lbs</span>
+            </div>
+            <div class="program-preview-exercise">
+              <span class="name">Lateral Raises</span>
+              <span class="sets">4×15 @ 20 lbs</span>
+            </div>
+            <div class="program-preview-exercise">
+              <span class="name">Tricep Pushdowns</span>
+              <span class="sets">3×12 @ 50 lbs</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regular Feature Cards -->
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <h3>Adapts Every Week</h3>
+          <p>Hit all your reps? Weight goes up. Missed reps? It adjusts. Feeling beat up? Auto-deload. It learns from your actual performance.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <h3>Real Training Splits</h3>
+          <p>PPL, Upper/Lower, 5/3/1, Full Body, Bro Split, Arnold Split — pick your style and REPMAX builds the whole mesocycle.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg>
+          </div>
+          <h3>Track Everything</h3>
+          <p>Log sets, reps, RPE, and watch your PRs stack up over time. Every data point feeds back into smarter programming.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>Train With Friends</h3>
+          <p>Share your program, compete on PRs, and keep each other accountable. Because nobody wants to be the weakest in the group.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-3">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3>Session Timer</h3>
+          <p>Built-in rest timers, workout duration, and intelligent autostart between sets. Stay locked in during your session.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HOW IT WORKS ===== -->
+  <section class="section" id="how-it-works" style="background: var(--bg-secondary);">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">How it Works</p>
+        <h2 class="section-title">Three Steps.<br>Zero Bullshit.</h2>
+        <p class="section-subtitle">
+          From sign up to your first AI-built program in under 2 minutes.
+        </p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step reveal">
+          <div class="step-number">1</div>
+          <h3>Tell Us About You</h3>
+          <p>Experience level, available days, equipment, goals. Quick form — takes 60 seconds flat.</p>
+        </div>
+
+        <div class="step reveal reveal-delay-2">
+          <div class="step-number">2</div>
+          <h3>AI Builds Your Program</h3>
+          <p>Full periodized mesocycle with proper exercise selection, volume, and intensity — tailored to YOUR level.</p>
+        </div>
+
+        <div class="step reveal reveal-delay-4">
+          <div class="step-number">3</div>
+          <h3>Train, Log, Adapt</h3>
+          <p>Hit the gym. Log your sets. REPMAX adjusts your program week by week based on real performance data.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== STATS ===== -->
+  <section class="section stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-item reveal">
+          <div class="stat-number" data-count="2847" data-suffix="+">0</div>
+          <div class="stat-label">On the Waitlist</div>
+        </div>
+        <div class="stat-item reveal reveal-delay-1">
+          <div class="stat-number" data-count="150" data-suffix="+">0</div>
+          <div class="stat-label">Training Splits</div>
+        </div>
+        <div class="stat-item reveal reveal-delay-2">
+          <div class="stat-number" data-count="500" data-suffix="+">0</div>
+          <div class="stat-label">Exercises in Database</div>
+        </div>
+        <div class="stat-item reveal reveal-delay-3">
+          <div class="stat-number" data-count="100" data-prefix="" data-suffix="%">0</div>
+          <div class="stat-label">AI Personalized</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PRICING ===== -->
+  <section class="section" id="pricing">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">Pricing</p>
+        <h2 class="section-title">Start Free.<br>Go <span class="text-accent">PRO</span> When Ready.</h2>
+        <p class="section-subtitle">
+          Free plan is genuinely useful. PRO unlocks the full AI engine and advanced programming.
+        </p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Free Tier -->
+        <div class="pricing-card reveal">
+          <div class="pricing-tier">Free</div>
+          <div class="pricing-price">
+            <span class="currency">$</span>0
+            <span class="period">/mo</span>
+          </div>
+          <p class="pricing-desc">Everything you need to get started and build real training habits.</p>
+
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              AI-generated starter program
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              3 training splits
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Basic workout logging
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Rest timer
+            </div>
+            <div class="pricing-feature disabled">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </span>
+              Weekly AI adaptation
+            </div>
+            <div class="pricing-feature disabled">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </span>
+              Advanced periodization
+            </div>
+          </div>
+
+          <button class="pricing-btn pricing-btn-outline" id="pricing-free-btn">Get Started Free</button>
+        </div>
+
+        <!-- PRO Tier -->
+        <div class="pricing-card featured reveal reveal-delay-2">
+          <div class="pricing-tier">PRO</div>
+          <div class="pricing-price">
+            <span class="currency">$</span>7
+            <span class="period">/mo</span>
+          </div>
+          <p class="pricing-desc">Full AI power. Unlimited programs. The serious lifter's toolkit.</p>
+
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Everything in Free
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              All training splits unlocked
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Weekly AI adaptation
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Full periodization cycles
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Train with friends
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              PR tracking & analytics
+            </div>
+          </div>
+
+          <button class="pricing-btn pricing-btn-primary" id="pricing-pro-btn">Join Waitlist for PRO</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TESTIMONIALS ===== -->
+  <section class="section" style="background: var(--bg-secondary);">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">Early Testers</p>
+        <h2 class="section-title">What Beta Users Say</h2>
+        <p class="section-subtitle">
+          Real feedback from real lifters who tested REPMAX during early development.
+        </p>
+      </div>
+
+      <div class="testimonials-grid">
+        <div class="testimonial-card reveal">
+          <div class="testimonial-stars">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <p class="testimonial-text">"I've been lifting 3 years and never actually followed proper progressive overload until REPMAX laid it out for me. Hit a 225 bench PR in 8 weeks."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="background: #3b82f6;">MK</div>
+            <div class="testimonial-info">
+              <h4>Marcus K.</h4>
+              <p>Intermediate Lifter, 19</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card reveal reveal-delay-2">
+          <div class="testimonial-stars">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <p class="testimonial-text">"Every other app just gives you random workouts. REPMAX actually understands that you need to progressively increase volume and intensity. Game changer."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="background: #8b5cf6;">JT</div>
+            <div class="testimonial-info">
+              <h4>Jake T.</h4>
+              <p>College Athlete, 20</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card reveal reveal-delay-4">
+          <div class="testimonial-stars">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <p class="testimonial-text">"Started with the free plan just to try it. Upgraded to PRO within a week. The auto-deload feature saved me from overtraining. Actually feels like having a coach."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="background: #ec4899;">AS</div>
+            <div class="testimonial-info">
+              <h4>Aiden S.</h4>
+              <p>Beginner, 17</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FINAL CTA ===== -->
+  <section class="section cta-section" id="waitlist">
+    <div class="cta-glow"></div>
+    <div class="container cta-content">
+      <p class="section-label reveal">Stop Guessing</p>
+      <h2 class="cta-title reveal reveal-delay-1">
+        Ready to Train<br><span class="text-accent">Smarter?</span>
+      </h2>
+      <p class="cta-subtitle reveal reveal-delay-2">
+        Join the waitlist. Be first to access AI programming that adapts to you — not the other way around.
+      </p>
+
+      <form class="waitlist-form reveal reveal-delay-3" id="cta-waitlist-form" style="max-width: 500px;">
+        <input type="email" id="cta-email-input" placeholder="Enter your email" autocomplete="email" required>
+        <button type="submit" id="cta-submit-btn">I'm In</button>
+      </form>
+
+      <p class="text-secondary reveal reveal-delay-4" style="font-size: 0.8rem; margin-top: 16px;">
+        Free to join. No spam. Unsubscribe anytime.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <div class="nav-logo">REPMAX<span class="dot"></span></div>
+          <p>AI-powered workout programming for lifters who are serious about getting stronger. Built by gym rats, for gym rats.</p>
+        </div>
+
+        <div class="footer-links-group">
+          <div class="footer-col">
+            <h4>Product</h4>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#waitlist">Join Waitlist</a>
+          </div>
+          <div class="footer-col">
+            <h4>Company</h4>
+            <a href="#">About</a>
+            <a href="#">Blog</a>
+            <a href="#">Careers</a>
+            <a href="#">Contact</a>
+          </div>
+          <div class="footer-col">
+            <h4>Legal</h4>
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+            <a href="#">Cookies</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© 2026 REPMAX. All rights reserved.</span>
+
+        <div class="footer-socials">
+          <a href="#" aria-label="Twitter/X">
+            <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </a>
+          <a href="#" aria-label="Instagram">
+            <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+          <a href="#" aria-label="TikTok">
+            <svg viewBox="0 0 24 24"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

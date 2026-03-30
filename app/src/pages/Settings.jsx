@@ -1,0 +1,259 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
+import ProBadge from '../components/ProBadge'
+import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine } from '@remixicon/react'
+import { requestNotificationPermission } from '../lib/firebase'
+
+export default function Settings() {
+  const { user, profile, signOut, updateProfile, isPro } = useAuth()
+  const navigate = useNavigate()
+  const [editName, setEditName] = useState(false)
+  const [nameValue, setNameValue] = useState(profile?.display_name || '')
+  const [showDelete, setShowDelete] = useState(false)
+  const [toast, setToast] = useState('')
+
+  function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
+
+  async function saveName() {
+    await updateProfile({ display_name: nameValue })
+    setEditName(false)
+    showToast('Name updated!')
+  }
+
+  async function toggleUnit() {
+    const newUnit = profile?.units === 'kg' ? 'lbs' : 'kg'
+    await updateProfile({ units: newUnit })
+    showToast(`Units changed to ${newUnit}`)
+  }
+
+  async function toggleNotif(field) {
+    const newValue = !profile?.[field]
+    await updateProfile({ [field]: newValue })
+    // Request push permission when enabling any notification
+    if (newValue) {
+      const token = await requestNotificationPermission()
+      if (token) {
+        await updateProfile({ fcm_token: token })
+      }
+    }
+  }
+
+  async function togglePrivacy() {
+    const cycle = { public: 'friends', friends: 'private', private: 'public' }
+    const next = cycle[profile?.privacy || 'friends']
+    await updateProfile({ privacy: next })
+    showToast(`Privacy: ${next}`)
+  }
+
+  async function exportData() {
+    const { data: workouts } = await supabase.from('workouts').select('*').eq('user_id', user.id).not('completed_at', 'is', null).order('completed_at', { ascending: false })
+    if (!workouts?.length) { showToast('No workout data to export'); return }
+    const csv = 'Date,Workout,Duration (min),Volume (lbs)\n' + workouts.map(w => `${w.completed_at?.split('T')[0]},${w.day_name},${Math.round((w.duration_seconds || 0) / 60)},${w.total_volume || 0}`).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = 'repmax_workouts.csv'; a.click()
+    showToast('Data exported!')
+  }
+
+  async function deleteAccount() {
+    await supabase.from('profiles').delete().eq('id', user.id)
+    await signOut()
+  }
+
+  const initials = (profile?.display_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+  return (
+    <div className="page">
+      <button className="back-btn" onClick={() => navigate(-1)}>
+        <RiArrowLeftLine size={20} /> Back
+      </button>
+
+      <div className="page-header">
+        <h1 className="page-title">Settings</h1>
+      </div>
+
+      {/* Profile Section */}
+      <div className="profile-header" style={{ marginBottom: 24 }}>
+        <div className="profile-avatar">{initials}</div>
+        <div>
+          <div className="profile-name">
+            {profile?.display_name || 'Athlete'}
+            {isPro && <ProBadge size="md" />}
+          </div>
+          <div className="profile-email">{user?.email}</div>
+        </div>
+      </div>
+
+      {/* Account */}
+      <div className="settings-section-title">Account</div>
+
+      <div className="settings-item" onClick={() => setEditName(true)}>
+        <div className="settings-item-left">
+          <div className="settings-icon"><RiUser3Fill size={18} /></div>
+          <div>
+            <div className="settings-label">Display Name</div>
+            <div className="settings-value">{profile?.display_name || 'Not set'}</div>
+          </div>
+        </div>
+        <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      <div className="settings-item" onClick={() => showToast('Password reset email sent! (mock)')}>
+        <div className="settings-item-left">
+          <div className="settings-icon"><RiLockPasswordFill size={18} /></div>
+          <div>
+            <div className="settings-label">Change Password</div>
+            <div className="settings-value">Via email reset</div>
+          </div>
+        </div>
+        <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      {/* Training */}
+      <div className="settings-section-title">Training</div>
+
+      <div className="settings-item" onClick={toggleUnit}>
+        <div className="settings-item-left">
+          <div className="settings-icon"><RiScales3Fill size={18} /></div>
+          <div>
+            <div className="settings-label">Weight Units</div>
+            <div className="settings-value">{profile?.units === 'kg' ? 'Kilograms (kg)' : 'Pounds (lbs)'}</div>
+          </div>
+        </div>
+        <div className="settings-toggle">{profile?.units || 'lbs'}</div>
+      </div>
+
+      <div className="settings-item" onClick={() => navigate('/profile')}>
+        <div className="settings-item-left">
+          <div className="settings-icon"><RiRefreshLine size={18} /></div>
+          <div>
+            <div className="settings-label">Training Preferences</div>
+            <div className="settings-value">Goal, split, equipment</div>
+          </div>
+        </div>
+        <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      {/* Notifications */}
+      <div className="settings-section-title">Notifications</div>
+
+      {[
+        { key: 'notify_reminders', label: 'Training Reminders', desc: 'Daily workout reminders' },
+        { key: 'notify_nudges', label: 'Friend Nudges', desc: 'When friends nudge you to train' },
+        { key: 'notify_invites', label: 'Training Invites', desc: 'When friends invite you to train' },
+      ].map(n => (
+        <div key={n.key} className="settings-item" onClick={() => toggleNotif(n.key)}>
+          <div className="settings-item-left">
+            <div className="settings-icon"><RiNotification3Fill size={18} /></div>
+            <div>
+              <div className="settings-label">{n.label}</div>
+              <div className="settings-value">{n.desc}</div>
+            </div>
+          </div>
+          <div className={`settings-switch ${profile?.[n.key] !== false ? 'on' : ''}`}>
+            <div className="settings-switch-thumb" />
+          </div>
+        </div>
+      ))}
+
+      {/* Privacy */}
+      <div className="settings-section-title">Privacy</div>
+
+      <div className="settings-item" onClick={togglePrivacy}>
+        <div className="settings-item-left">
+          <div className="settings-icon"><RiEyeOffFill size={18} /></div>
+          <div>
+            <div className="settings-label">Profile Visibility</div>
+            <div className="settings-value">{({ public: 'Everyone', friends: 'Friends Only', private: 'Private' })[profile?.privacy || 'friends']}</div>
+          </div>
+        </div>
+        <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      {/* Subscription */}
+      <div className="settings-section-title">Subscription</div>
+
+      <div className="settings-item" onClick={() => navigate('/subscribe')}>
+        <div className="settings-item-left">
+          <div className="settings-icon settings-icon-accent"><RiVipCrownFill size={18} /></div>
+          <div>
+            <div className="settings-label">{isPro ? 'Manage PRO' : 'Upgrade to PRO'}</div>
+            <div className="settings-value">{isPro ? `$5/week · Active` : 'Unlock all features'}</div>
+          </div>
+        </div>
+        <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      {/* Data */}
+      <div className="settings-section-title">Data</div>
+
+      <div className="settings-item" onClick={exportData}>
+        <div className="settings-item-left">
+          <div className="settings-icon"><RiDownloadFill size={18} /></div>
+          <div>
+            <div className="settings-label">Export Workout Data</div>
+            <div className="settings-value">Download as CSV</div>
+          </div>
+        </div>
+        <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      {/* Danger Zone */}
+      <div className="settings-section-title" style={{ color: 'var(--danger)' }}>Danger Zone</div>
+
+      <div className="settings-item settings-item-danger" onClick={() => setShowDelete(true)}>
+        <div className="settings-item-left">
+          <div className="settings-icon settings-icon-danger"><RiDeleteBin6Fill size={18} /></div>
+          <div>
+            <div className="settings-label" style={{ color: 'var(--danger)' }}>Delete Account</div>
+            <div className="settings-value">Permanently delete all your data</div>
+          </div>
+        </div>
+      </div>
+
+      {/* App Info */}
+      <div style={{ textAlign: 'center', padding: '24px 0 40px' }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>REPMAX v2.0 · Made with grit</div>
+      </div>
+
+      {/* Sign Out */}
+      <button className="btn btn-secondary btn-full" onClick={signOut} style={{ marginBottom: 24 }}>
+        <RiLogoutBoxRFill size={18} /> Sign Out
+      </button>
+
+      {/* Edit Name Modal */}
+      {editName && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setEditName(false) }}>
+          <div className="modal">
+            <h2 className="modal-title">Edit Name</h2>
+            <div className="input-group">
+              <input className="input" value={nameValue} onChange={e => setNameValue(e.target.value)} autoFocus />
+            </div>
+            <button className="btn btn-primary btn-full" onClick={saveName}>
+              <RiCheckFill size={18} /> Save
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation */}
+      {showDelete && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowDelete(false) }}>
+          <div className="modal">
+            <h2 className="modal-title" style={{ color: 'var(--danger)' }}>Delete Account?</h2>
+            <p className="modal-subtitle">This action is permanent. All your workouts, programs, and data will be deleted forever.</p>
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowDelete(false)}>Cancel</button>
+              <button className="btn btn-danger" style={{ flex: 1 }} onClick={deleteAccount}>Delete Forever</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  )
+}
