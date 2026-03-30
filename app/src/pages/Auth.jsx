@@ -19,22 +19,18 @@ export default function Auth() {
         .eq('email', emailToCheck.toLowerCase().trim())
         .maybeSingle()
 
-      // If the waitlist table doesn't exist or query fails, let users through
       if (error) {
-        console.warn('Waitlist check error (allowing access):', error.message)
-        return true
-      }
-
-      // No waitlist entry found — user never joined the waitlist
-      if (!data) {
+        console.error('Waitlist check failed:', error.message)
         return false
       }
 
+      // No entry = never joined waitlist
+      if (!data) return false
+
       return data.approved === true
     } catch (err) {
-      // If anything throws, don't block the user
-      console.warn('Waitlist check exception (allowing access):', err)
-      return true
+      console.error('Waitlist check exception:', err)
+      return false
     }
   }
 
