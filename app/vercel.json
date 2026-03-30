@@ -4,7 +4,13 @@
   "installCommand": "npm install",
   "framework": "vite",
   "rewrites": [
-    { "source": "/((?!assets|sw\\.js|firebase-messaging-sw\\.js|manifest\\.json|icon-.*\\.png).*)", "destination": "/index.html" }
+    { "source": "/", "destination": "/landing.html" },
+    { "source": "/privacy.html", "destination": "/privacy.html" },
+    { "source": "/terms.html", "destination": "/terms.html" },
+    { "source": "/cookies.html", "destination": "/cookies.html" },
+    { "source": "/styles.css", "destination": "/styles.css" },
+    { "source": "/script.js", "destination": "/script.js" },
+    { "source": "/(auth|onboarding|social|profile|settings|subscribe|notifications|coach|progress|workout)(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
