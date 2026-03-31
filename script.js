@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initMobileMenu();
   initWaitlistForm();
   initCounterAnimation();
-  initFakeSignupNotifications();
+  initDynamicTitle();
+  initNotifications();
   checkReturningUser();
 });
 
@@ -248,19 +249,56 @@ function animateCounter(el) {
   requestAnimationFrame(update);
 }
 
-/* --- Fake Signup Notifications (Social Proof) --- */
-function initFakeSignupNotifications() {
+/* --- Dynamic Title Text --- */
+function initDynamicTitle() {
+  const highlightSpan = document.querySelector('.hero-title .highlight');
+  if (!highlightSpan) return;
+
+  const words = ['Training Partner', 'Spotter', 'Strength Coach', 'Gym Bro', 'Programmer'];
+  let currentIdx = 0;
+
+  // Set initial transition styles
+  highlightSpan.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+  highlightSpan.style.display = 'inline-block';
+
+  setInterval(() => {
+    // Fade out and translate down slightly
+    highlightSpan.style.opacity = '0';
+    highlightSpan.style.transform = 'translateY(10px)';
+
+    setTimeout(() => {
+      // Change text while invisible
+      currentIdx = (currentIdx + 1) % words.length;
+      highlightSpan.textContent = words[currentIdx];
+
+      // Jump to top quickly without transition
+      highlightSpan.style.transition = 'none';
+      highlightSpan.style.transform = 'translateY(-10px)';
+
+      // Force reflow
+      void highlightSpan.offsetWidth;
+
+      // Fade in and translate to center
+      highlightSpan.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      highlightSpan.style.opacity = '1';
+      highlightSpan.style.transform = 'translateY(0)';
+    }, 400); // Wait for fade out
+  }, 3500); // Change every 3.5s
+}
+
+/* --- Notifications (Social Proof & Live Signups) --- */
+function initNotifications() {
+  // 1. Fake Signups (Less frequent, more realistic)
   const names = [
-    'Marcus from LA', 'Jake from London', 'Aiden from Miami',
-    'Dylan from NYC', 'Omar from Dubai', 'Ethan from Austin',
-    'Lucas from Berlin', 'Kai from Tokyo', 'Noah from Toronto',
-    'Liam from Sydney', 'Leo from Chicago', 'Mateo from Barcelona'
+    'Marcus K.', 'Jake T.', 'Aiden S.', 'David L.', 'Omar M.',
+    'Ethan R.', 'Lucas F.', 'Kai N.', 'Noah W.', 'Liam B.',
+    'Mateo C.', 'Julian H.', 'Alex P.', 'Chris D.'
   ];
 
   const messages = [
     'just joined the waitlist',
-    'signed up for early access',
-    'just joined REPMAX'
+    'secured their early access spot',
+    'just got on the waitlist'
   ];
 
   function showRandomNotification() {
@@ -269,13 +307,25 @@ function initFakeSignupNotifications() {
     showToast(name, msg);
   }
 
-  // Show first one after 15 seconds, then every 25-45 seconds
+  // Show fake ones every 45 to 90 seconds (much less annoying)
   setTimeout(() => {
     showRandomNotification();
     setInterval(() => {
       showRandomNotification();
-    }, 25000 + Math.random() * 20000);
-  }, 15000);
+    }, 45000 + Math.random() * 45000);
+  }, 20000);
+
+  // 2. REAL Live Signups via Supabase Websockets
+  try {
+    const channel = supabase.channel('public:waitlist')
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'waitlist' }, payload => {
+      // Whenever ANYONE inserts into the waitlist DB, trigger a toast immediately
+      showToast('A new lifter', 'just joined the waitlist! 🚀');
+      incrementWaitlistCount();
+    }).subscribe();
+  } catch (err) {
+    console.warn('Realtime subscription failed', err);
+  }
 }
 
 /* --- Toast System --- */
