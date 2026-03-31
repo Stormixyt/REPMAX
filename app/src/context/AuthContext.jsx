@@ -9,15 +9,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Timeout to prevent hanging on stale auth locks
-    const timeout = setTimeout(() => setLoading(false), 5000)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(timeout)
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
       else setLoading(false)
-    }).catch(() => {
-      clearTimeout(timeout)
+    }).catch(err => {
+      console.error('Session fetch error', err)
       setLoading(false)
     })
 
@@ -44,20 +41,26 @@ export function AuthProvider({ children }) {
   }
 
   async function fetchProfile(userId, retries = 3) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
-    if (error && error.code === 'PGRST116' && retries > 0) {
-      // Postgres trigger hasn't finished creating the row yet! Wait 500ms and retry.
-      console.log('Profile not found yet, retrying in 500ms...', retries)
-      setTimeout(() => fetchProfile(userId, retries - 1), 500)
-      return
-    }
+      if (error) {
+        if (error.code === 'PGRST116' && retries > 0) {
+          console.log('Profile not found yet, retrying in 500ms...', retries)
+          setTimeout(() => fetchProfile(userId, retries - 1), 500)
+          return
+        }
+        console.error('Profile fetch error:', error)
+        // If it's a network error or unrelated, aggressively retry so we don't boot them to Onboarding
+        setTimeout(() => fetchProfile(userId, retries), 2000)
+        return
+      }
 
-    if (!error && data) {
+      if (data) {
       // Auto-generate friend_code if missing
       if (!data.friend_code) {
         const friendCode = generateFriendCode()
@@ -76,6 +79,11 @@ export function AuthProvider({ children }) {
       } else {
         setProfile(data)
       }
+    }
+    } catch (err) {
+      console.error('fetchProfile exception:', err)
+      setTimeout(() => fetchProfile(userId, retries), 2000)
+      return
     }
     setLoading(false)
   }
