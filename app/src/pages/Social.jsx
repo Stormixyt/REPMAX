@@ -161,13 +161,14 @@ export default function Social() {
     }
     
     // Create new direct chat
-    const { data: newChat } = await supabase.from('chats').insert({ type: 'direct' }).select().single()
-    if (newChat) {
+    const chatId = crypto.randomUUID()
+    const { error: insertErr } = await supabase.from('chats').insert({ id: chatId, type: 'direct' })
+    if (!insertErr) {
       await supabase.from('chat_members').insert([
-        { chat_id: newChat.id, user_id: user.id },
-        { chat_id: newChat.id, user_id: friendId }
+        { chat_id: chatId, user_id: user.id },
+        { chat_id: chatId, user_id: friendId }
       ])
-      navigate(`/chat/${newChat.id}`)
+      navigate(`/chat/${chatId}`)
     }
   }
 
@@ -176,16 +177,17 @@ export default function Social() {
       showToast('Need a name and at least 1 friend!')
       return
     }
-    const { data: newChat } = await supabase.from('chats').insert({ type: 'group', name: groupName.trim() }).select().single()
-    if (newChat) {
-      const members = selectedFriends.map(fId => ({ chat_id: newChat.id, user_id: fId }))
-      members.push({ chat_id: newChat.id, user_id: user.id })
+    const chatId = crypto.randomUUID()
+    const { error: insertErr } = await supabase.from('chats').insert({ id: chatId, type: 'group', name: groupName.trim() })
+    if (!insertErr) {
+      const members = selectedFriends.map(fId => ({ chat_id: chatId, user_id: fId }))
+      members.push({ chat_id: chatId, user_id: user.id })
       await supabase.from('chat_members').insert(members)
       
       setShowGroupForm(false)
       setGroupName('')
       setSelectedFriends([])
-      navigate(`/chat/${newChat.id}`)
+      navigate(`/chat/${chatId}`)
     }
   }
 
