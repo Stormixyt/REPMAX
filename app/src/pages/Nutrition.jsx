@@ -15,7 +15,7 @@ import {
   RiDeleteBinLine,
   RiSparkling2Fill,
   RiLeafFill,
-  RiMeatFill,
+  RiRestaurantFill,
   RiDropFill,
   RiArrowUpLine,
   RiArrowDownLine,
@@ -25,7 +25,6 @@ import {
   RiSunFill,
   RiTimeFill,
   RiFlashlightFill,
-  RiImageFill,
   RiTranslate2,
   RiRefreshLine,
 } from "@remixicon/react";
@@ -598,7 +597,10 @@ export default function Nutrition() {
                     </div>
                     <div className="preview-macros">
                       <div>
-                        <RiMeatFill size={13} style={{ color: "#ef4444" }} />{" "}
+                        <RiRestaurantFill
+                          size={13}
+                          style={{ color: "#ef4444" }}
+                        />{" "}
                         {preview.target_protein}g protein
                       </div>
                       <div>
@@ -718,7 +720,7 @@ export default function Nutrition() {
                 current: totals.protein,
                 target: nutProfile.target_protein,
                 color: "#ef4444",
-                icon: RiMeatFill,
+                icon: RiRestaurantFill,
                 unit: "g",
               },
               {
@@ -921,7 +923,10 @@ export default function Nutrition() {
                   </div>
                   <div className="ai-food-macros">
                     <span>
-                      <RiMeatFill size={11} style={{ color: "#ef4444" }} />{" "}
+                      <RiRestaurantFill
+                        size={11}
+                        style={{ color: "#ef4444" }}
+                      />{" "}
                       {aiResult.protein}g P
                     </span>
                     <span>
