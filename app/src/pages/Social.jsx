@@ -56,7 +56,13 @@ export default function Social() {
     if (!searchEmail.trim()) return
     setSearching(true)
     setSearchResult(null)
-    const { data } = await supabase.from('profiles').select('id, display_name, total_workouts, subscription_status, friend_code').or(`friend_code.eq.${searchEmail.trim()}`).neq('id', user.id).limit(1)
+    const code = searchEmail.trim().toUpperCase()
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, display_name, total_workouts, subscription_status, friend_code')
+      .eq('friend_code', code)
+      .neq('id', user.id)
+      .limit(1)
     setSearchResult(data?.[0] || 'not_found')
     setSearching(false)
   }

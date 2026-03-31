@@ -1,6 +1,11 @@
-const GROQ_API_KEY = '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'
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const MODEL = 'llama-3.3-70b-versatile'
+/**
+ * groq.js — All AI calls go through the Supabase Edge Function "ai-proxy".
+ * The actual Groq API key lives only in Supabase secrets, never in this bundle.
+ */
+import { supabase } from "./supabase";
+
+const MODEL = "llama-3.3-70b-versatile";
+const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
 const SYSTEM_PROMPT = `You are REPMAX, an expert strength and conditioning coach AI. You create scientifically-backed, periodized workout programs.
 
@@ -52,40 +57,38 @@ OUTPUT FORMAT: You MUST respond with ONLY valid JSON matching this structure exa
   ]
 }
 
-NEVER include any text outside the JSON. ONLY output the JSON object.`
+NEVER include any text outside the JSON. ONLY output the JSON object.`;
+
+/**
+ * Core helper — calls the ai-proxy edge function.
+ * The JWT is automatically attached by the Supabase client.
+ */
+async function callGroq(body) {
+  const { data, error } = await supabase.functions.invoke("ai-proxy", { body });
+  if (error) throw new Error(error.message);
+  return data;
+}
 
 export async function generateProgram(profile) {
-  const userPrompt = buildUserPrompt(profile)
-  
+  const userPrompt = buildUserPrompt(profile);
+
   try {
-    const response = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt }
-        ],
-        model: MODEL,
-        temperature: 0.7,
-        max_tokens: 8000,
-        response_format: { type: 'json_object' }
-      })
-    })
+    const data = await callGroq({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      model: MODEL,
+      temperature: 0.7,
+      max_tokens: 8000,
+      response_format: { type: "json_object" },
+    });
 
-    if (!response.ok) {
-      throw new Error(`Groq API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    const programJson = JSON.parse(data.choices[0].message.content)
-    return { success: true, program: programJson }
+    const programJson = JSON.parse(data.choices[0].message.content);
+    return { success: true, program: programJson };
   } catch (err) {
-    console.error('Program generation failed:', err)
-    return { success: false, error: err.message }
+    console.error("Program generation failed:", err);
+    return { success: false, error: err.message };
   }
 }
 
@@ -107,66 +110,58 @@ ADAPTATION RULES:
 - If RPE was consistently 9-10: reduce weight by 5% or add a rest day
 - If RPE was consistently below 6: increase weight by 5-10%
 
-Output the updated program for next week ONLY as JSON in the same format.`
+Output the updated program for next week ONLY as JSON in the same format.`;
 
   try {
-    const response = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: prompt }
-        ],
-        model: MODEL,
-        temperature: 0.5,
-        max_tokens: 8000,
-        response_format: { type: 'json_object' }
-      })
-    })
+    const data = await callGroq({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ],
+      model: MODEL,
+      temperature: 0.5,
+      max_tokens: 8000,
+      response_format: { type: "json_object" },
+    });
 
-    const data = await response.json()
-    const adapted = JSON.parse(data.choices[0].message.content)
-    return { success: true, program: adapted }
+    const adapted = JSON.parse(data.choices[0].message.content);
+    return { success: true, program: adapted };
   } catch (err) {
-    return { success: false, error: err.message }
+    return { success: false, error: err.message };
   }
 }
 
 function buildUserPrompt(profile) {
   const splitMap = {
-    'ppl': 'Push/Pull/Legs (PPL)',
-    'upper_lower': 'Upper/Lower',
-    'full_body': 'Full Body',
-    'bro_split': 'Bro Split (one muscle group per day)',
-    'arnold': 'Arnold Split'
-  }
+    ppl: "Push/Pull/Legs (PPL)",
+    upper_lower: "Upper/Lower",
+    full_body: "Full Body",
+    bro_split: "Bro Split (one muscle group per day)",
+    arnold: "Arnold Split",
+  };
 
   const goalDesc = {
-    'strength': 'maximize strength and 1RM on compound lifts',
-    'hypertrophy': 'maximize muscle growth and size',
-    'athletic': 'build functional strength, power, and conditioning',
-    'general': 'improve overall fitness, build muscle, and get stronger'
-  }
+    strength: "maximize strength and 1RM on compound lifts",
+    hypertrophy: "maximize muscle growth and size",
+    athletic: "build functional strength, power, and conditioning",
+    general: "improve overall fitness, build muscle, and get stronger",
+  };
 
-  const days = profile.training_days || []
-  const equipment = profile.equipment || []
-  const split = splitMap[profile.preferred_split] || profile.preferred_split
-  const goal = goalDesc[profile.goal] || profile.goal
-  const level = profile.experience_level || 'intermediate'
+  const days = profile.training_days || [];
+  const equipment = profile.equipment || [];
+  const split = splitMap[profile.preferred_split] || profile.preferred_split;
+  const goal = goalDesc[profile.goal] || profile.goal;
+  const level = profile.experience_level || "intermediate";
 
   return `Create a complete 4-week training program for me.
 
 MY PROFILE:
 - Experience: ${level}
-- Goal: ${goal}  
-- Training days per week: ${days.length} (${days.join(', ')})
+- Goal: ${goal}
+- Training days per week: ${days.length} (${days.join(", ")})
 - Preferred split: ${split}
-- Available equipment: ${equipment.join(', ')}
-- Name: ${profile.display_name || 'Athlete'}
+- Available equipment: ${equipment.join(", ")}
+- Name: ${profile.display_name || "Athlete"}
 
 REQUIREMENTS:
 - Build the program for ${days.length} training days per week
@@ -176,5 +171,8 @@ REQUIREMENTS:
 - Include warmup sets for main compound lifts
 - Suggest starting weights appropriate for a ${level} lifter (in lbs)
 
-Create the program now.`
+Create the program now.`;
 }
+
+// Exported for use in Nutrition.jsx and other pages
+export { callGroq, VISION_MODEL, MODEL };

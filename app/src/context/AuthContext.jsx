@@ -36,6 +36,13 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  function generateFriendCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    let code = ''
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)]
+    return code
+  }
+
   async function fetchProfile(userId) {
     const { data, error } = await supabase
       .from('profiles')
@@ -44,7 +51,24 @@ export function AuthProvider({ children }) {
       .single()
 
     if (!error && data) {
-      setProfile(data)
+      // Auto-generate friend_code if missing
+      if (!data.friend_code) {
+        const friendCode = generateFriendCode()
+        const { data: updated, error: updateErr } = await supabase
+          .from('profiles')
+          .update({ friend_code: friendCode })
+          .eq('id', userId)
+          .select()
+          .single()
+        if (!updateErr && updated) {
+          setProfile(updated)
+        } else {
+          // If update fails (e.g. column doesn't exist yet), still set profile
+          setProfile({ ...data, friend_code: friendCode })
+        }
+      } else {
+        setProfile(data)
+      }
     }
     setLoading(false)
   }

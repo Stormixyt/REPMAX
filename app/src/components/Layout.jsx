@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiTeamFill, RiTeamLine, RiBrainFill, RiBrainLine, RiUser3Fill, RiUser3Line } from '@remixicon/react'
+import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiLeafFill, RiLeafLine, RiTeamFill, RiTeamLine, RiBrainFill, RiBrainLine, RiUser3Fill, RiUser3Line } from '@remixicon/react'
 import { onForegroundMessage } from '../lib/firebase'
 
 export default function Layout({ children }) {
@@ -22,8 +22,9 @@ export default function Layout({ children }) {
   const navItems = [
     { path: '/', label: 'Home', ActiveIcon: RiHomeFill, Icon: RiHomeLine },
     { path: '/progress', label: 'Progress', ActiveIcon: RiBarChart2Fill, Icon: RiBarChart2Line },
+    { path: '/nutrition', label: 'Diet', ActiveIcon: RiLeafFill, Icon: RiLeafLine },
     { path: '/social', label: 'Social', ActiveIcon: RiTeamFill, Icon: RiTeamLine },
-    { path: '/coach', label: 'AI Coach', ActiveIcon: RiBrainFill, Icon: RiBrainLine },
+    { path: '/coach', label: 'Coach', ActiveIcon: RiBrainFill, Icon: RiBrainLine },
     { path: '/profile', label: 'Profile', ActiveIcon: RiUser3Fill, Icon: RiUser3Line },
   ]
 

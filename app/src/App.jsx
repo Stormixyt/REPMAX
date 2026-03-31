@@ -10,6 +10,7 @@ import Social from './pages/Social'
 import AICoach from './pages/AICoach'
 import Subscription from './pages/Subscription'
 import Settings from './pages/Settings'
+import Nutrition from './pages/Nutrition'
 import Notifications from './pages/Notifications'
 import Layout from './components/Layout'
 
@@ -55,6 +56,7 @@ export default function App() {
       {/* Main app pages with bottom nav */}
       <Route path="/" element={<Layout><Dashboard /></Layout>} />
       <Route path="/progress" element={<Layout><Progress /></Layout>} />
+      <Route path="/nutrition" element={<Layout><Nutrition /></Layout>} />
       <Route path="/social" element={<Layout><Social /></Layout>} />
       <Route path="/profile" element={<Layout><Profile /></Layout>} />
       <Route path="*" element={<Navigate to="/" replace />} />

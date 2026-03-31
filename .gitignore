@@ -30,3 +30,16 @@ yarn-error.log*
 # Misc
 *.tgz
 .eslintcache
+
+# Supabase secrets & deploy guide (contain API keys — never commit)
+supabase/DEPLOY_FUNCTIONS.md
+supabase/.env
+.supabase/
+
+# Supabase CLI binary (downloaded manually, not part of source)
+supabase.exe
+supabase-cli/
+supabase-cli.tar.gz
+
+# Windows artifacts
+nul
