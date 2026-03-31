@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiLeafFill, RiLeafLine, RiTeamFill, RiTeamLine, RiBrainFill, RiBrainLine, RiUser3Fill, RiUser3Line } from '@remixicon/react'
 import { onForegroundMessage } from '../lib/firebase'
 
-export default function Layout({ children }) {
+export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const path = location.pathname
@@ -30,7 +30,7 @@ export default function Layout({ children }) {
 
   return (
     <div className="app-wrapper">
-      <div className="app-content">{children}</div>
+      <div className="app-content"><Outlet /></div>
       <nav className="bottom-nav">
         {navItems.map(item => {
           const isActive = path === item.path

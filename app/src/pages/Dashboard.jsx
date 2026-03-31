@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -15,8 +15,13 @@ export default function Dashboard() {
   const [unreadNotifs, setUnreadNotifs] = useState(0)
   const [stats, setStats] = useState({ total: 0, streak: 0, volume: 0 })
   const [loading, setLoading] = useState(true)
+  const mounted = useRef(true)
 
-  useEffect(() => { loadDashboard() }, [])
+  useEffect(() => { 
+    mounted.current = true
+    loadDashboard() 
+    return () => { mounted.current = false }
+  }, [])
 
   async function loadDashboard() {
     try {
@@ -44,6 +49,7 @@ export default function Dashboard() {
         }
       }
 
+      if (!mounted.current) return
       setRecentPRs(prsRes.data || [])
       setUpcomingInvites(invitesRes.data || [])
       setUnreadNotifs(notifsRes.count || 0)
@@ -55,7 +61,7 @@ export default function Dashboard() {
     } catch (err) {
       console.error('Dashboard load error:', err)
     } finally {
-      setLoading(false)
+      if (mounted.current) setLoading(false)
     }
   }
 

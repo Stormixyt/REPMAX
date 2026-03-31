@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { sendNotification, NotificationTemplates } from '../lib/notifications'
@@ -21,8 +21,13 @@ export default function Social() {
   const [inviteTarget, setInviteTarget] = useState(null)
   const [inviteForm, setInviteForm] = useState({ title: '', location: '', scheduledAt: '', workoutType: '', message: '' })
   const [toast, setToast] = useState('')
+  const mounted = useRef(true)
 
-  useEffect(() => { loadSocial() }, [])
+  useEffect(() => { 
+    mounted.current = true
+    loadSocial() 
+    return () => { mounted.current = false }
+  }, [])
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
@@ -39,6 +44,7 @@ export default function Social() {
         const friendProfile = isSender ? f.friend : f.requester
         return { ...friendProfile, friendship_id: f.id }
       })
+      if (!mounted.current) return
       setFriends(friendsList)
       setPending(pendingRes.data || [])
       setInvites((invitesRes.data || []).map(inv => ({
@@ -49,7 +55,7 @@ export default function Social() {
     } catch (err) {
       console.error('Social load error:', err)
     }
-    setLoading(false)
+    if (mounted.current) setLoading(false)
   }
 
   async function searchFriend() {

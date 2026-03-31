@@ -224,6 +224,7 @@ export default function Nutrition() {
   const [detectedLang, setDetectedLang] = useState(null);
   const [selectedMeal, setSelectedMeal] = useState("snack");
   const [toast, setToast] = useState("");
+  const mounted = useRef(true);
 
   const [setupForm, setSetupForm] = useState({
     age: "",
@@ -235,7 +236,9 @@ export default function Nutrition() {
   });
 
   useEffect(() => {
+    mounted.current = true;
     loadNutrition();
+    return () => { mounted.current = false; };
   }, []);
 
   function showToastMsg(msg) {
@@ -259,6 +262,7 @@ export default function Nutrition() {
           .eq("logged_at", today)
           .order("created_at", { ascending: true }),
       ]);
+      if (!mounted.current) return;
       if (npRes.data) {
         setNutProfile(npRes.data);
         setSetupForm({
@@ -276,7 +280,7 @@ export default function Nutrition() {
     } catch (err) {
       console.error("Nutrition load error:", err);
     }
-    setLoading(false);
+    if (mounted.current) setLoading(false);
   }
 
   function calculateTDEE(form) {

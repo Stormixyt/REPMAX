@@ -51,14 +51,17 @@ export default function App() {
       <Route path="/subscribe" element={<Subscription />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/notifications" element={<Notifications />} />
-      <Route path="/coach" element={<Layout><AICoach /></Layout>} />
 
-      {/* Main app pages with bottom nav */}
-      <Route path="/" element={<Layout><Dashboard /></Layout>} />
-      <Route path="/progress" element={<Layout><Progress /></Layout>} />
-      <Route path="/nutrition" element={<Layout><Nutrition /></Layout>} />
-      <Route path="/social" element={<Layout><Social /></Layout>} />
-      <Route path="/profile" element={<Layout><Profile /></Layout>} />
+      {/* Main app pages with bottom nav (Outlet) */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/progress" element={<Progress />} />
+        <Route path="/nutrition" element={<Nutrition />} />
+        <Route path="/social" element={<Social />} />
+        <Route path="/coach" element={<AICoach />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

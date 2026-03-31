@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -8,17 +8,23 @@ export default function Progress() {
   const [workouts, setWorkouts] = useState([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('overview')
+  const mounted = useRef(true)
 
-  useEffect(() => { loadProgress() }, [])
+  useEffect(() => { 
+    mounted.current = true
+    loadProgress() 
+    return () => { mounted.current = false }
+  }, [])
 
   async function loadProgress() {
     const [prRes, wRes] = await Promise.all([
       supabase.from('personal_records').select('*').eq('user_id', user.id).order('achieved_at', { ascending: false }),
       supabase.from('workouts').select('*').eq('user_id', user.id).not('completed_at', 'is', null).order('completed_at', { ascending: false }).limit(50)
     ])
+    if (!mounted.current) return
     setPRs(prRes.data || [])
     setWorkouts(wRes.data || [])
-    setLoading(false)
+    if (mounted.current) setLoading(false)
   }
 
   // Calculate stats
