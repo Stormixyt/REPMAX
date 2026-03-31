@@ -22,6 +22,12 @@ export default function Social() {
   const [showInviteForm, setShowInviteForm] = useState(false)
   const [inviteTarget, setInviteTarget] = useState(null)
   const [inviteForm, setInviteForm] = useState({ title: '', location: '', scheduledAt: '', workoutType: '', message: '' })
+  
+  // Group Creation State
+  const [showGroupForm, setShowGroupForm] = useState(false)
+  const [groupName, setGroupName] = useState('')
+  const [selectedFriends, setSelectedFriends] = useState([])
+
   const [toast, setToast] = useState('')
   const mounted = useRef(true)
 
@@ -157,6 +163,24 @@ export default function Social() {
     }
   }
 
+  async function createGroup() {
+    if (!groupName.trim() || selectedFriends.length === 0) {
+      showToast('Need a name and at least 1 friend!')
+      return
+    }
+    const { data: newChat } = await supabase.from('chats').insert({ type: 'group', name: groupName.trim() }).select().single()
+    if (newChat) {
+      const members = selectedFriends.map(fId => ({ chat_id: newChat.id, user_id: fId }))
+      members.push({ chat_id: newChat.id, user_id: user.id })
+      await supabase.from('chat_members').insert(members)
+      
+      setShowGroupForm(false)
+      setGroupName('')
+      setSelectedFriends([])
+      navigate(`/chat/${newChat.id}`)
+    }
+  }
+
   async function sendTrainingInvite() {
     if (!inviteTarget || !inviteForm.title || !inviteForm.scheduledAt) return
     await supabase.from('training_invites').insert({ sender_id: user.id, receiver_id: inviteTarget.id, title: inviteForm.title, location: inviteForm.location, scheduled_at: inviteForm.scheduledAt, workout_type: inviteForm.workoutType, message: inviteForm.message })
@@ -208,7 +232,7 @@ export default function Social() {
         {/* MESSAGES TAB */}
         {tab === 'messages' && (
           <div className="tab-pane active fade-in">
-            <div className="card" onClick={() => showToast('Group creation coming soon!')} style={{ marginBottom: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, border: '2px dashed var(--border)' }}>
+            <div className="card" onClick={() => setShowGroupForm(true)} style={{ marginBottom: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, border: '2px dashed var(--border)' }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <RiUserAddFill size={20} style={{ color: 'var(--text-tertiary)' }} />
               </div>
@@ -362,6 +386,51 @@ export default function Social() {
         )}
 
       </div>
+
+      {/* Group Creation Modal */}
+      {showGroupForm && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowGroupForm(false) }}>
+          <div className="modal invite-modal">
+            <div className="invite-modal-header">
+              <RiTeamFill size={32} className="accent-icon" />
+              <h2 className="modal-title">New Group</h2>
+              <p className="modal-subtitle">Create a group chat with friends</p>
+            </div>
+            <div className="input-group">
+              <label className="input-label">Group Name</label>
+              <input className="input" placeholder="e.g. Iron Gym Squad" value={groupName} onChange={e => setGroupName(e.target.value)} maxLength={32} />
+            </div>
+            
+            <div className="input-group">
+              <label className="input-label">Select Friends ({selectedFriends.length})</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto', padding: '4px 0' }}>
+                {friends.length === 0 ? (
+                  <p className="empty-text" style={{ fontSize: '0.85rem' }}>No friends to add yet.</p>
+                ) : (
+                  friends.map(f => {
+                    const isSelected = selectedFriends.includes(f.id)
+                    return (
+                      <div key={f.id} className="card" onClick={() => setSelectedFriends(prev => isSelected ? prev.filter(id => id !== f.id) : [...prev, f.id])} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: isSelected ? '1px solid var(--accent)' : '1px solid transparent', background: isSelected ? 'rgba(204, 255, 0, 0.05)' : 'var(--bg-elevated)', transition: 'all 0.15s ease' }}>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                           <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${f.avatar_seed || f.id}&backgroundColor=transparent`} style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-card)' }} alt="" />
+                           <span style={{ fontWeight: 600 }}>{f.display_name}</span>
+                         </div>
+                         <div style={{ width: 22, height: 22, borderRadius: '50%', border: isSelected ? 'none' : '2px solid var(--border)', background: isSelected ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                           {isSelected && <svg viewBox="0 0 24 24" fill="#000" width="16" height="16"><path d="M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM11.0026 16L18.0737 8.92893L16.6595 7.51472L11.0026 13.1716L8.17421 10.3431L6.76 11.7574L11.0026 16Z"></path></svg>}
+                         </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+
+            <button className="btn btn-primary btn-full btn-lg" onClick={createGroup} disabled={!groupName.trim() || selectedFriends.length === 0} style={{ marginTop: 12 }}>
+              Create Group
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && <div className="toast fade-in">{toast}</div>}
