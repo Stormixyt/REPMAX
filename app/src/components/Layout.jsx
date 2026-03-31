@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, Outlet } from 'react-router-dom'
-import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiLeafFill, RiLeafLine, RiTeamFill, RiTeamLine, RiBrainFill, RiBrainLine, RiUser3Fill, RiUser3Line } from '@remixicon/react'
+import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiLeafFill, RiLeafLine, RiChat3Fill, RiChat3Line, RiBrainFill, RiBrainLine, RiUser3Fill, RiUser3Line } from '@remixicon/react'
 import { onForegroundMessage } from '../lib/firebase'
 
 export default function Layout() {
@@ -23,7 +23,7 @@ export default function Layout() {
     { path: '/', label: 'Home', ActiveIcon: RiHomeFill, Icon: RiHomeLine },
     { path: '/progress', label: 'Progress', ActiveIcon: RiBarChart2Fill, Icon: RiBarChart2Line },
     { path: '/nutrition', label: 'Diet', ActiveIcon: RiLeafFill, Icon: RiLeafLine },
-    { path: '/social', label: 'Social', ActiveIcon: RiTeamFill, Icon: RiTeamLine },
+    { path: '/social', label: 'Chat', ActiveIcon: RiChat3Fill, Icon: RiChat3Line },
     { path: '/coach', label: 'Coach', ActiveIcon: RiBrainFill, Icon: RiBrainLine },
     { path: '/profile', label: 'Profile', ActiveIcon: RiUser3Fill, Icon: RiUser3Line },
   ]
