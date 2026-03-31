@@ -54,16 +54,24 @@ export default function Social() {
         // Chat schema might not exist yet
       }
 
-      const friendsList = (friendsRes.data || []).map(f => {
-        const isSender = f.user_id === user.id
-        const friendProfile = isSender ? f.friend : f.requester
-        return { ...friendProfile, friendship_id: f.id }
-      })
+      const friendsList = (friendsRes.data || [])
+        .map(f => {
+          const isSender = f.user_id === user.id
+          const friendProfile = isSender ? f.friend : f.requester
+          return friendProfile ? { ...friendProfile, friendship_id: f.id } : null
+        })
+        .filter(Boolean)
+
+      const pendingList = (pendingRes.data || [])
+        .map(f => f.requester ? { ...f.requester, friendship_id: f.id } : null)
+        .filter(Boolean)
+
       if (!mounted.current) return
       setFriends(friendsList)
-      setPending(pendingRes.data || [])
+      setPending(pendingList)
       setInvites((invitesRes.data || []).map(inv => ({
         ...inv,
+        isReceived: inv.receiver_id === user.id,
         sender_name: inv.sender?.display_name,
         receiver_name: inv.receiver?.display_name
       })))
