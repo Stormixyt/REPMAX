@@ -43,12 +43,19 @@ export function AuthProvider({ children }) {
     return code
   }
 
-  async function fetchProfile(userId) {
+  async function fetchProfile(userId, retries = 3) {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single()
+
+    if (error && error.code === 'PGRST116' && retries > 0) {
+      // Postgres trigger hasn't finished creating the row yet! Wait 500ms and retry.
+      console.log('Profile not found yet, retrying in 500ms...', retries)
+      setTimeout(() => fetchProfile(userId, retries - 1), 500)
+      return
+    }
 
     if (!error && data) {
       // Auto-generate friend_code if missing
