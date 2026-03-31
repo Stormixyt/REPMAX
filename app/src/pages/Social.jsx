@@ -35,12 +35,18 @@ export default function Social() {
 
   async function loadSocial() {
     try {
-      const [friendsRes, pendingRes, invitesRes, chatsRes] = await Promise.all([
+      const [friendsRes, pendingRes, invitesRes] = await Promise.all([
         supabase.from('friendships').select('*, friend:friend_id(id, display_name, total_workouts, subscription_status, avatar_seed), requester:user_id(id, display_name, total_workouts, subscription_status, avatar_seed)').or(`user_id.eq.${user.id},friend_id.eq.${user.id}`).eq('status', 'accepted'),
         supabase.from('friendships').select('*, requester:user_id(id, display_name, total_workouts)').eq('friend_id', user.id).eq('status', 'pending'),
-        supabase.from('training_invites').select('*, sender:sender_id(display_name), receiver:receiver_id(display_name)').or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`).order('scheduled_at', { ascending: false }).limit(20),
-        supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed))').order('created_at', { ascending: false })
+        supabase.from('training_invites').select('*, sender:sender_id(display_name), receiver:receiver_id(display_name)').or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`).order('scheduled_at', { ascending: false }).limit(20)
       ])
+
+      let chatsRes = { data: [] }
+      try {
+        chatsRes = await supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed))').order('created_at', { ascending: false })
+      } catch (err) {
+        // Chat schema might not exist yet
+      }
 
       const friendsList = (friendsRes.data || []).map(f => {
         const isSender = f.user_id === user.id
