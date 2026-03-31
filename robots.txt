@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# Prevent search engines from indexing secure/private app routes
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /social
+Disallow: /nutrition
+Disallow: /profile
+Disallow: /settings
+Disallow: /subscribe
+Disallow: /notifications
+Disallow: /coach
+Disallow: /progress
+Disallow: /workout/
+
+# Sitemap location
+Sitemap: https://repmax.app/sitemap.xml

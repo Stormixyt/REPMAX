@@ -5,6 +5,7 @@
     { "source": "/auth", "destination": "/app.html" },
     { "source": "/onboarding", "destination": "/app.html" },
     { "source": "/social", "destination": "/app.html" },
+    { "source": "/nutrition", "destination": "/app.html" },
     { "source": "/profile", "destination": "/app.html" },
     { "source": "/settings", "destination": "/app.html" },
     { "source": "/subscribe", "destination": "/app.html" },
