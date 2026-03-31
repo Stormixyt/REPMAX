@@ -184,14 +184,15 @@ async function aiSearchFood(query) {
       messages: [
         {
           role: "system",
-          content: `You are a precise nutrition database. Given a food item (in any language), return accurate per-serving nutritional data.
+          content: `You are a precise nutrition database. Given a food item (in any language), return accurate nutritional data STRICTLY PER 100 GRAMS.
 Rules:
-- Use real USDA / common nutritional values
-- If the input is not in English, return food_name in the SAME language as the input
-- Output ONLY valid JSON, nothing else:
-  {"food_name":"...","brand":"","serving_size":"...","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0}`,
+- NO MATTER WHAT the user types, normalize the data to 100g.
+- Set serving_size to exactly "100g".
+- If the input is not in English, return food_name in the SAME language as the input.
+- Output ONLY valid JSON:
+  {"food_name":"...","brand":"","serving_size":"100g","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0}`,
         },
-        { role: "user", content: `Nutritional info for: ${query}` },
+        { role: "user", content: `Nutritional info for 100g of: ${query}` },
       ],
       model: "llama-3.3-70b-versatile",
       temperature: 0.2,
@@ -218,6 +219,7 @@ export default function Nutrition() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [aiResult, setAiResult] = useState(null);
+  const [aiGrams, setAiGrams] = useState(100);
   const [searching, setSearching] = useState(false);
   const [detectedLang, setDetectedLang] = useState(null);
   const [selectedMeal, setSelectedMeal] = useState("snack");
@@ -349,6 +351,7 @@ export default function Nutrition() {
     setSearching(true);
     setSearchResults([]);
     setAiResult(null);
+    setAiGrams(100);
     setDetectedLang(null);
 
     const query = searchQuery.trim();
@@ -403,8 +406,12 @@ export default function Nutrition() {
       setSearchQuery("");
       setSearchResults([]);
       setAiResult(null);
+      setAiGrams(100);
       setDetectedLang(null);
       loadNutrition();
+    } else {
+      showToastMsg(`Failed: ${error.message} (Did you run the SQL?)`);
+      console.error("Add food error:", error);
     }
   }
 
@@ -918,7 +925,13 @@ export default function Nutrition() {
             )}
 
             {/* ── AI Featured Result (always on top) ── */}
-            {aiResult && !searching && (
+            {aiResult && !searching && (() => {
+              const mul = aiGrams / 100;
+              const calcCals = Math.round(aiResult.calories * mul);
+              const calcPro = Math.round(aiResult.protein * mul);
+              const calcCarb = Math.round(aiResult.carbs * mul);
+              const calcFat = Math.round(aiResult.fat * mul);
+              return (
               <div className="ai-food-result">
                 <div className="ai-food-badge">
                   <RiSparkling2Fill size={13} /> AI Result
@@ -927,7 +940,7 @@ export default function Nutrition() {
                   <div className="ai-food-header">
                     <span className="ai-food-name">{aiResult.food_name}</span>
                     <span className="ai-food-cals">
-                      {aiResult.calories} kcal
+                      {calcCals} kcal
                     </span>
                   </div>
                   <div className="ai-food-macros">
@@ -936,37 +949,46 @@ export default function Nutrition() {
                         size={11}
                         style={{ color: "#ef4444" }}
                       />{" "}
-                      {aiResult.protein}g P
+                      {calcPro}g P
                     </span>
                     <span>
                       <RiLeafFill size={11} style={{ color: "#22c55e" }} />{" "}
-                      {aiResult.carbs}g C
+                      {calcCarb}g C
                     </span>
                     <span>
                       <RiDropFill size={11} style={{ color: "#f59e0b" }} />{" "}
-                      {aiResult.fat}g F
+                      {calcFat}g F
                     </span>
-                    {aiResult.fiber > 0 && (
-                      <span
-                        style={{
-                          color: "var(--text-tertiary)",
-                          fontSize: "0.75rem",
-                        }}
-                      >
-                        • {aiResult.fiber}g fiber
-                      </span>
-                    )}
                   </div>
-                  <div className="ai-food-serving">{aiResult.serving_size}</div>
+                  
+                  {/* Grams Selector */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16, marginBottom: 16 }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Amount (g):</label>
+                    <input 
+                      type="number" 
+                      className="input glass-input" 
+                      style={{ padding: '8px 12px', fontSize: '0.9rem', width: '100px' }}
+                      value={aiGrams}
+                      onChange={(e) => setAiGrams(Number(e.target.value) || 0)}
+                    />
+                  </div>
+
                   <button
                     className="btn btn-primary btn-sm btn-full"
-                    onClick={() => addFoodLog(aiResult, "ai")}
+                    onClick={() => addFoodLog({
+                      ...aiResult,
+                      serving_size: `${aiGrams}g`,
+                      calories: calcCals,
+                      protein: calcPro,
+                      carbs: calcCarb,
+                      fat: calcFat
+                    }, "ai")}
                   >
                     <RiAddCircleFill size={15} /> Add This
                   </button>
                 </div>
               </div>
-            )}
+            )})()}
 
             {/* ── Database Results ── */}
             {searchResults.length > 0 && !searching && (
@@ -978,7 +1000,13 @@ export default function Nutrition() {
                   <div
                     key={i}
                     className="search-result-item"
-                    onClick={() => addFoodLog(food, "search")}
+                    onClick={() => {
+                      // Normalize the selected food serving to 100g if it isn't already, for the gram selector
+                      // (OpenFoodFacts results are mostly already per 100g in our mapping)
+                      setAiResult(food);
+                      setAiGrams(100);
+                      window.scrollTo(0, 0); // scroll to top modal
+                    }}
                   >
                     <div className="search-result-left">
                       <div className="search-result-name">{food.food_name}</div>
