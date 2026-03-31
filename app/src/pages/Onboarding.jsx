@@ -86,7 +86,7 @@ export default function Onboarding() {
     setGenStep(3)
 
     if (result.success) {
-      await supabase.from('programs').insert({
+      const { error } = await supabase.from('programs').insert({
         user_id: user.id,
         name: result.program.name || `${split.toUpperCase()} Program`,
         split_type: split,
@@ -94,12 +94,20 @@ export default function Onboarding() {
         program_data: result.program,
         active: true
       })
-      setGenStep(4)
+      
+      if (!error) {
+        setGenStep(4)
+        await updateProfile({ onboarded: true })
+        await fetchProfile()
+        setGenStep(5)
+        return
+      }
     }
-
-    await updateProfile({ onboarded: true })
-    await fetchProfile()
-    setGenStep(5)
+    
+    // If we reach here, something completely failed (rare with local fallback)
+    alert("Generation failed. Please try again.")
+    setGenerating(false)
+    setStep(1)
   }
 
   const totalSteps = 5

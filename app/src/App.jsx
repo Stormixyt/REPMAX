@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
@@ -12,10 +13,22 @@ import Subscription from './pages/Subscription'
 import Settings from './pages/Settings'
 import Nutrition from './pages/Nutrition'
 import Notifications from './pages/Notifications'
+import ChatRoom from './pages/ChatRoom'
 import Layout from './components/Layout'
 
 export default function App() {
-  const { user, loading, isOnboarded } = useAuth()
+  const { user, profile, loading, isOnboarded } = useAuth()
+
+  useEffect(() => {
+    // Remove all old themes
+    document.body.classList.remove('theme-green', 'theme-pink', 'theme-blue', 'theme-gold')
+    // Apply user theme if selected, else default to green
+    if (profile?.theme_color) {
+      document.body.classList.add(`theme-${profile.theme_color}`)
+    } else {
+      document.body.classList.add('theme-green')
+    }
+  }, [profile?.theme_color])
 
   if (loading) {
     return (
@@ -51,6 +64,7 @@ export default function App() {
       <Route path="/subscribe" element={<Subscription />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/notifications" element={<Notifications />} />
+      <Route path="/chat/:chatId" element={<ChatRoom />} />
 
       {/* Main app pages with bottom nav (Outlet) */}
       <Route element={<Layout />}>

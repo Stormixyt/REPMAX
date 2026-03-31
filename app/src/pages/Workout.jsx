@@ -201,67 +201,60 @@ export default function Workout() {
       </div>
 
       {/* Progress bar */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-tertiary)', marginBottom: 6 }}>
-          <span>{completedCount} of {totalSets} sets</span>
-          <span>{Math.round(progress)}%</span>
-        </div>
-        <div style={{ background: 'var(--bg-elevated)', borderRadius: 99, height: 6, overflow: 'hidden' }}>
-          <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent)', borderRadius: 99, transition: 'width 0.3s ease' }} />
-        </div>
-      </div>
-
-      {/* Exercises */}
+      {/* Exercises ListView */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {Object.entries(exercises).map(([exerciseName, exerciseSets]) => {
         const allDone = exerciseSets.every(s => s.completed)
         return (
-          <div key={exerciseName} className={`exercise-card ${allDone ? 'completed' : ''}`}>
-            <div className="exercise-header">
+          <div key={exerciseName} className="card" style={{ padding: 0, overflow: 'hidden', border: allDone ? '1px solid var(--success)' : '1px solid var(--border)' }}>
+            <div style={{ padding: '16px 20px', background: allDone ? 'var(--bg-elevated)' : 'var(--bg-card)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div className="exercise-name">{exerciseName}</div>
+                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: allDone ? 'var(--success)' : 'var(--text-primary)' }}>{exerciseName}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: 4 }}>Goal: {exerciseSets.length} sets × {exerciseSets[0]?.target_reps || '?'} reps</div>
               </div>
-              <div className="exercise-target">{exerciseSets.length} × {exerciseSets[0]?.target_reps || '?'}</div>
             </div>
 
-            {/* Set header */}
-            <div className="set-row" style={{ borderTop: 'none', paddingBottom: 4 }}>
-              <div className="set-number" style={{ background: 'transparent', fontSize: '0.6rem', color: 'var(--text-tertiary)' }}>SET</div>
-              <div className="set-inputs">
-                <div className="set-input-group"><div className="set-input-label">Weight</div></div>
-                <div className="set-input-group"><div className="set-input-label">Reps</div></div>
-                <div className="set-input-group"><div className="set-input-label">RPE</div></div>
+            <div style={{ padding: '8px 20px' }}>
+              {/* Set headers */}
+              <div style={{ display: 'flex', fontSize: '0.7rem', color: 'var(--text-tertiary)', fontWeight: 600, padding: '8px 0 4px', textTransform: 'uppercase', letterSpacing: 1 }}>
+                <div style={{ width: 40 }}>Set</div>
+                <div style={{ flex: 1, textAlign: 'center' }}>LBS</div>
+                <div style={{ flex: 1, textAlign: 'center' }}>Reps</div>
+                <div style={{ width: 48, textAlign: 'center' }}>RPE</div>
+                <div style={{ width: 56 }}></div>
               </div>
-              <div style={{ width: 36 }} />
-            </div>
 
-            {exerciseSets.map(set => (
-              <div key={set.id} className={`set-row ${set.completed ? 'completed' : ''}`}>
-                <div className="set-number">{set.set_number}</div>
-                <div className="set-inputs">
-                  <div className="set-input-group">
+              {exerciseSets.map(set => (
+                <div key={set.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div style={{ width: 40, fontWeight: 700, color: set.completed ? 'var(--success)' : 'var(--text-secondary)' }}>
+                    {set.set_number}
+                  </div>
+                  <div style={{ flex: 1 }}>
                     <input
                       type="number"
-                      className="input input-number"
+                      className="input"
                       placeholder={set.target_weight || '-'}
                       value={set.actual_weight ?? ''}
                       onChange={e => updateSet(set.id, 'actual_weight', parseFloat(e.target.value) || 0)}
                       disabled={set.completed}
+                      style={{ width: '100%', height: 48, textAlign: 'center', background: set.completed ? 'transparent' : 'var(--bg-elevated)', border: 'none', fontWeight: 600, fontSize: '1.1rem', color: set.completed ? 'var(--success)' : '#fff' }}
                     />
                   </div>
-                  <div className="set-input-group">
+                  <div style={{ flex: 1 }}>
                     <input
                       type="number"
-                      className="input input-number"
+                      className="input"
                       placeholder={set.target_reps || '-'}
                       value={set.actual_reps ?? ''}
                       onChange={e => updateSet(set.id, 'actual_reps', parseInt(e.target.value) || 0)}
                       disabled={set.completed}
+                      style={{ width: '100%', height: 48, textAlign: 'center', background: set.completed ? 'transparent' : 'var(--bg-elevated)', border: 'none', fontWeight: 600, fontSize: '1.1rem', color: set.completed ? 'var(--success)' : '#fff' }}
                     />
                   </div>
-                  <div className="set-input-group">
-                    <input
+                  <div style={{ width: 48 }}>
+                     <input
                       type="number"
-                      className="input input-number"
+                      className="input"
                       placeholder="—"
                       value={set.rpe ?? ''}
                       onChange={e => updateSet(set.id, 'rpe', parseFloat(e.target.value) || 0)}
@@ -269,20 +262,31 @@ export default function Workout() {
                       step="0.5"
                       min="1"
                       max="10"
+                      style={{ width: '100%', height: 48, textAlign: 'center', background: set.completed ? 'transparent' : 'var(--bg-elevated)', border: 'none', padding: 0, fontWeight: 600, color: set.completed ? 'var(--success)' : 'var(--text-secondary)' }}
                     />
                   </div>
+                  <button
+                    onClick={() => completeSet(set.id)}
+                    style={{ 
+                      width: 56, height: 48, borderRadius: 12, border: 'none',
+                      background: set.completed ? 'var(--success)' : 'var(--bg-elevated)',
+                      color: set.completed ? '#000' : 'var(--text-tertiary)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'all 0.2s',
+                      boxShadow: set.completed ? '0 0 12px rgba(34,197,94,0.4)' : 'none'
+                    }}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
                 </div>
-                <button
-                  className={`set-check ${set.completed ? 'checked' : ''}`}
-                  onClick={() => completeSet(set.id)}
-                >
-                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )
       })}
+      </div>
 
       {/* Finish button */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px 20px', background: 'linear-gradient(transparent, var(--bg-primary) 30%)', paddingTop: 40 }}>

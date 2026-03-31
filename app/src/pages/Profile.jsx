@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { generateProgram } from '../lib/groq'
 import ProBadge from '../components/ProBadge'
-import { RiSettings3Fill, RiRefreshLine, RiVipCrownFill, RiStarFill, RiChat3Fill, RiFireFill, RiCalendarCheckFill, RiFlashlightFill, RiCheckFill, RiArrowRightSLine, RiMedalFill, RiTeamFill, RiCrosshair2Fill } from '@remixicon/react'
+import ThemeSelector from '../components/ThemeSelector'
+import { RiSettings3Fill, RiRefreshLine, RiVipCrownFill, RiStarFill, RiChat3Fill, RiFireFill, RiCalendarCheckFill, RiFlashlightFill, RiCheckFill, RiArrowRightSLine, RiMedalFill, RiTeamFill, RiCrosshair2Fill, RiShuffleFill } from '@remixicon/react'
 
 export default function Profile() {
   const { user, profile, signOut, updateProfile, fetchProfile, isPro } = useAuth()
@@ -19,6 +20,9 @@ export default function Profile() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   const initials = (profile?.display_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  const avatarSeed = profile?.avatar_seed || user?.id || 'default'
+  const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
+
   const canFeedback = (profile?.total_workouts || 0) >= 6
   const friendsCount = 0
 
@@ -60,6 +64,11 @@ export default function Profile() {
     setTimeout(() => { setShowFeedback(false); setFeedbackSent(false) }, 2000)
   }
 
+  async function randomizeAvatar() {
+    const newSeed = Math.random().toString(36).substring(7)
+    await updateProfile({ avatar_seed: newSeed })
+  }
+
   return (
     <div className="page">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -70,9 +79,15 @@ export default function Profile() {
       </div>
 
       {/* Avatar + Info */}
-      <div className="profile-hero">
-        <div className="profile-avatar-lg">
-          {initials}
+      <div className="profile-hero" style={{ position: 'relative' }}>
+        <div className="profile-avatar-lg" style={{ position: 'relative', overflow: 'visible', background: 'var(--bg-elevated)', border: '2px solid var(--accent)' }}>
+          <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+          <button 
+            onClick={randomizeAvatar}
+            style={{ position: 'absolute', bottom: -5, right: -5, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}
+          >
+            <RiShuffleFill size={16} />
+          </button>
           {isPro && <div className="profile-pro-ring" />}
         </div>
         <h2 className="profile-display-name">
@@ -159,6 +174,8 @@ export default function Profile() {
           <RiArrowRightSLine size={20} style={{ color: 'var(--text-tertiary)' }} />
         </div>
       </div>
+
+      <ThemeSelector />
 
       {/* Feedback Modal */}
       {showFeedback && (
