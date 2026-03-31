@@ -21,8 +21,14 @@ export default function ChatRoom() {
     
     const sub = supabase.channel(`chat_${chatId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
-        setMessages(prev => [...prev, payload.new])
+        setMessages(prev => {
+          if (prev.some(m => m.id === payload.new.id)) return prev;
+          return [...prev, payload.new]
+        })
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
+        setMessages(prev => prev.filter(m => m.id !== payload.old.id))
       })
       .subscribe()
 
@@ -53,7 +59,20 @@ export default function ChatRoom() {
     if (!text.trim()) return
     const content = text.trim()
     setText('')
-    await supabase.from('messages').insert({ chat_id: chatId, sender_id: user.id, content, type: 'text' })
+    
+    // Optimistic UI update instantly for native 0-ping feel
+    const tempId = crypto.randomUUID()
+    const tempMsg = { id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text', created_at: new Date().toISOString() }
+    setMessages(prev => [...prev, tempMsg])
+    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    
+    await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text' })
+  }
+
+  async function deleteMessage(msgId) {
+    if (!window.confirm("Remove this message for everyone?")) return
+    setMessages(prev => prev.filter(m => m.id !== msgId))
+    await supabase.from('messages').delete().eq('id', msgId)
   }
 
   function getMemberName(senderId) {
@@ -67,7 +86,14 @@ export default function ChatRoom() {
     if (!inviteForm.location || !inviteForm.time) return
     setShowInviteMenu(false)
     const contentStr = JSON.stringify({ location: inviteForm.location.trim(), time: inviteForm.time.trim() })
-    await supabase.from('messages').insert({ chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite' })
+    
+    // Optimistic UI for Lightning Invite
+    const tempId = crypto.randomUUID()
+    const tempMsg = { id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite', created_at: new Date().toISOString() }
+    setMessages(prev => [...prev, tempMsg])
+    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+
+    await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite' })
     setInviteForm({ location: '', time: '' })
   }
 
@@ -162,10 +188,21 @@ export default function ChatRoom() {
                       </div>
                     </div>
                     
-                    <button onClick={() => acceptInvite(msg.id)} style={{ padding: '14px 24px', background: '#ccff00', color: '#000', border: 'none', borderRadius: 12, width: '100%', fontSize: '1.1rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(204,255,0,0.3)' }}>
-                      Accept
-                    </button>
+                    {!isMe ? (
+                      <button onClick={() => acceptInvite(msg.id)} style={{ padding: '14px 24px', background: '#ccff00', color: '#000', border: 'none', borderRadius: 12, width: '100%', fontSize: '1.1rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(204,255,0,0.3)' }}>
+                        Accept
+                      </button>
+                    ) : (
+                      <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.9rem', marginTop: 10, fontWeight: 500 }}>
+                        Waiting for response...
+                      </div>
+                    )}
                   </div>
+                </div>
+              )}
+              {isMe && (
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: 4, display: 'flex', justifyContent: 'flex-end', cursor: 'pointer' }} onClick={() => deleteMessage(msg.id)}>
+                  Double tap to delete
                 </div>
               )}
             </div>
