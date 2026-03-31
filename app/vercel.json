@@ -1,9 +1,17 @@
 {
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/auth", "destination": "/app.html" },
+    { "source": "/social", "destination": "/app.html" },
+    { "source": "/chat/:id*", "destination": "/app.html" },
+    { "source": "/dashboard", "destination": "/app.html" },
+    { "source": "/workout", "destination": "/app.html" },
+    { "source": "/progress", "destination": "/app.html" },
+    { "source": "/profile", "destination": "/app.html" },
+    { "source": "/aicoach", "destination": "/app.html" },
+    { "source": "/settings", "destination": "/app.html" },
+    { "source": "/nutrition", "destination": "/app.html" },
+    { "source": "/notifications", "destination": "/app.html" },
+    { "source": "/onboarding", "destination": "/app.html" }
   ],
   "headers": [
     {
