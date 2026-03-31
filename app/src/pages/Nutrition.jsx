@@ -292,13 +292,22 @@ export default function Nutrition() {
     const tdee = bmr * (actLevel?.factor || 1.55);
     const goalData = DIET_GOALS.find((g) => g.id === diet_goal);
     const target = Math.round(tdee + (goalData?.delta || 0));
+    // Calculate Macros based on body weight for better accuracy
+    let proteinMul = 2.0; // 2.0g per kg is the sweet spot
+    if (diet_goal === "aggressive_cut") proteinMul = 2.3; // slightly higher to preserve muscle in deep deficit
+    else if (diet_goal === "cut") proteinMul = 2.2;
+
+    const target_protein = Math.round(w * proteinMul);
+    const target_fat = Math.round((target * 0.25) / 9); // 25% of calories to fat for hormones
+    const target_carbs = Math.max(0, Math.round((target - (target_protein * 4) - (target_fat * 9)) / 4));
+
     return {
       bmr: Math.round(bmr),
       tdee: Math.round(tdee),
       target_calories: target,
-      target_protein: Math.round((target * 0.3) / 4),
-      target_fat: Math.round((target * 0.25) / 9),
-      target_carbs: Math.round((target * 0.45) / 4),
+      target_protein,
+      target_fat,
+      target_carbs,
     };
   }
 
