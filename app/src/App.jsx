@@ -20,9 +20,7 @@ export default function App() {
   const { user, profile, loading, isOnboarded } = useAuth()
 
   useEffect(() => {
-    // Remove all old themes
     document.body.classList.remove('theme-green', 'theme-pink', 'theme-blue', 'theme-gold')
-    // Apply user theme if selected, else default to green
     if (profile?.theme_color) {
       document.body.classList.add(`theme-${profile.theme_color}`)
     } else {
@@ -30,6 +28,7 @@ export default function App() {
     }
   }, [profile?.theme_color])
 
+  // Show loading screen while auth state is resolving
   if (loading) {
     return (
       <div className="loading-screen">
@@ -41,6 +40,7 @@ export default function App() {
     )
   }
 
+  // Not logged in → Auth page
   if (!user) {
     return (
       <Routes>
@@ -49,6 +49,20 @@ export default function App() {
     )
   }
 
+  // User is logged in but profile hasn't loaded yet → keep showing loading
+  // This prevents the flash of Onboarding when profile is still null
+  if (!profile) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-logo">REPMAX<span className="dot" /></div>
+        <div className="loading-dots">
+          <span /><span /><span />
+        </div>
+      </div>
+    )
+  }
+
+  // Profile loaded but user hasn't completed onboarding
   if (!isOnboarded) {
     return (
       <Routes>
@@ -57,6 +71,7 @@ export default function App() {
     )
   }
 
+  // Fully authenticated + onboarded → main app
   return (
     <Routes>
       {/* Full-screen pages (no bottom nav) */}

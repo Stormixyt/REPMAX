@@ -12,7 +12,8 @@
     { "source": "/notifications", "destination": "/app.html" },
     { "source": "/coach", "destination": "/app.html" },
     { "source": "/progress", "destination": "/app.html" },
-    { "source": "/workout/(.*)", "destination": "/app.html" }
+    { "source": "/workout/:path*", "destination": "/app.html" },
+    { "source": "/chat/:path*", "destination": "/app.html" }
   ],
   "headers": [
     {
@@ -23,10 +24,9 @@
       ]
     },
     {
-      "source": "/firebase-messaging-sw.js",
+      "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
     }
   ]
