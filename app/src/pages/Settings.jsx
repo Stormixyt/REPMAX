@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import ProBadge from '../components/ProBadge'
 import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine } from '@remixicon/react'
-import { requestNotificationPermission } from '../lib/firebase'
+import { requestNotificationPermission, subscribeToPush } from '../lib/pushNotifications'
 
 export default function Settings() {
   const { user, profile, signOut, updateProfile, isPro } = useAuth()
@@ -31,11 +31,10 @@ export default function Settings() {
   async function toggleNotif(field) {
     const newValue = !profile?.[field]
     await updateProfile({ [field]: newValue })
-    // Request push permission when enabling any notification
     if (newValue) {
-      const token = await requestNotificationPermission()
-      if (token) {
-        await updateProfile({ fcm_token: token })
+      const granted = await requestNotificationPermission()
+      if (granted) {
+        await subscribeToPush()
       }
     }
   }
