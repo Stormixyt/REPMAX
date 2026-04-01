@@ -28,7 +28,8 @@ export default function App() {
     }
   }, [profile?.theme_color])
 
-  // Show loading screen while auth state is resolving
+  // Single loading gate — AuthContext handles everything
+  // loading=true until: (a) profile loads OR (b) safety timer fires OR (c) no user
   if (loading) {
     return (
       <div className="loading-screen">
@@ -40,7 +41,7 @@ export default function App() {
     )
   }
 
-  // Not logged in → Auth page
+  // Not logged in
   if (!user) {
     return (
       <Routes>
@@ -49,21 +50,10 @@ export default function App() {
     )
   }
 
-  // User is logged in but profile hasn't loaded yet → keep showing loading
-  // This prevents the flash of Onboarding when profile is still null
-  if (!profile) {
-    return (
-      <div className="loading-screen">
-        <div className="loading-logo">REPMAX<span className="dot" /></div>
-        <div className="loading-dots">
-          <span /><span /><span />
-        </div>
-      </div>
-    )
-  }
-
-  // Profile loaded but user hasn't completed onboarding
-  if (!isOnboarded) {
+  // User exists but profile failed to load — show app anyway
+  // (Dashboard will handle null profile gracefully with defaults)
+  // Only redirect to Onboarding if we POSITIVELY know profile.onboarded === false
+  if (profile && profile.onboarded !== true) {
     return (
       <Routes>
         <Route path="*" element={<Onboarding />} />
@@ -71,17 +61,15 @@ export default function App() {
     )
   }
 
-  // Fully authenticated + onboarded → main app
+  // Fully authenticated (profile might be null if fetch failed — app handles it)
   return (
     <Routes>
-      {/* Full-screen pages (no bottom nav) */}
       <Route path="/workout/:workoutId" element={<Workout />} />
       <Route path="/subscribe" element={<Subscription />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/chat/:chatId" element={<ChatRoom />} />
 
-      {/* Main app pages with bottom nav (Outlet) */}
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/progress" element={<Progress />} />
