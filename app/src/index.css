@@ -5118,24 +5118,30 @@ body * {
     font-weight: 500;
 }
 
-/* ── Delete Popup ── */
-.msg-delete-popup {
-    position: absolute;
-    top: -36px;
-    right: 0;
-    background: #ef4444;
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 6px 14px;
-    border-radius: 10px;
-    cursor: pointer;
+/* ── Delete Button (visible on tap) ── */
+.msg-delete-btn {
     display: flex;
     align-items: center;
-    gap: 4px;
-    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
-    animation: scaleIn 0.15s ease;
-    z-index: 10;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 8px 16px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    animation: msgSlideIn 0.2s ease;
+}
+.msg-delete-btn:hover {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+}
+.msg-delete-btn:active {
+    transform: scale(0.95);
 }
 
 /* ── Chat Input Bar (floating, frosted) ── */

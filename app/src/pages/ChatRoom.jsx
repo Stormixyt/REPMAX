@@ -15,9 +15,8 @@ export default function ChatRoom() {
   const [showInviteMenu, setShowInviteMenu] = useState(false)
   const [inviteForm, setInviteForm] = useState({ location: '', time: '' })
   const [loading, setLoading] = useState(true)
-  const [holdMsgId, setHoldMsgId] = useState(null)
+  const [tappedMsgId, setTappedMsgId] = useState(null)
   const scrollRef = useRef(null)
-  const holdTimer = useRef(null)
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -72,14 +71,13 @@ export default function ChatRoom() {
     await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text' })
   }
 
-  function startHold(msgId) {
-    holdTimer.current = setTimeout(() => setHoldMsgId(msgId), 500)
+  function toggleMsgMenu(msgId) {
+    setTappedMsgId(prev => prev === msgId ? null : msgId)
   }
-  function cancelHold() { clearTimeout(holdTimer.current) }
 
   async function deleteMessage(msgId) {
     setMessages(prev => prev.filter(m => m.id !== msgId))
-    setHoldMsgId(null)
+    setTappedMsgId(null)
     await supabase.from('messages').delete().eq('id', msgId)
   }
 
@@ -214,9 +212,7 @@ export default function ChatRoom() {
               {showDate && <div className="chat-date-sep">{dateLabel}</div>}
               <div
                 className={`msg-wrapper ${isMe ? 'sent' : 'received'} msg-enter`}
-                onPointerDown={() => isMe && startHold(msg.id)}
-                onPointerUp={cancelHold}
-                onPointerLeave={cancelHold}
+                onClick={() => isMe && toggleMsgMenu(msg.id)}
               >
                 {!isMe && chatMeta?.type === 'group' && (
                   <div className="msg-sender-name">{senderName}</div>
@@ -238,10 +234,10 @@ export default function ChatRoom() {
                   />
                 )}
 
-                {holdMsgId === msg.id && isMe && (
-                  <div className="msg-delete-popup" onClick={() => deleteMessage(msg.id)}>
-                    <RiDeleteBinLine size={14} /> Remove
-                  </div>
+                {tappedMsgId === msg.id && isMe && (
+                  <button className="msg-delete-btn" onClick={(e) => { e.stopPropagation(); deleteMessage(msg.id) }}>
+                    <RiDeleteBinLine size={14} /> Delete for everyone
+                  </button>
                 )}
               </div>
             </div>
@@ -293,8 +289,8 @@ export default function ChatRoom() {
         </div>
       )}
 
-      {holdMsgId && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setHoldMsgId(null)} />
+      {tappedMsgId && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 5 }} onClick={() => setTappedMsgId(null)} />
       )}
     </div>
   )
