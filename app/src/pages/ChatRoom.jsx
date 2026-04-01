@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckDoubleFill, RiMapPin2Fill, RiTimeFill, RiCheckLine } from '@remixicon/react'
+import GymInviteCard from '../components/GymInviteCard'
+import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill } from '@remixicon/react'
 
 export default function ChatRoom() {
   const { chatId } = useParams()
@@ -14,24 +15,28 @@ export default function ChatRoom() {
   const [showInviteMenu, setShowInviteMenu] = useState(false)
   const [inviteForm, setInviteForm] = useState({ location: '', time: '' })
   const [loading, setLoading] = useState(true)
+  const [holdMsgId, setHoldMsgId] = useState(null)
   const scrollRef = useRef(null)
+  const holdTimer = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     loadChat()
-    
     const sub = supabase.channel(`chat_${chatId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
         setMessages(prev => {
-          if (prev.some(m => m.id === payload.new.id)) return prev;
+          if (prev.some(m => m.id === payload.new.id)) return prev
           return [...prev, payload.new]
         })
-        setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+        setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 60)
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
         setMessages(prev => prev.filter(m => m.id !== payload.old.id))
       })
       .subscribe()
-
     return () => { supabase.removeChannel(sub) }
   }, [chatId])
 
@@ -40,18 +45,17 @@ export default function ChatRoom() {
       supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed))').eq('id', chatId).single(),
       supabase.from('messages').select('*').eq('chat_id', chatId).order('created_at', { ascending: true })
     ])
-    
     if (metaRes.data) {
       if (metaRes.data.type === 'direct') {
-        const otherMember = metaRes.data.chat_members.find(m => m.user_id !== user.id)
-        setChatMeta({ type: 'direct', title: otherMember?.profiles?.display_name || 'User', avatar: otherMember?.profiles?.avatar_seed || 'default' })
+        const other = metaRes.data.chat_members?.find(m => m.user_id !== user.id)
+        setChatMeta({ type: 'direct', title: other?.profiles?.display_name || 'User', avatar: other?.profiles?.avatar_seed || 'default', members: metaRes.data.chat_members })
       } else {
         setChatMeta({ type: 'group', title: metaRes.data.name || 'Group Chat', members: metaRes.data.chat_members })
       }
     }
     setMessages(msgRes.data || [])
     setLoading(false)
-    setTimeout(() => scrollRef.current?.scrollIntoView(), 100)
+    setTimeout(() => scrollRef.current?.scrollIntoView(), 60)
   }
 
   async function sendMessage(e) {
@@ -59,19 +63,23 @@ export default function ChatRoom() {
     if (!text.trim()) return
     const content = text.trim()
     setText('')
-    
-    // Optimistic UI update instantly for native 0-ping feel
+    inputRef.current?.focus()
+
     const tempId = crypto.randomUUID()
-    const tempMsg = { id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text', created_at: new Date().toISOString() }
-    setMessages(prev => [...prev, tempMsg])
-    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-    
+    setMessages(prev => [...prev, { id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text', created_at: new Date().toISOString() }])
+    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 30)
+
     await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text' })
   }
 
+  function startHold(msgId) {
+    holdTimer.current = setTimeout(() => setHoldMsgId(msgId), 500)
+  }
+  function cancelHold() { clearTimeout(holdTimer.current) }
+
   async function deleteMessage(msgId) {
-    if (!window.confirm("Remove this message for everyone?")) return
     setMessages(prev => prev.filter(m => m.id !== msgId))
+    setHoldMsgId(null)
     await supabase.from('messages').delete().eq('id', msgId)
   }
 
@@ -82,177 +90,212 @@ export default function ChatRoom() {
     return member?.profiles?.display_name || 'Someone'
   }
 
+  function getMemberAvatar(senderId) {
+    const member = chatMeta?.members?.find(m => m.user_id === senderId)
+    return member?.profiles?.avatar_seed || senderId
+  }
+
   async function submitLightningInvite() {
-    if (!inviteForm.location || !inviteForm.time) return
+    if (!inviteForm.location.trim() || !inviteForm.time.trim()) return
     setShowInviteMenu(false)
-    const contentStr = JSON.stringify({ location: inviteForm.location.trim(), time: inviteForm.time.trim() })
-    
-    // Optimistic UI for Lightning Invite
+    const payload = { location: inviteForm.location.trim(), time: inviteForm.time.trim(), acceptedBy: [] }
+    const contentStr = JSON.stringify(payload)
+
     const tempId = crypto.randomUUID()
-    const tempMsg = { id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite', created_at: new Date().toISOString() }
-    setMessages(prev => [...prev, tempMsg])
-    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    setMessages(prev => [...prev, { id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite', created_at: new Date().toISOString() }])
+    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 30)
 
     await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite' })
     setInviteForm({ location: '', time: '' })
   }
 
-  async function acceptInvite(msgId) {
-    const senderName = getMemberName(user.id)
+  async function acceptInvite(msg) {
+    const myName = profile?.display_name || 'Someone'
+    let inviteData
+    try { inviteData = JSON.parse(msg.content) } catch { inviteData = { location: '?', time: '?' } }
+    const accepted = inviteData.acceptedBy || []
+    if (accepted.includes(myName)) return
+
+    accepted.push(myName)
+    const updated = JSON.stringify({ ...inviteData, acceptedBy: accepted })
+
+    await supabase.from('messages').update({ content: updated }).eq('id', msg.id)
+    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: updated } : m))
+
     await supabase.from('messages').insert({
       chat_id: chatId,
       sender_id: user.id,
-      content: `${senderName} accepted the invite!`,
+      content: `${myName} is in! ⚡`,
       type: 'status'
     })
   }
 
-  if (loading) return <div className="page"><div className="skeleton" style={{height: 60}} /></div>
+  function getDateLabel(dateStr) {
+    const d = new Date(dateStr)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    if (d.toDateString() === today.toDateString()) return 'Today'
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+    return d.toLocaleDateString('en', { month: 'short', day: 'numeric' })
+  }
+
+  if (loading) return (
+    <div className="chat-room">
+      <div className="chat-header">
+        <button className="chat-header-back" onClick={() => navigate('/social')}><RiArrowLeftLine size={22} /></button>
+        <div className="skeleton" style={{ width: 38, height: 38, borderRadius: '50%' }} />
+        <div className="skeleton" style={{ width: 100, height: 18, borderRadius: 8 }} />
+      </div>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="loading-dots"><span /><span /><span /></div>
+      </div>
+    </div>
+  )
+
+  let lastDateLabel = ''
 
   return (
-    <div className="page chat-room" style={{ paddingBottom: 80, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <div className="page-header" style={{ padding: '20px 20px', background: 'var(--bg-elevated)', margin: '-24px -24px 0 -24px', zIndex: 10 }}>
-        <button className="back-btn" onClick={() => navigate(-1)}><RiArrowLeftLine size={24} /></button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 16 }}>
-          {chatMeta?.type === 'direct' && (
-            <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${chatMeta.avatar}`} alt="Avatar" style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-card)' }} />
-          )}
-          <h2 style={{ fontSize: '1.2rem', margin: 0 }}>{chatMeta?.title}</h2>
+    <div className="chat-room">
+      {/* Header */}
+      <div className="chat-header">
+        <button className="chat-header-back" onClick={() => navigate('/social')}>
+          <RiArrowLeftLine size={22} />
+        </button>
+        {chatMeta?.type === 'direct' && (
+          <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${chatMeta.avatar}&backgroundColor=transparent`} alt="" className="chat-header-avatar" />
+        )}
+        {chatMeta?.type === 'group' && (
+          <div className="chat-header-avatar" style={{ background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <RiTeamFill size={18} color="var(--text-on-accent)" />
+          </div>
+        )}
+        <div className="chat-header-info">
+          <div className="chat-header-name">{chatMeta?.title}</div>
+          <div className="chat-header-status">
+            {chatMeta?.type === 'group' ? `${chatMeta.members?.length || 0} members` : 'online'}
+          </div>
         </div>
       </div>
 
-      <div className="messages-container" style={{ flex: 1, overflowY: 'auto', padding: '20px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {messages.map(msg => {
+      {/* Messages */}
+      <div className="chat-messages">
+        {messages.map((msg) => {
           const isMe = msg.sender_id === user.id
           const senderName = getMemberName(msg.sender_id)
 
+          const dateLabel = getDateLabel(msg.created_at)
+          let showDate = false
+          if (dateLabel !== lastDateLabel) {
+            showDate = true
+            lastDateLabel = dateLabel
+          }
+
           if (msg.type === 'status') {
             return (
-              <div key={msg.id} style={{ alignSelf: 'center', margin: '8px 0', padding: '6px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 20, fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <RiCheckLine size={16} color="var(--accent)" /> {msg.content}
+              <div key={msg.id}>
+                {showDate && <div className="chat-date-sep">{dateLabel}</div>}
+                <div className="chat-status-msg msg-enter">
+                  <RiCheckLine size={14} color="var(--accent)" /> {msg.content}
+                </div>
               </div>
             )
           }
 
-          let inviteData = { location: 'Local Gym', time: 'TBD' }
+          let inviteData = { location: '?', time: '?', acceptedBy: [] }
           if (msg.type === 'invite') {
-            try { inviteData = JSON.parse(msg.content) } catch (e) {}
+            try { inviteData = JSON.parse(msg.content) } catch {}
           }
 
+          const time = new Date(msg.created_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false })
+
           return (
-            <div key={msg.id} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-              {!isMe && chatMeta?.type === 'group' && (
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginBottom: 4, marginLeft: 12 }}>{senderName}</div>
-              )}
-              {msg.type === 'text' ? (
-                <div style={{
-                  background: isMe ? 'var(--accent)' : 'var(--bg-card)',
-                  color: isMe ? 'var(--text-on-accent)' : 'var(--text-primary)',
-                  padding: '12px 16px',
-                  borderRadius: '20px',
-                  borderBottomRightRadius: isMe ? '4px' : '20px',
-                  borderBottomLeftRadius: isMe ? '20px' : '4px',
-                  fontSize: '0.95rem'
-                }}>
-                  {msg.content}
-                </div>
-              ) : (
-                <div style={{
-                  background: 'var(--bg-primary)',
-                  border: '2px solid var(--border)',
-                  color: 'var(--text-primary)',
-                  padding: 20,
-                  borderRadius: 24,
-                  minWidth: 260,
-                  boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{ position: 'absolute', top: -10, right: -10, opacity: 0.05, transform: 'rotate(15deg)' }}>
-                    <RiFlashlightFill size={100} />
+            <div key={msg.id}>
+              {showDate && <div className="chat-date-sep">{dateLabel}</div>}
+              <div
+                className={`msg-wrapper ${isMe ? 'sent' : 'received'} msg-enter`}
+                onPointerDown={() => isMe && startHold(msg.id)}
+                onPointerUp={cancelHold}
+                onPointerLeave={cancelHold}
+              >
+                {!isMe && chatMeta?.type === 'group' && (
+                  <div className="msg-sender-name">{senderName}</div>
+                )}
+
+                {msg.type === 'text' ? (
+                  <div className={`msg-bubble ${isMe ? 'sent' : 'received'}`}>
+                    {msg.content}
+                    <div className="msg-time">{time}</div>
                   </div>
-                  
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 16, color: 'var(--text-secondary)' }}>
-                      {senderName} sent a group invite
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.05rem', fontWeight: 500 }}>
-                        <RiMapPin2Fill size={18} color="var(--text-tertiary)" />
-                        <span>LOCATION: {inviteData.location}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.05rem', fontWeight: 500 }}>
-                         <RiTimeFill size={18} color="var(--text-tertiary)" />
-                         <span>Time: {inviteData.time}</span>
-                      </div>
-                    </div>
-                    
-                    {!isMe ? (
-                      <button onClick={() => acceptInvite(msg.id)} style={{ padding: '14px 24px', background: '#ccff00', color: '#000', border: 'none', borderRadius: 12, width: '100%', fontSize: '1.1rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(204,255,0,0.3)' }}>
-                        Accept
-                      </button>
-                    ) : (
-                      <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.9rem', marginTop: 10, fontWeight: 500 }}>
-                        Waiting for response...
-                      </div>
-                    )}
+                ) : (
+                  <GymInviteCard
+                    senderName={senderName}
+                    location={inviteData.location}
+                    time={inviteData.time}
+                    acceptedBy={inviteData.acceptedBy}
+                    isMe={isMe}
+                    onAccept={() => acceptInvite(msg)}
+                  />
+                )}
+
+                {holdMsgId === msg.id && isMe && (
+                  <div className="msg-delete-popup" onClick={() => deleteMessage(msg.id)}>
+                    <RiDeleteBinLine size={14} /> Remove
                   </div>
-                </div>
-              )}
-              {isMe && (
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: 4, display: 'flex', justifyContent: 'flex-end', cursor: 'pointer' }} onClick={() => deleteMessage(msg.id)}>
-                  Double tap to delete
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )
         })}
         <div ref={scrollRef} style={{ height: 1 }} />
       </div>
 
-      <div className="chat-input-area" style={{ background: 'var(--bg-primary)', padding: '16px 24px', margin: '0 -24px -24px -24px', display: 'flex', gap: 12, alignItems: 'center' }}>
-        <button 
-          onClick={e => { e.preventDefault(); setShowInviteMenu(true); setInviteForm({ location: '', time: '' }) }}
-          style={{ background: 'var(--bg-card)', border: 'none', color: 'var(--accent)', width: 48, height: 48, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          <RiFlashlightFill size={24} />
+      {/* Input Bar */}
+      <div className="chat-input-bar">
+        <button onClick={() => { setShowInviteMenu(true); setInviteForm({ location: '', time: '' }) }} className="chat-lightning-btn">
+          <RiFlashlightFill size={20} />
         </button>
-        <form onSubmit={sendMessage} style={{ flex: 1, display: 'flex', gap: 12 }}>
-          <input 
-            type="text" 
-            placeholder="Text message..." 
-            value={text}
-            onChange={e => setText(e.target.value)}
-            style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '0 20px', height: 48, borderRadius: 24, color: '#fff', fontSize: '1rem' }}
-          />
-          <button type="submit" disabled={!text.trim()} style={{ background: text.trim() ? 'var(--accent)' : 'var(--bg-card)', color: text.trim() ? 'var(--text-on-accent)' : 'var(--text-tertiary)', border: 'none', width: 48, height: 48, borderRadius: '50%', cursor: text.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
-            <RiSendPlaneFill size={20} />
+        <form onSubmit={sendMessage} style={{ flex: 1, display: 'flex', gap: 10 }}>
+          <input ref={inputRef} type="text" placeholder="Message..." value={text} onChange={e => setText(e.target.value)} className="chat-input" />
+          <button type="submit" disabled={!text.trim()} className={`chat-send-btn ${text.trim() ? 'active' : ''}`}>
+            <RiSendPlaneFill size={18} />
           </button>
         </form>
       </div>
 
       {/* Lightning Invite Modal */}
       {showInviteMenu && (
-        <div className="modal-overlay" style={{ alignItems: 'flex-end', justifyContent: 'flex-end', padding: 0 }} onClick={e => { if(e.target === e.currentTarget) setShowInviteMenu(false) }}>
-          <div className="modal" style={{ width: '100%', marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 40, animation: 'slideUp 0.3s ease forwards' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><RiFlashlightFill color="var(--accent)" /> Send Gym Invite</h3>
+        <div className="modal-slide">
+          <div className="modal-slide-backdrop" onClick={() => setShowInviteMenu(false)} />
+          <div className="modal-slide-content">
+            <div className="modal-slide-handle" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RiFlashlightFill size={24} color="var(--text-on-accent)" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Gym Invite</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>Drop a lightning invite to the chat</p>
+              </div>
             </div>
             <div className="input-group">
-              <label className="input-label">LOCATION</label>
-              <input type="text" className="input" placeholder="e.g. Basic-fit" value={inviteForm.location} onChange={e => setInviteForm({...inviteForm, location: e.target.value})} />
+              <label className="input-label">Location</label>
+              <input type="text" className="input" placeholder="e.g. Basic-Fit Amsterdam" value={inviteForm.location} onChange={e => setInviteForm({ ...inviteForm, location: e.target.value })} autoFocus />
             </div>
             <div className="input-group">
               <label className="input-label">Time</label>
-              <input type="text" className="input" placeholder="e.g. 10:10PM" value={inviteForm.time} onChange={e => setInviteForm({...inviteForm, time: e.target.value})} />
+              <input type="text" className="input" placeholder="e.g. 7:30 PM" value={inviteForm.time} onChange={e => setInviteForm({ ...inviteForm, time: e.target.value })} />
             </div>
-            <button className="btn btn-primary btn-full btn-lg" onClick={submitLightningInvite} disabled={!inviteForm.location.trim() || !inviteForm.time.trim()}>
-              Drop Invite
+            <button className="btn btn-primary btn-full btn-lg" onClick={submitLightningInvite} disabled={!inviteForm.location.trim() || !inviteForm.time.trim()} style={{ marginTop: 8 }}>
+              <RiFlashlightFill size={18} /> Drop Invite
             </button>
           </div>
         </div>
       )}
 
+      {holdMsgId && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setHoldMsgId(null)} />
+      )}
     </div>
   )
 }

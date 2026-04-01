@@ -60,13 +60,26 @@ OUTPUT FORMAT: You MUST respond with ONLY valid JSON matching this structure exa
 NEVER include any text outside the JSON. ONLY output the JSON object.`;
 
 /**
- * Core helper — calls the ai-proxy edge function.
- * The JWT is automatically attached by the Supabase client.
+ * Core helper — calls the ai-proxy edge function with a hard timeout.
+ * If the edge function takes longer than 10 seconds (mobile/rate-limited),
+ * we abort and fall back to the local program generator.
  */
 async function callGroq(body) {
-  const { data, error } = await supabase.functions.invoke("ai-proxy", { body });
-  if (error) throw new Error(error.message);
-  return data;
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+
+  try {
+    const { data, error } = await supabase.functions.invoke("ai-proxy", {
+      body,
+      signal: controller.signal
+    })
+    clearTimeout(timeout)
+    if (error) throw new Error(error.message)
+    return data
+  } catch (err) {
+    clearTimeout(timeout)
+    throw err
+  }
 }
 
 export async function generateProgram(profile) {
@@ -87,42 +100,141 @@ export async function generateProgram(profile) {
     const programJson = JSON.parse(data.choices[0].message.content);
     return { success: true, program: programJson };
   } catch (err) {
-    console.error("Program generation failed, using fallback:", err);
+    console.warn("AI generation failed/timed out, using local fallback:", err.message);
     return generateFallbackProgram(profile);
   }
 }
 
 function generateFallbackProgram(profile) {
-  const baseName = profile.preferred_split ? profile.preferred_split.replace('_', ' ').toUpperCase() : 'General';
+  const days = profile.training_days || ['Mon', 'Wed', 'Fri'];
+  const goal = profile.goal || 'general';
+  const level = profile.experience_level || 'intermediate';
+  const split = profile.preferred_split || 'full_body';
+
+  const repRange = { strength: 5, hypertrophy: 10, athletic: 8, general: 10 };
+  const baseReps = repRange[goal] || 10;
+  const baseSets = level === 'beginner' ? 3 : 4;
+
+  const exerciseBank = {
+    push: [
+      { name: 'Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Controlled descent' },
+      { name: 'Overhead Press', sets: 3, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Brace core' },
+      { name: 'Incline Dumbbell Press', sets: 3, reps: 12, rpe: 7, rest_seconds: 90, notes: '30-degree angle' },
+      { name: 'Lateral Raises', sets: 3, reps: 15, rpe: 7, rest_seconds: 60, notes: 'Slow eccentric' },
+      { name: 'Tricep Pushdowns', sets: 3, reps: 12, rpe: 7, rest_seconds: 60, notes: 'Squeeze at bottom' },
+      { name: 'Dips', sets: 3, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Bodyweight or weighted' }
+    ],
+    pull: [
+      { name: 'Barbell Row', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Squeeze shoulder blades' },
+      { name: 'Pull-ups or Lat Pulldown', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Full stretch at bottom' },
+      { name: 'Cable Row', sets: 3, reps: 12, rpe: 7, rest_seconds: 90, notes: 'Pause at contraction' },
+      { name: 'Face Pulls', sets: 3, reps: 15, rpe: 7, rest_seconds: 60, notes: 'External rotate at top' },
+      { name: 'Barbell Curls', sets: 3, reps: 12, rpe: 7, rest_seconds: 60, notes: 'No swinging' },
+      { name: 'Hammer Curls', sets: 3, reps: 12, rpe: 7, rest_seconds: 60, notes: 'Neutral grip' }
+    ],
+    legs: [
+      { name: 'Squat', sets: baseSets, reps: baseReps, rpe: 8, rest_seconds: 180, notes: 'Below parallel' },
+      { name: 'Romanian Deadlift', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Hinge at hips' },
+      { name: 'Leg Press', sets: 3, reps: 12, rpe: 7, rest_seconds: 120, notes: 'Full range of motion' },
+      { name: 'Leg Curls', sets: 3, reps: 12, rpe: 7, rest_seconds: 60, notes: 'Control the negative' },
+      { name: 'Calf Raises', sets: 4, reps: 15, rpe: 7, rest_seconds: 60, notes: 'Full stretch and pause' },
+      { name: 'Walking Lunges', sets: 3, reps: 12, rpe: 7, rest_seconds: 90, notes: 'Per leg' }
+    ],
+    upper: [
+      { name: 'Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Controlled descent' },
+      { name: 'Barbell Row', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Squeeze shoulder blades' },
+      { name: 'Overhead Press', sets: 3, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Brace core' },
+      { name: 'Pull-ups or Lat Pulldown', sets: 3, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Full ROM' },
+      { name: 'Lateral Raises', sets: 3, reps: 15, rpe: 7, rest_seconds: 60, notes: 'Slow eccentric' },
+      { name: 'Barbell Curls', sets: 3, reps: 12, rpe: 7, rest_seconds: 60, notes: 'No swinging' }
+    ],
+    lower: [
+      { name: 'Squat', sets: baseSets, reps: baseReps, rpe: 8, rest_seconds: 180, notes: 'Below parallel' },
+      { name: 'Romanian Deadlift', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Hinge at hips' },
+      { name: 'Leg Press', sets: 3, reps: 12, rpe: 7, rest_seconds: 120, notes: 'Full range of motion' },
+      { name: 'Leg Curls', sets: 3, reps: 12, rpe: 7, rest_seconds: 60, notes: 'Control negative' },
+      { name: 'Bulgarian Split Squats', sets: 3, reps: 10, rpe: 7, rest_seconds: 90, notes: 'Per leg' },
+      { name: 'Calf Raises', sets: 4, reps: 15, rpe: 7, rest_seconds: 60, notes: 'Full stretch' }
+    ],
+    full: [
+      { name: 'Squat', sets: baseSets, reps: baseReps, rpe: 8, rest_seconds: 180, notes: 'Below parallel' },
+      { name: 'Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Controlled descent' },
+      { name: 'Barbell Row', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Squeeze lats' },
+      { name: 'Overhead Press', sets: 3, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Brace core' },
+      { name: 'Romanian Deadlift', sets: 3, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Hinge at hips' },
+      { name: 'Pull-ups or Lat Pulldown', sets: 3, reps: baseReps, rpe: 7, rest_seconds: 90, notes: 'Full ROM' }
+    ]
+  };
+
+  function getDayExercises(dayIndex, numDays) {
+    if (split === 'ppl') {
+      const cycle = ['push', 'pull', 'legs'];
+      return exerciseBank[cycle[dayIndex % 3]];
+    }
+    if (split === 'upper_lower') {
+      return dayIndex % 2 === 0 ? exerciseBank.upper : exerciseBank.lower;
+    }
+    if (split === 'bro_split') {
+      const cycle = ['push', 'pull', 'legs', 'upper', 'lower'];
+      return exerciseBank[cycle[dayIndex % 5]];
+    }
+    return exerciseBank.full;
+  }
+
+  function getDayName(dayIndex) {
+    if (split === 'ppl') {
+      const names = ['Push Day', 'Pull Day', 'Leg Day'];
+      return names[dayIndex % 3];
+    }
+    if (split === 'upper_lower') {
+      return dayIndex % 2 === 0 ? 'Upper Body' : 'Lower Body';
+    }
+    if (split === 'bro_split') {
+      const names = ['Chest & Triceps', 'Back & Biceps', 'Legs', 'Shoulders & Arms', 'Full Body'];
+      return names[dayIndex % 5];
+    }
+    return `Full Body ${String.fromCharCode(65 + dayIndex)}`;
+  }
+
+  function getTargetMuscles(dayIndex) {
+    if (split === 'ppl') {
+      const targets = [['chest', 'shoulders', 'triceps'], ['back', 'biceps', 'rear delts'], ['quads', 'hamstrings', 'glutes', 'calves']];
+      return targets[dayIndex % 3];
+    }
+    if (split === 'upper_lower') {
+      return dayIndex % 2 === 0 ? ['chest', 'back', 'shoulders', 'arms'] : ['quads', 'hamstrings', 'glutes', 'calves'];
+    }
+    return ['full body'];
+  }
+
+  const weeks = Array.from({ length: 4 }, (_, weekIdx) => {
+    const isDeload = weekIdx === 3;
+    return {
+      week_number: weekIdx + 1,
+      is_deload: isDeload,
+      days: days.map((_, dayIdx) => {
+        const exercises = getDayExercises(dayIdx, days.length).map(ex => ({
+          ...ex,
+          sets: isDeload ? Math.max(2, ex.sets - 1) : ex.sets,
+          rpe: isDeload ? Math.max(5, ex.rpe - 2) : ex.rpe + (weekIdx * 0.5)
+        }));
+        return {
+          day_name: getDayName(dayIdx),
+          target_muscles: getTargetMuscles(dayIdx),
+          exercises
+        };
+      })
+    };
+  });
+
+  const splitNames = { ppl: 'Push/Pull/Legs', upper_lower: 'Upper/Lower', full_body: 'Full Body', bro_split: 'Bro Split' };
+
   return {
-    success: true, 
+    success: true,
     program: {
-      name: `${baseName} (Standard Routine)`,
-      split_type: profile.preferred_split || 'full_body',
-      weeks: Array.from({length: 4}).map((_, i) => ({
-        week_number: i + 1,
-        is_deload: i === 3,
-        days: [
-          {
-            day_name: 'Workout A (Push & Quads)',
-            target_muscles: ['chest', 'shoulders', 'triceps', 'quads'],
-            exercises: [
-              { name: 'Squat or Leg Press', sets: i === 3 ? 2 : 4, reps: 8, rpe: i === 3 ? 6.5 : 8, rest_seconds: 120, notes: 'Control the descent' },
-              { name: 'Bench Press or Chest Press', sets: i === 3 ? 2 : 4, reps: 8, rpe: i === 3 ? 6.5 : 8, rest_seconds: 120, notes: 'Pause at bottom' },
-              { name: 'Overhead Press', sets: i === 3 ? 2 : 3, reps: 10, rpe: i === 3 ? 6.5 : 8, rest_seconds: 90, notes: 'Core tight' }
-            ]
-          },
-          {
-            day_name: 'Workout B (Pull & Hams)',
-            target_muscles: ['back', 'biceps', 'hamstrings'],
-            exercises: [
-              { name: 'Romanian Deadlift', sets: i === 3 ? 2 : 4, reps: 8, rpe: i === 3 ? 6.5 : 8, rest_seconds: 120, notes: 'Hinge at hips' },
-              { name: 'Pull-ups or Lat Pulldown', sets: i === 3 ? 2 : 4, reps: 10, rpe: i === 3 ? 6.5 : 8, rest_seconds: 120, notes: 'Full stretch' },
-              { name: 'Barbell or Dumbbell Row', sets: i === 3 ? 2 : 3, reps: 12, rpe: i === 3 ? 6.5 : 8, rest_seconds: 90, notes: 'Squeeze lats' }
-            ]
-          }
-        ]
-      }))
+      name: `${splitNames[split] || split} Program`,
+      split_type: split,
+      weeks
     }
   };
 }
@@ -163,7 +275,7 @@ Output the updated program for next week ONLY as JSON in the same format.`;
     return { success: true, program: adapted };
   } catch (err) {
     console.warn("Adaptation API failed, returning unmodified program:", err);
-    return { success: true, program: currentProgram }; // Soft fallback avoids crashing the app
+    return { success: true, program: currentProgram };
   }
 }
 

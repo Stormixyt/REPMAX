@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill } from '@remixicon/react'
+import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill, RiTeamFill, RiLeafFill } from '@remixicon/react'
 import ProBadge from '../components/ProBadge'
 
 export default function Dashboard() {
@@ -164,8 +164,8 @@ export default function Dashboard() {
               </p>
             )}
           </div>
-          <button className="btn btn-primary btn-full" onClick={startWorkout}>
-            <RiFlashlightFill size={18} /> Start Workout
+          <button className="btn btn-primary btn-full btn-lg" onClick={startWorkout} style={{ animation: 'pulseGlow 2.5s ease-in-out infinite', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <RiFlashlightFill size={20} /> Start Workout
           </button>
         </div>
       ) : (
@@ -211,6 +211,22 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Quick Actions Row */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <div className="card" style={{ flex: 1, cursor: 'pointer', textAlign: 'center', padding: 16 }} onClick={() => navigate('/social')}>
+          <RiTeamFill size={22} style={{ color: 'var(--accent)', marginBottom: 6 }} />
+          <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>Social</div>
+        </div>
+        <div className="card" style={{ flex: 1, cursor: 'pointer', textAlign: 'center', padding: 16 }} onClick={() => navigate('/nutrition')}>
+          <RiLeafFill size={22} style={{ color: 'var(--accent)', marginBottom: 6 }} />
+          <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>Nutrition</div>
+        </div>
+        <div className="card" style={{ flex: 1, cursor: 'pointer', textAlign: 'center', padding: 16 }} onClick={() => navigate('/subscribe')}>
+          <RiVipCrownFill size={22} style={{ color: 'var(--accent)', marginBottom: 6 }} />
+          <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>PRO</div>
+        </div>
+      </div>
 
       {/* Recent PRs */}
       {recentPRs.length > 0 && (

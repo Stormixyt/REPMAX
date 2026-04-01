@@ -1,6 +1,6 @@
-// Cache strategy (PWA Offline)
-const CACHE_NAME = 'repmax-v2'
-const STATIC_ASSETS = ['/', '/index.html']
+// REPMAX PWA Service Worker — Network-first with cache fallback
+const CACHE_NAME = 'repmax-v3'
+const STATIC_ASSETS = ['/', '/app.html']
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()

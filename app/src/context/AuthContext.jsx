@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
@@ -7,19 +7,28 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const mounted = useRef(true)
 
   useEffect(() => {
+    mounted.current = true
+
+    // Safety net: never stay on splash screen longer than 6 seconds
+    const safetyTimer = setTimeout(() => {
+      if (mounted.current && loading) setLoading(false)
+    }, 6000)
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted.current) return
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
       else setLoading(false)
-    }).catch(err => {
-      console.error('Session fetch error', err)
-      setLoading(false)
+    }).catch(() => {
+      if (mounted.current) setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!mounted.current) return
         setUser(session?.user ?? null)
         if (session?.user) {
           await fetchProfile(session.user.id)
@@ -30,7 +39,11 @@ export function AuthProvider({ children }) {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted.current = false
+      clearTimeout(safetyTimer)
+      subscription.unsubscribe()
+    }
   }, [])
 
   function generateFriendCode() {
@@ -50,47 +63,43 @@ export function AuthProvider({ children }) {
 
       if (error) {
         if (error.code === 'PGRST116' && retries > 0) {
-          console.log('Profile not found yet, retrying in 500ms...', retries)
-          setTimeout(() => fetchProfile(userId, retries - 1), 500)
+          setTimeout(() => fetchProfile(userId, retries - 1), 600)
           return
         }
-        console.error('Profile fetch error:', error)
-        // If it's a network error or unrelated, aggressively retry so we don't boot them to Onboarding
-        setTimeout(() => fetchProfile(userId, retries), 2000)
+        if (retries > 0) {
+          setTimeout(() => fetchProfile(userId, retries - 1), 1500)
+          return
+        }
+        // Out of retries — stop loading so user isn't stuck
+        if (mounted.current) setLoading(false)
         return
       }
 
-      if (data) {
-      // Auto-generate friend_code if missing
-      if (!data.friend_code) {
-        const friendCode = generateFriendCode()
-        const { data: updated, error: updateErr } = await supabase
-          .from('profiles')
-          .update({ friend_code: friendCode })
-          .eq('id', userId)
-          .select()
-          .single()
-        if (!updateErr && updated) {
-          setProfile(updated)
+      if (data && mounted.current) {
+        if (!data.friend_code) {
+          const friendCode = generateFriendCode()
+          const { data: updated, error: updateErr } = await supabase
+            .from('profiles')
+            .update({ friend_code: friendCode })
+            .eq('id', userId)
+            .select()
+            .single()
+          setProfile(!updateErr && updated ? updated : { ...data, friend_code: friendCode })
         } else {
-          // If update fails (e.g. column doesn't exist yet), still set profile
-          setProfile({ ...data, friend_code: friendCode })
+          setProfile(data)
         }
-      } else {
-        setProfile(data)
+      }
+    } catch (err) {
+      if (retries > 0) {
+        setTimeout(() => fetchProfile(userId, retries - 1), 1500)
+        return
       }
     }
-    } catch (err) {
-      console.error('fetchProfile exception:', err)
-      setTimeout(() => fetchProfile(userId, retries), 2000)
-      return
-    }
-    setLoading(false)
+    if (mounted.current) setLoading(false)
   }
 
   async function updateProfile(updates) {
     if (!user) return { error: 'Not authenticated' }
-    // Filter out any keys that might not exist in the schema yet
     const safeUpdates = { ...updates, updated_at: new Date().toISOString() }
     const { data, error } = await supabase
       .from('profiles')
@@ -99,7 +108,6 @@ export function AuthProvider({ children }) {
       .select()
       .single()
 
-    if (error) console.error('Profile update error:', error.message, safeUpdates)
     if (!error && data) setProfile(data)
     return { data, error }
   }
@@ -108,18 +116,13 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { display_name: displayName }
-      }
+      options: { data: { display_name: displayName } }
     })
     return { data, error }
   }
 
   async function signIn(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     return { data, error }
   }
 

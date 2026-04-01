@@ -2,28 +2,31 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { RiVipCrownFill, RiCheckFill, RiCloseLine, RiBrainFill, RiBarChart2Fill, RiTeamFill, RiSwordFill, RiDownloadFill, RiTimerFlashFill, RiShieldCheckFill, RiSparklingFill, RiArrowLeftLine } from '@remixicon/react'
+import { RiVipCrownFill, RiBrainFill, RiBarChart2Fill, RiTeamFill, RiDownloadFill, RiShieldCheckFill, RiSparklingFill, RiArrowLeftLine, RiPaletteFill, RiFlashlightFill, RiCheckFill, RiStarFill, RiChat3Fill, RiLeafFill } from '@remixicon/react'
 
 const PRO_FEATURES = [
-  { icon: <RiBrainFill size={20} />, title: 'AI Coach Chat', desc: 'Unlimited questions to your personal AI fitness expert' },
-  { icon: <RiBarChart2Fill size={20} />, title: 'Advanced Analytics', desc: 'Full charts, muscle heatmaps, strength projections' },
-  { icon: <RiTeamFill size={20} />, title: 'Unlimited Friends', desc: 'Connect with your entire crew (free: 3 max)' },
-  { icon: <RiSwordFill size={20} />, title: 'Training Invites', desc: 'Invite friends to train together with time & location' },
-  { icon: <RiSparklingFill size={20} />, title: 'Unlimited AI Programs', desc: 'Regenerate programs anytime with priority AI' },
-  { icon: <RiDownloadFill size={20} />, title: 'Export Data', desc: 'Download your full workout history as CSV' },
-  { icon: <RiTimerFlashFill size={20} />, title: 'Custom Rest Timers', desc: 'Save your own rest timer presets per exercise' },
-  { icon: <RiShieldCheckFill size={20} />, title: 'PRO Badge', desc: 'Gold verified badge on your profile' },
+  { icon: RiBrainFill, title: 'AI Coach Chat', desc: 'Unlimited questions to your personal AI fitness expert' },
+  { icon: RiBarChart2Fill, title: 'Advanced Analytics', desc: 'Full charts, muscle heatmaps, strength projections' },
+  { icon: RiTeamFill, title: 'Unlimited Friends', desc: 'Connect with your entire crew, no limits' },
+  { icon: RiPaletteFill, title: 'Custom Themes', desc: 'Pink, Blue, Gold — make the app yours' },
+  { icon: RiSparklingFill, title: 'Unlimited AI Programs', desc: 'Regenerate programs anytime with priority AI' },
+  { icon: RiChat3Fill, title: 'Group Chats', desc: 'Create group chats and coordinate gym sessions' },
+  { icon: RiFlashlightFill, title: 'Lightning Invites', desc: 'Send gym invites with a single tap in chat' },
+  { icon: RiLeafFill, title: 'Smart Diet Tracker', desc: 'AI nutrition search, water tracking, meal plans' },
+  { icon: RiDownloadFill, title: 'Export Data', desc: 'Download full workout history as CSV' },
+  { icon: RiShieldCheckFill, title: 'PRO Badge', desc: 'Gold verified badge on your profile everywhere' },
 ]
 
 const COMPARISON = [
-  { feature: 'AI Program Generation', free: '1 program', pro: 'Unlimited' },
-  { feature: 'AI Coach Chat', free: '—', pro: 'Unlimited' },
+  { feature: 'AI Programs', free: '1', pro: 'Unlimited' },
+  { feature: 'AI Coach', free: '—', pro: 'Unlimited' },
   { feature: 'Friends', free: '3 max', pro: 'Unlimited' },
-  { feature: 'Training Invites', free: '—', pro: 'Unlimited' },
+  { feature: 'Themes', free: 'Default', pro: '4 choices' },
   { feature: 'Analytics', free: 'Basic', pro: 'Advanced' },
-  { feature: 'Workout History', free: 'Last 10', pro: 'All time' },
+  { feature: 'Chat', free: 'Direct only', pro: 'Groups + Invites' },
+  { feature: 'Diet Tracker', free: 'Basic', pro: 'Full + AI' },
   { feature: 'Data Export', free: '—', pro: 'CSV / PDF' },
-  { feature: 'PRO Badge', free: '—', pro: <RiVipCrownFill size={16} /> },
+  { feature: 'PRO Badge', free: '—', pro: '✓' },
 ]
 
 export default function Subscription() {
@@ -37,9 +40,8 @@ export default function Subscription() {
 
   async function handleSubscribe() {
     setProcessing(true)
-    // Mock payment — in production this would redirect to Stripe Checkout
     await new Promise(r => setTimeout(r, 2000))
-    
+
     await updateProfile({
       subscription_status: 'pro',
       subscription_started_at: new Date().toISOString(),
@@ -50,7 +52,7 @@ export default function Subscription() {
     await supabase.from('subscription_events').insert({
       user_id: user.id,
       event_type: 'started',
-      amount: 0 // Free trial
+      amount: 0
     })
 
     setProcessing(false)
@@ -70,7 +72,7 @@ export default function Subscription() {
   if (isPro) {
     return (
       <div className="page">
-        <button className="back-btn" onClick={() => navigate(-1)}>
+        <button onClick={() => navigate(-1)} className="back-btn">
           <RiArrowLeftLine size={20} /> Back
         </button>
         <div className="page-header">
@@ -78,7 +80,9 @@ export default function Subscription() {
         </div>
 
         <div className="card card-accent" style={{ marginBottom: 16, textAlign: 'center' }}>
-          <RiVipCrownFill size={40} className="accent-icon" style={{ marginBottom: 12 }} />
+          <div className="pro-crown-float" style={{ marginBottom: 12 }}>
+            <RiVipCrownFill size={44} className="accent-icon" />
+          </div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 800, marginBottom: 4 }}>
             REPMAX PRO Active
           </div>
@@ -95,20 +99,18 @@ export default function Subscription() {
 
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-title" style={{ fontSize: '0.95rem' }}>Billing</div>
-          <div className="card-subtitle">$5.00 / week · Next billing: {new Date(Date.now() + 7 * 86400000).toLocaleDateString()}</div>
+          <div className="card-subtitle">$5.00 / week | Next: {new Date(Date.now() + 7 * 86400000).toLocaleDateString()}</div>
         </div>
 
         {canCancel && (
-          <button className="btn btn-danger btn-full" onClick={() => setShowCancel(true)} style={{ marginTop: 8 }}>
-            Cancel Subscription
-          </button>
+          <button className="btn btn-danger btn-full" onClick={() => setShowCancel(true)}>Cancel Subscription</button>
         )}
 
         {showCancel && (
           <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowCancel(false) }}>
             <div className="modal">
               <h2 className="modal-title">Cancel PRO?</h2>
-              <p className="modal-subtitle">You'll lose access to all PRO features at the end of this billing period. Are you sure?</p>
+              <p className="modal-subtitle">You'll lose access to all PRO features at the end of this billing period.</p>
               <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowCancel(false)}>Keep PRO</button>
                 <button className="btn btn-danger" style={{ flex: 1 }} onClick={handleCancel}>Cancel</button>
@@ -121,73 +123,112 @@ export default function Subscription() {
   }
 
   return (
-    <div className="subscribe-page">
-      <button className="back-btn back-btn-float" onClick={() => navigate(-1)}>
+    <div className="pro-page" style={{ background: 'var(--bg-primary)' }}>
+      {/* Back button */}
+      <button onClick={() => navigate(-1)} style={{
+        position: 'fixed', top: 20, left: 20, background: 'rgba(255,255,255,0.06)', border: 'none', color: '#fff',
+        width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', zIndex: 10, backdropFilter: 'blur(8px)'
+      }}>
         <RiArrowLeftLine size={20} />
       </button>
 
       {/* Hero */}
-      <div className="subscribe-hero">
-        <div className="subscribe-crown">
-          <RiVipCrownFill size={48} />
+      <div className="pro-hero-section">
+        <div className="pro-crown-float" style={{ marginBottom: 16 }}>
+          <RiVipCrownFill size={64} color="var(--accent)" />
         </div>
-        <h1 className="subscribe-title">Upgrade to <span className="accent">PRO</span></h1>
-        <p className="subscribe-subtitle">Unlock the full power of REPMAX and train like an elite athlete.</p>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 800, marginBottom: 8, lineHeight: 1.1 }}>
+          Upgrade to <span style={{ color: 'var(--accent)' }}>PRO</span>
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: 320, margin: '0 auto', lineHeight: 1.6 }}>
+          Unlock the full power of REPMAX. Train smarter, connect deeper, look better.
+        </p>
       </div>
 
-      {/* Price */}
-      <div className="price-card">
-        <div className="price-amount">
-          <span className="price-currency">$</span>
-          <span className="price-number">5</span>
-          <span className="price-period">/week</span>
+      {/* Price Card */}
+      <div className="pro-price-glass">
+        <div className="pro-price-amount">
+          <span className="pro-price-dollar">$</span>
+          <span className="pro-price-value">5</span>
+          <span className="pro-price-period">/week</span>
         </div>
-        <p className="price-note">First 7 days free · Cancel after 5 weeks</p>
-        <button className="btn btn-primary btn-full btn-lg subscribe-cta" onClick={handleSubscribe} disabled={processing}>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 24 }}>
+          First 7 days free · Cancel after 5 weeks
+        </p>
+        <button
+          className="btn btn-primary btn-full btn-lg"
+          onClick={handleSubscribe}
+          disabled={processing}
+          style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
           {processing ? <span className="spinner" /> : <><RiVipCrownFill size={18} /> Start Free Trial</>}
         </button>
       </div>
 
+      {/* Social Proof */}
+      <div style={{ textAlign: 'center', padding: '0 24px 32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 8 }}>
+          {[1,2,3,4,5].map(i => <RiStarFill key={i} size={18} color="var(--accent)" />)}
+        </div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: 4 }}>
+          "Best fitness app I've ever used. The AI programs are insane."
+        </p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>— Marcus, PRO member since Week 1</p>
+      </div>
+
       {/* Features Grid */}
-      <div className="features-section">
-        <h2 className="features-heading">Everything in PRO</h2>
-        <div className="features-grid">
-          {PRO_FEATURES.map((f, i) => (
-            <div key={i} className="feature-card">
-              <div className="feature-icon">{f.icon}</div>
-              <div className="feature-title">{f.title}</div>
-              <div className="feature-desc">{f.desc}</div>
-            </div>
-          ))}
+      <div style={{ padding: '0 24px 32px' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: 16, textAlign: 'center' }}>
+          Everything in <span style={{ color: 'var(--accent)' }}>PRO</span>
+        </h2>
+        <div className="pro-features-grid" style={{ padding: 0 }}>
+          {PRO_FEATURES.map((f, i) => {
+            const Icon = f.icon
+            return (
+              <div key={i} className="pro-feature-item">
+                <div className="pro-feature-icon"><Icon size={24} /></div>
+                <div className="pro-feature-title">{f.title}</div>
+                <div className="pro-feature-desc">{f.desc}</div>
+              </div>
+            )
+          })}
         </div>
       </div>
 
-      {/* Comparison */}
-      <div className="comparison-section">
-        <h2 className="features-heading">Free vs PRO</h2>
-        <div className="comparison-table">
-          <div className="comparison-header">
-            <div className="comparison-feature">Feature</div>
-            <div className="comparison-free">Free</div>
-            <div className="comparison-pro">PRO</div>
+      {/* Comparison Table */}
+      <div style={{ padding: '0 24px 32px' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: 16, textAlign: 'center' }}>
+          Free vs PRO
+        </h2>
+        <div style={{ background: 'var(--bg-card)', borderRadius: 20, overflow: 'hidden', border: '1px solid var(--border)' }}>
+          <div className="pro-comparison-row" style={{ background: 'var(--bg-elevated)', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div style={{ paddingLeft: 16 }}>Feature</div>
+            <div style={{ textAlign: 'center' }}>Free</div>
+            <div style={{ textAlign: 'center', color: 'var(--accent)' }}>PRO</div>
           </div>
           {COMPARISON.map((row, i) => (
-            <div key={i} className="comparison-row">
-              <div className="comparison-feature">{row.feature}</div>
-              <div className="comparison-free">{row.free}</div>
-              <div className="comparison-pro">{row.pro}</div>
+            <div key={i} className="pro-comparison-row" style={{ paddingLeft: 16 }}>
+              <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>{row.feature}</div>
+              <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.82rem' }}>{row.free}</div>
+              <div style={{ textAlign: 'center', color: 'var(--accent)', fontWeight: 600, fontSize: '0.82rem' }}>{row.pro}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Final CTA */}
-      <div style={{ padding: '32px 24px 60px', textAlign: 'center' }}>
-        <button className="btn btn-primary btn-full btn-lg subscribe-cta" onClick={handleSubscribe} disabled={processing}>
+      <div style={{ padding: '16px 24px 60px', textAlign: 'center' }}>
+        <button
+          className="btn btn-primary btn-full btn-lg"
+          onClick={handleSubscribe}
+          disabled={processing}
+          style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, animation: 'pulseGlow 2s ease-in-out infinite' }}
+        >
           {processing ? <span className="spinner" /> : <><RiVipCrownFill size={18} /> Start 7-Day Free Trial</>}
         </button>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 12 }}>
-          $5/week after trial · 5-week minimum commitment · Cancel anytime after
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: 12 }}>
+          $5/week after trial · 5-week minimum · Cancel anytime after
         </p>
       </div>
     </div>

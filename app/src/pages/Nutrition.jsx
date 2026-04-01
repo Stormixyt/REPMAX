@@ -27,6 +27,8 @@ import {
   RiFlashlightFill,
   RiTranslate2,
   RiRefreshLine,
+  RiAddFill,
+  RiBookmarkFill,
 } from "@remixicon/react";
 
 // ─── Nutrition constants ──────────────────────────────────────────────────────
@@ -224,6 +226,8 @@ export default function Nutrition() {
   const [detectedLang, setDetectedLang] = useState(null);
   const [selectedMeal, setSelectedMeal] = useState("snack");
   const [toast, setToast] = useState("");
+  const [waterGlasses, setWaterGlasses] = useState(0);
+  const [savedMeals, setSavedMeals] = useState([]);
   const mounted = useRef(true);
 
   const [setupForm, setSetupForm] = useState({
@@ -277,6 +281,22 @@ export default function Nutrition() {
         setShowSetup(true);
       }
       setTodayLogs(logsRes.data || []);
+
+      // Load water for today
+      try {
+        const { data: waterData } = await supabase
+          .from('water_logs').select('glasses')
+          .eq('user_id', user.id).eq('logged_at', today).maybeSingle();
+        if (waterData) setWaterGlasses(waterData.glasses || 0);
+      } catch { /* water table may not exist yet */ }
+
+      // Load saved meals
+      try {
+        const { data: meals } = await supabase
+          .from('saved_meals').select('*')
+          .eq('user_id', user.id).order('created_at', { ascending: false }).limit(10);
+        if (meals) setSavedMeals(meals);
+      } catch { /* saved_meals table may not exist yet */ }
     } catch (err) {
       console.error("Nutrition load error:", err);
     }
@@ -424,6 +444,36 @@ export default function Nutrition() {
     loadNutrition();
   }
 
+  async function addWaterGlass() {
+    const newCount = waterGlasses + 1;
+    setWaterGlasses(newCount);
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      await supabase.from('water_logs').upsert({ user_id: user.id, logged_at: today, glasses: newCount }, { onConflict: 'user_id,logged_at' });
+    } catch { /* table may not exist yet */ }
+  }
+
+  async function removeWaterGlass() {
+    if (waterGlasses <= 0) return;
+    const newCount = waterGlasses - 1;
+    setWaterGlasses(newCount);
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      await supabase.from('water_logs').upsert({ user_id: user.id, logged_at: today, glasses: newCount }, { onConflict: 'user_id,logged_at' });
+    } catch {}
+  }
+
+  async function saveMeal(food) {
+    try {
+      await supabase.from('saved_meals').insert({ user_id: user.id, food_name: food.food_name, brand: food.brand || '', serving_size: food.serving_size || '', calories: food.calories || 0, protein: food.protein || 0, carbs: food.carbs || 0, fat: food.fat || 0 });
+      showToastMsg('Meal saved!');
+    } catch { showToastMsg('Could not save meal'); }
+  }
+
+  async function quickAddSavedMeal(meal) {
+    await addFoodLog({ food_name: meal.food_name, brand: meal.brand, serving_size: meal.serving_size, calories: meal.calories, protein: meal.protein, carbs: meal.carbs, fat: meal.fat }, 'saved');
+  }
+
   // ─── Derived values ─────────────────────────────────────────────────────────
   const totals = todayLogs.reduce(
     (acc, log) => ({
@@ -461,6 +511,10 @@ export default function Nutrition() {
     );
 
   // ─── Render ──────────────────────────────────────────────────────────────────
+  const waterTarget = 8;
+  const waterProgress = Math.min((waterGlasses / waterTarget) * 100, 100);
+  const waterCircumference = 2 * Math.PI * 32;
+
   return (
     <div className="page nutrition-page">
       {/* ── Header ── */}
@@ -848,6 +902,65 @@ export default function Nutrition() {
               <p className="empty-text">
                 Tap "Add Food" to start tracking your meals.
               </p>
+            </div>
+          )}
+
+          {/* ── Water Tracker ── */}
+          <div className="water-tracker" style={{ marginTop: 20 }}>
+            <div className="water-tracker-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <RiDropFill size={18} style={{ color: '#3b82f6' }} />
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Water</span>
+              </div>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>{waterGlasses}/{waterTarget} glasses</span>
+            </div>
+
+            <div className="water-tracker-ring">
+              <svg width="80" height="80" viewBox="0 0 80 80">
+                <circle className="ring-bg" cx="40" cy="40" r="32" />
+                <circle className="ring-fill" cx="40" cy="40" r="32"
+                  style={{
+                    strokeDasharray: waterCircumference,
+                    strokeDashoffset: waterCircumference - (waterCircumference * waterProgress / 100),
+                  }}
+                />
+              </svg>
+              <div className="water-tracker-center">
+                <div className="water-tracker-value">{waterGlasses}</div>
+                <div className="water-tracker-label">glasses</div>
+              </div>
+            </div>
+
+            <div className="water-glasses">
+              {Array.from({ length: waterTarget }).map((_, i) => (
+                <div key={i} className={`water-glass ${i < waterGlasses ? 'filled' : ''}`}
+                  onClick={() => {
+                    if (i < waterGlasses) { removeWaterGlass(); } else { addWaterGlass(); }
+                  }}>
+                  <RiDropFill size={14} />
+                </div>
+              ))}
+            </div>
+
+            <button className="water-add-btn" onClick={addWaterGlass}>
+              <RiAddFill size={18} /> Add Glass
+            </button>
+          </div>
+
+          {/* ── Saved Meals Quick Add ── */}
+          {savedMeals.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <RiBookmarkFill size={14} style={{ color: 'var(--accent)' }} />
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Quick Add Saved Meals</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                {savedMeals.map((m, i) => (
+                  <button key={m.id || i} className="saved-meal-chip" onClick={() => quickAddSavedMeal(m)}>
+                    <RiAddFill size={12} /> {m.food_name} — {m.calories} kcal
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </>

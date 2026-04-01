@@ -5,13 +5,15 @@ import { supabase } from '../lib/supabase'
 import { generateProgram } from '../lib/groq'
 import ProBadge from '../components/ProBadge'
 import ThemeSelector from '../components/ThemeSelector'
-import { RiSettings3Fill, RiRefreshLine, RiVipCrownFill, RiStarFill, RiChat3Fill, RiFireFill, RiCalendarCheckFill, RiFlashlightFill, RiCheckFill, RiArrowRightSLine, RiMedalFill, RiTeamFill, RiCrosshair2Fill, RiShuffleFill } from '@remixicon/react'
+import AvatarBuilder from '../components/AvatarBuilder'
+import { RiSettings3Fill, RiRefreshLine, RiVipCrownFill, RiStarFill, RiChat3Fill, RiFireFill, RiCalendarCheckFill, RiFlashlightFill, RiCheckFill, RiArrowRightSLine, RiMedalFill, RiTeamFill, RiCrosshair2Fill, RiShuffleFill, RiPencilFill, RiImageEditFill } from '@remixicon/react'
 
 export default function Profile() {
   const { user, profile, signOut, updateProfile, fetchProfile, isPro } = useAuth()
   const navigate = useNavigate()
   const [regenerating, setRegenerating] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
+  const [showAvatarBuilder, setShowAvatarBuilder] = useState(false)
   const [rating, setRating] = useState(0)
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackSent, setFeedbackSent] = useState(false)
@@ -19,12 +21,10 @@ export default function Profile() {
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
-  const initials = (profile?.display_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   const avatarSeed = profile?.avatar_seed || user?.id || 'default'
   const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
 
   const canFeedback = (profile?.total_workouts || 0) >= 6
-  const friendsCount = 0
 
   async function regenerateProgram() {
     setRegenerating(true)
@@ -47,7 +47,7 @@ export default function Profile() {
         program_data: result.program,
         active: true
       })
-      showToast('New program generated!')
+      showToast('New program generated! 🔥')
     } else {
       showToast('Failed to generate program')
     }
@@ -80,13 +80,21 @@ export default function Profile() {
 
       {/* Avatar + Info */}
       <div className="profile-hero" style={{ position: 'relative' }}>
-        <div className="profile-avatar-lg" style={{ position: 'relative', overflow: 'visible', background: 'var(--bg-elevated)', border: '2px solid var(--accent)' }}>
+        <div className="profile-avatar-lg" style={{ position: 'relative', overflow: 'visible', background: 'var(--bg-elevated)', border: isPro ? '3px solid var(--accent)' : '2px solid var(--border)' }}>
           <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-          <button 
-            onClick={randomizeAvatar}
-            style={{ position: 'absolute', bottom: -5, right: -5, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}
+          {/* Edit avatar button */}
+          <button
+            onClick={() => setShowAvatarBuilder(true)}
+            style={{
+              position: 'absolute', bottom: -4, right: -4,
+              background: 'var(--accent)', color: 'var(--text-on-accent)',
+              border: '3px solid var(--bg-primary)', borderRadius: '50%',
+              width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+              transition: 'transform 0.15s'
+            }}
           >
-            <RiShuffleFill size={16} />
+            <RiPencilFill size={16} />
           </button>
           {isPro && <div className="profile-pro-ring" />}
         </div>
@@ -95,6 +103,16 @@ export default function Profile() {
           {isPro && <ProBadge size="md" />}
         </h2>
         <p className="profile-email">{user?.email}</p>
+
+        {/* Quick avatar actions */}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
+          <button className="btn btn-sm btn-secondary" onClick={randomizeAvatar}>
+            <RiShuffleFill size={14} /> Randomize
+          </button>
+          <button className="btn btn-sm btn-secondary" onClick={() => setShowAvatarBuilder(true)}>
+            <RiImageEditFill size={14} /> Customize
+          </button>
+        </div>
       </div>
 
       {/* Stats Row */}
@@ -176,6 +194,11 @@ export default function Profile() {
       </div>
 
       <ThemeSelector />
+
+      {/* Avatar Builder Modal */}
+      {showAvatarBuilder && (
+        <AvatarBuilder onClose={() => setShowAvatarBuilder(false)} />
+      )}
 
       {/* Feedback Modal */}
       {showFeedback && (
