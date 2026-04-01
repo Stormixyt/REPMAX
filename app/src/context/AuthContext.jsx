@@ -8,99 +8,130 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const mounted = useRef(true)
+  const initDone = useRef(false)
 
   useEffect(() => {
     mounted.current = true
+    if (initDone.current) return // Prevent re-init on HMR / strict mode
+    initDone.current = true
 
-    // HARD SAFETY: if after 4s we still have no profile, force clean state
-    const killSwitch = setTimeout(() => {
-      if (!mounted.current) return
-      if (loading || !profile) {
-        console.warn('[REPMAX] Kill switch — no profile loaded, cleaning up')
-        // If we have a user but no profile, session is probably dead
-        // Force sign out so user gets a clean auth page
-        supabase.auth.signOut().catch(() => {})
-        setUser(null)
-        setProfile(null)
+    startAuth()
+
+    return () => { mounted.current = false }
+  }, [])
+
+  async function startAuth() {
+    // Hard timeout — never stay loading more than 6 seconds
+    const timeout = setTimeout(() => {
+      if (mounted.current && loading) {
+        console.warn('[REPMAX] Auth timeout reached')
         setLoading(false)
+        // Don't sign out here — just let the app render
+        // If user exists but profile is null, they'll see an empty dashboard
+        // which is better than being kicked to login
       }
-    }, 4000)
+    }, 6000)
 
-    initAuth()
+    try {
+      // 1. Try to get existing session
+      const { data: { session } } = await supabase.auth.getSession()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted.current) return
-        if (event === 'SIGNED_OUT') {
+      if (!mounted.current) { clearTimeout(timeout); return }
+
+      if (session?.user) {
+        setUser(session.user)
+        // 2. Load profile — with its own timeout
+        const profileLoaded = await loadProfileWithTimeout(session.user.id, 5000)
+        if (mounted.current) {
+          setLoading(false)
+        }
+      } else {
+        // No session
+        if (mounted.current) {
           setUser(null)
           setProfile(null)
           setLoading(false)
-          return
         }
-        const u = session?.user ?? null
-        setUser(u)
-        if (u) {
-          await loadProfile(u.id)
-        } else {
+      }
+    } catch (err) {
+      console.warn('[REPMAX] Auth init error:', err)
+      if (mounted.current) setLoading(false)
+    }
+
+    clearTimeout(timeout)
+
+    // 3. Listen for future auth changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted.current) return
+
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user)
+          await loadProfileWithTimeout(session.user.id, 5000)
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
           setProfile(null)
-          setLoading(false)
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          setUser(session.user)
+          // Only reload profile if we don't have one
+          if (!profile) {
+            await loadProfileWithTimeout(session.user.id, 3000)
+          }
         }
       }
     )
 
-    return () => {
+    // Store cleanup
+    const cleanup = () => {
       mounted.current = false
-      clearTimeout(killSwitch)
       subscription.unsubscribe()
     }
-  }, [])
-
-  async function initAuth() {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!mounted.current) return
-
-      if (session?.user) {
-        setUser(session.user)
-        await loadProfile(session.user.id)
-      } else {
-        if (mounted.current) {
-          setUser(null)
-          setLoading(false)
-        }
-      }
-    } catch {
-      if (mounted.current) setLoading(false)
-    }
+    // Can't return cleanup from async function, but mounted.current handles it
   }
 
-  async function loadProfile(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('profiles').select('*').eq('id', userId).single()
+  async function loadProfileWithTimeout(userId, timeoutMs) {
+    return new Promise(async (resolve) => {
+      const timer = setTimeout(() => {
+        console.warn('[REPMAX] Profile fetch timed out')
+        resolve(false)
+      }, timeoutMs)
 
-      if (!mounted.current) return
+      try {
+        const { data, error } = await supabase
+          .from('profiles').select('*').eq('id', userId).single()
 
-      if (error) {
-        // New user — profile row may not exist yet, retry once
-        if (error.code === 'PGRST116') {
-          await new Promise(r => setTimeout(r, 1000))
-          const { data: retry } = await supabase
-            .from('profiles').select('*').eq('id', userId).single()
-          if (retry && mounted.current) {
-            await ensureFriendCode(retry, userId)
-            return
+        clearTimeout(timer)
+
+        if (!mounted.current) { resolve(false); return }
+
+        if (error) {
+          // New user — profile may not exist yet
+          if (error.code === 'PGRST116') {
+            // Wait and retry once
+            await new Promise(r => setTimeout(r, 1000))
+            const { data: retry } = await supabase
+              .from('profiles').select('*').eq('id', userId).single()
+            if (retry && mounted.current) {
+              await ensureFriendCode(retry, userId)
+              resolve(true)
+              return
+            }
           }
+          resolve(false)
+          return
         }
-        if (mounted.current) setLoading(false)
-        return
-      }
 
-      if (data) await ensureFriendCode(data, userId)
-      else if (mounted.current) setLoading(false)
-    } catch {
-      if (mounted.current) setLoading(false)
-    }
+        if (data && mounted.current) {
+          await ensureFriendCode(data, userId)
+          resolve(true)
+        } else {
+          resolve(false)
+        }
+      } catch {
+        clearTimeout(timer)
+        resolve(false)
+      }
+    })
   }
 
   async function ensureFriendCode(data, userId) {
@@ -109,15 +140,9 @@ export function AuthProvider({ children }) {
       const { data: updated } = await supabase
         .from('profiles').update({ friend_code: code })
         .eq('id', userId).select().single()
-      if (mounted.current) {
-        setProfile(updated || { ...data, friend_code: code })
-        setLoading(false)
-      }
+      if (mounted.current) setProfile(updated || { ...data, friend_code: code })
     } else {
-      if (mounted.current) {
-        setProfile(data)
-        setLoading(false)
-      }
+      if (mounted.current) setProfile(data)
     }
   }
 
@@ -155,7 +180,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, profile, loading,
       signUp, signIn, signOut, updateProfile,
-      fetchProfile: () => user && loadProfile(user.id),
+      fetchProfile: () => user && loadProfileWithTimeout(user.id, 5000),
       isOnboarded: profile?.onboarded === true,
       isPro: profile?.subscription_status === 'pro' || (profile?.pro_until && new Date(profile.pro_until) > new Date())
     }}>
