@@ -1,0 +1,25 @@
+# REPMAX — AI-Powered Training Platform
+# https://repmax.vercel.app
+
+User-agent: *
+Allow: /info
+Allow: /info.html
+Allow: /privacy.html
+Allow: /terms.html
+Allow: /cookies.html
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /social
+Disallow: /nutrition
+Disallow: /profile
+Disallow: /settings
+Disallow: /workout/
+Disallow: /chat/
+Disallow: /coach
+Disallow: /notifications
+Disallow: /subscribe
+
+# Promote the info/landing page for SEO
+# All app routes are behind auth and should NOT be indexed
+
+Sitemap: https://repmax.vercel.app/sitemap.xml
