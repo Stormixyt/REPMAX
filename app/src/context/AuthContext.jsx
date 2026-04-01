@@ -8,15 +8,20 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const mounted = useRef(true)
-  const profileFetched = useRef(false)
 
   useEffect(() => {
     mounted.current = true
 
-    // HARD SAFETY: loading MUST end within 4 seconds no matter what
+    // HARD SAFETY: if after 4s we still have no profile, force clean state
     const killSwitch = setTimeout(() => {
-      if (mounted.current) {
-        console.warn('[REPMAX] Kill switch — forcing app to render')
+      if (!mounted.current) return
+      if (loading || !profile) {
+        console.warn('[REPMAX] Kill switch — no profile loaded, cleaning up')
+        // If we have a user but no profile, session is probably dead
+        // Force sign out so user gets a clean auth page
+        supabase.auth.signOut().catch(() => {})
+        setUser(null)
+        setProfile(null)
         setLoading(false)
       }
     }, 4000)
@@ -24,13 +29,19 @@ export function AuthProvider({ children }) {
     initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!mounted.current) return
+        if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setProfile(null)
+          setLoading(false)
+          return
+        }
         const u = session?.user ?? null
         setUser(u)
-        if (u && !profileFetched.current) {
+        if (u) {
           await loadProfile(u.id)
-        } else if (!u) {
+        } else {
           setProfile(null)
           setLoading(false)
         }
@@ -53,16 +64,10 @@ export function AuthProvider({ children }) {
         setUser(session.user)
         await loadProfile(session.user.id)
       } else {
-        // No session — try refresh as last resort
-        try {
-          const { data } = await supabase.auth.refreshSession()
-          if (data?.session?.user && mounted.current) {
-            setUser(data.session.user)
-            await loadProfile(data.session.user.id)
-            return
-          }
-        } catch {}
-        if (mounted.current) setLoading(false)
+        if (mounted.current) {
+          setUser(null)
+          setLoading(false)
+        }
       }
     } catch {
       if (mounted.current) setLoading(false)
@@ -70,9 +75,6 @@ export function AuthProvider({ children }) {
   }
 
   async function loadProfile(userId) {
-    if (profileFetched.current) return
-    profileFetched.current = true
-
     try {
       const { data, error } = await supabase
         .from('profiles').select('*').eq('id', userId).single()
@@ -80,9 +82,9 @@ export function AuthProvider({ children }) {
       if (!mounted.current) return
 
       if (error) {
-        // Profile row might not exist yet (new user) — retry once
+        // New user — profile row may not exist yet, retry once
         if (error.code === 'PGRST116') {
-          await new Promise(r => setTimeout(r, 800))
+          await new Promise(r => setTimeout(r, 1000))
           const { data: retry } = await supabase
             .from('profiles').select('*').eq('id', userId).single()
           if (retry && mounted.current) {
@@ -90,16 +92,15 @@ export function AuthProvider({ children }) {
             return
           }
         }
-        // Give up — let the app render
         if (mounted.current) setLoading(false)
         return
       }
 
       if (data) await ensureFriendCode(data, userId)
+      else if (mounted.current) setLoading(false)
     } catch {
-      // Network error — let safety timer handle it
+      if (mounted.current) setLoading(false)
     }
-    if (mounted.current) setLoading(false)
   }
 
   async function ensureFriendCode(data, userId) {
@@ -108,11 +109,16 @@ export function AuthProvider({ children }) {
       const { data: updated } = await supabase
         .from('profiles').update({ friend_code: code })
         .eq('id', userId).select().single()
-      if (mounted.current) setProfile(updated || { ...data, friend_code: code })
+      if (mounted.current) {
+        setProfile(updated || { ...data, friend_code: code })
+        setLoading(false)
+      }
     } else {
-      if (mounted.current) setProfile(data)
+      if (mounted.current) {
+        setProfile(data)
+        setLoading(false)
+      }
     }
-    if (mounted.current) setLoading(false)
   }
 
   function genCode() {
@@ -142,7 +148,6 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
-    profileFetched.current = false
     try { localStorage.removeItem('repmax-auth') } catch {}
   }
 
@@ -150,7 +155,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, profile, loading,
       signUp, signIn, signOut, updateProfile,
-      fetchProfile: () => { profileFetched.current = false; user && loadProfile(user.id) },
+      fetchProfile: () => user && loadProfile(user.id),
       isOnboarded: profile?.onboarded === true,
       isPro: profile?.subscription_status === 'pro' || (profile?.pro_until && new Date(profile.pro_until) > new Date())
     }}>
