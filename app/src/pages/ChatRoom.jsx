@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import GymInviteCard from '../components/GymInviteCard'
-import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill } from '@remixicon/react'
+import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill } from '@remixicon/react'
 
 export default function ChatRoom() {
   const { chatId } = useParams()
@@ -18,44 +17,71 @@ export default function ChatRoom() {
   const [tappedMsgId, setTappedMsgId] = useState(null)
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
+  const channelRef = useRef(null)
 
+  // Use AbortController pattern to prevent stale state updates on unmount
   useEffect(() => {
-    loadChat()
-    const sub = supabase.channel(`chat_${chatId}`)
+    let cancelled = false
+
+    async function init() {
+      const [metaRes, msgRes] = await Promise.all([
+        supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed))').eq('id', chatId).single(),
+        supabase.from('messages').select('*').eq('chat_id', chatId).order('created_at', { ascending: true }).limit(200)
+      ])
+
+      if (cancelled) return
+
+      if (metaRes.data) {
+        if (metaRes.data.type === 'direct') {
+          const other = metaRes.data.chat_members?.find(m => m.user_id !== user.id)
+          setChatMeta({ type: 'direct', title: other?.profiles?.display_name || 'User', avatar: other?.profiles?.avatar_seed || 'default', members: metaRes.data.chat_members })
+        } else {
+          setChatMeta({ type: 'group', title: metaRes.data.name || 'Group Chat', members: metaRes.data.chat_members })
+        }
+      }
+      setMessages(msgRes.data || [])
+      setLoading(false)
+      requestAnimationFrame(() => scrollRef.current?.scrollIntoView())
+    }
+
+    init()
+
+    // Realtime subscription — fixes message delivery iOS ↔ Android
+    const channel = supabase.channel(`chat-live-${chatId}`, {
+      config: { broadcast: { self: false } }
+    })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
+        if (cancelled) return
         setMessages(prev => {
           if (prev.some(m => m.id === payload.new.id)) return prev
           return [...prev, payload.new]
         })
-        setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 60)
+        requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }))
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
+        if (cancelled) return
         setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
+        if (cancelled) return
         setMessages(prev => prev.filter(m => m.id !== payload.old.id))
       })
-      .subscribe()
-    return () => { supabase.removeChannel(sub) }
-  }, [chatId])
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`[REPMAX] Chat ${chatId} realtime connected`)
+        }
+      })
 
-  async function loadChat() {
-    const [metaRes, msgRes] = await Promise.all([
-      supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed))').eq('id', chatId).single(),
-      supabase.from('messages').select('*').eq('chat_id', chatId).order('created_at', { ascending: true })
-    ])
-    if (metaRes.data) {
-      if (metaRes.data.type === 'direct') {
-        const other = metaRes.data.chat_members?.find(m => m.user_id !== user.id)
-        setChatMeta({ type: 'direct', title: other?.profiles?.display_name || 'User', avatar: other?.profiles?.avatar_seed || 'default', members: metaRes.data.chat_members })
-      } else {
-        setChatMeta({ type: 'group', title: metaRes.data.name || 'Group Chat', members: metaRes.data.chat_members })
+    channelRef.current = channel
+
+    return () => {
+      cancelled = true
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
       }
     }
-    setMessages(msgRes.data || [])
-    setLoading(false)
-    setTimeout(() => scrollRef.current?.scrollIntoView(), 60)
-  }
+  }, [chatId])
 
   async function sendMessage(e) {
     e?.preventDefault()
@@ -65,14 +91,15 @@ export default function ChatRoom() {
     inputRef.current?.focus()
 
     const tempId = crypto.randomUUID()
-    setMessages(prev => [...prev, { id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text', created_at: new Date().toISOString() }])
-    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 30)
+    const newMsg = { id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text', created_at: new Date().toISOString(), _pending: true }
+    setMessages(prev => [...prev, newMsg])
+    requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }))
 
-    await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text' })
-  }
-
-  function toggleMsgMenu(msgId) {
-    setTappedMsgId(prev => prev === msgId ? null : msgId)
+    const { error } = await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text' })
+    if (error) {
+      // Mark as failed
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _failed: true } : m))
+    }
   }
 
   async function deleteMessage(msgId) {
@@ -88,11 +115,6 @@ export default function ChatRoom() {
     return member?.profiles?.display_name || 'Someone'
   }
 
-  function getMemberAvatar(senderId) {
-    const member = chatMeta?.members?.find(m => m.user_id === senderId)
-    return member?.profiles?.avatar_seed || senderId
-  }
-
   async function submitLightningInvite() {
     if (!inviteForm.location.trim() || !inviteForm.time.trim()) return
     setShowInviteMenu(false)
@@ -101,30 +123,33 @@ export default function ChatRoom() {
 
     const tempId = crypto.randomUUID()
     setMessages(prev => [...prev, { id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite', created_at: new Date().toISOString() }])
-    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 30)
+    requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }))
 
     await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite' })
     setInviteForm({ location: '', time: '' })
   }
 
   async function acceptInvite(msg) {
+    if (msg.sender_id === user.id) return // sender can't accept own invite
     const myName = profile?.display_name || 'Someone'
     let inviteData
-    try { inviteData = JSON.parse(msg.content) } catch { inviteData = { location: '?', time: '?' } }
+    try { inviteData = JSON.parse(msg.content) } catch { inviteData = { location: '?', time: '?', acceptedBy: [] } }
     const accepted = inviteData.acceptedBy || []
     if (accepted.includes(myName)) return
 
     accepted.push(myName)
     const updated = JSON.stringify({ ...inviteData, acceptedBy: accepted })
 
-    await supabase.from('messages').update({ content: updated }).eq('id', msg.id)
+    // Optimistic update locally
     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: updated } : m))
 
+    // Persist to DB — this triggers realtime UPDATE for ALL clients
+    await supabase.from('messages').update({ content: updated }).eq('id', msg.id)
+
+    // Status message visible to ALL
     await supabase.from('messages').insert({
-      chat_id: chatId,
-      sender_id: user.id,
-      content: `${myName} is in! ⚡`,
-      type: 'status'
+      chat_id: chatId, sender_id: user.id,
+      content: `${myName} is in! ⚡`, type: 'status'
     })
   }
 
@@ -206,13 +231,14 @@ export default function ChatRoom() {
           }
 
           const time = new Date(msg.created_at).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false })
+          const alreadyAccepted = inviteData.acceptedBy?.includes(profile?.display_name)
 
           return (
             <div key={msg.id}>
               {showDate && <div className="chat-date-sep">{dateLabel}</div>}
               <div
                 className={`msg-wrapper ${isMe ? 'sent' : 'received'} msg-enter`}
-                onClick={() => isMe && toggleMsgMenu(msg.id)}
+                onClick={() => isMe && setTappedMsgId(prev => prev === msg.id ? null : msg.id)}
               >
                 {!isMe && chatMeta?.type === 'group' && (
                   <div className="msg-sender-name">{senderName}</div>
@@ -221,21 +247,69 @@ export default function ChatRoom() {
                 {msg.type === 'text' ? (
                   <div className={`msg-bubble ${isMe ? 'sent' : 'received'}`}>
                     {msg.content}
-                    <div className="msg-time">{time}</div>
+                    <div className="msg-time">
+                      {time}
+                      {isMe && !msg._failed && <RiCheckDoubleLine size={12} style={{ marginLeft: 4, opacity: msg._pending ? 0.4 : 1 }} />}
+                      {msg._failed && <span style={{ color: 'var(--danger)', marginLeft: 4, fontSize: '0.7rem' }}>Failed</span>}
+                    </div>
                   </div>
                 ) : (
-                  <GymInviteCard
-                    senderName={senderName}
-                    location={inviteData.location}
-                    time={inviteData.time}
-                    acceptedBy={inviteData.acceptedBy}
-                    isMe={isMe}
-                    onAccept={() => acceptInvite(msg)}
-                  />
+                  /* GYM INVITE CARD — Inline for better control */
+                  <div className="invite-card msg-enter">
+                    <div className="invite-card-bolt"><RiFlashlightFill size={100} /></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                      <RiFlashlightFill size={14} color="var(--accent)" />
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{senderName} sent a gym invite</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <RiMapPin2Fill size={18} color="var(--accent)" />
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>LOCATION</div>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{inviteData.location}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <RiTimeFill size={18} color="var(--accent)" />
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>TIME</div>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{inviteData.time}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Accepted chips — VISIBLE TO EVERYONE */}
+                    {inviteData.acceptedBy?.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                        {inviteData.acceptedBy.map((name, i) => (
+                          <div key={i} className="invite-accepted-chip">
+                            <RiCheckLine size={12} /> {name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Accept button — only non-senders who haven't accepted yet */}
+                    {!isMe && !alreadyAccepted && (
+                      <button className="invite-accept-btn" onClick={() => acceptInvite(msg)}>
+                        <RiFlashlightFill size={16} style={{ marginRight: 6 }} /> Accept
+                      </button>
+                    )}
+                    {!isMe && alreadyAccepted && (
+                      <div style={{ textAlign: 'center', color: 'var(--success)', fontWeight: 700, fontSize: '0.88rem', padding: '10px 0' }}>
+                        <RiCheckDoubleLine size={16} style={{ marginRight: 4 }} /> You're in!
+                      </div>
+                    )}
+                    {isMe && (
+                      <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.82rem', padding: '8px 0' }}>
+                        {inviteData.acceptedBy?.length > 0 ? `${inviteData.acceptedBy.length} accepted` : 'Waiting for responses...'}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {tappedMsgId === msg.id && isMe && (
-                  <button className="msg-delete-btn" onClick={(e) => { e.stopPropagation(); deleteMessage(msg.id) }}>
+                  <button className="msg-delete-popup" onClick={(e) => { e.stopPropagation(); deleteMessage(msg.id) }}>
                     <RiDeleteBinLine size={14} /> Delete for everyone
                   </button>
                 )}

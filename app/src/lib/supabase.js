@@ -9,42 +9,50 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     storageKey: 'repmax-auth',
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'pkce'
+    flowType: 'pkce',
+    storage: {
+      // Custom storage using localStorage with error handling
+      // This prevents the "always need to clear cookies" bug on Android
+      getItem: (key) => {
+        try { return globalThis.localStorage?.getItem(key) ?? null }
+        catch { return null }
+      },
+      setItem: (key, value) => {
+        try { globalThis.localStorage?.setItem(key, value) }
+        catch { /* Android WebView may throw in incognito */ }
+      },
+      removeItem: (key) => {
+        try { globalThis.localStorage?.removeItem(key) }
+        catch {}
+      }
+    }
   },
   global: {
-    headers: {
-      'x-client-info': 'repmax-app/3.0'
-    }
+    headers: { 'x-client-info': 'repmax-app/4.0' }
   },
-  db: {
-    schema: 'public'
-  },
+  db: { schema: 'public' },
   realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
+    params: { eventsPerSecond: 20 },
+    timeout: 30000
   }
 })
 
-// Retry wrapper for Supabase calls that may fail due to rate limits or network issues
+// Retry wrapper
 export async function withRetry(fn, maxRetries = 3) {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const result = await fn()
       if (result?.error) {
         const status = result.error?.status || result.error?.code
-        // Rate limited or server error — retry with backoff
         if ((status === 429 || status >= 500) && attempt < maxRetries - 1) {
-          const delay = Math.pow(2, attempt) * 500 + Math.random() * 300
-          await new Promise(resolve => setTimeout(resolve, delay))
+          await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500 + Math.random() * 300))
           continue
         }
       }
       return result
     } catch (err) {
       if (attempt < maxRetries - 1) {
-        const delay = Math.pow(2, attempt) * 500 + Math.random() * 300
-        await new Promise(resolve => setTimeout(resolve, delay))
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500 + Math.random() * 300))
         continue
       }
       throw err
@@ -52,26 +60,29 @@ export async function withRetry(fn, maxRetries = 3) {
   }
 }
 
-// Session refresh helper for Android WebView (background kills can expire sessions)
+// Session recovery — fixes "always need to clear cookies"
 export async function ensureSession() {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) return session
+
+    // Try to recover from localStorage directly
     const { data, error } = await supabase.auth.refreshSession()
-    if (error) {
-      console.warn('Session refresh failed:', error.message)
-      return null
-    }
-    return data.session
+    if (!error && data?.session) return data.session
+
+    // If tokens are truly gone, force sign out so user gets a clean auth page
+    await supabase.auth.signOut()
+    return null
+  } catch {
+    return null
   }
-  return session
 }
 
-// Listen for auth state changes and handle token refresh
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'TOKEN_REFRESHED') {
-    console.log('[REPMAX] Token refreshed successfully')
-  }
+// Auth state change listener
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'TOKEN_REFRESHED') console.log('[REPMAX] Token refreshed')
   if (event === 'SIGNED_OUT') {
-    console.log('[REPMAX] User signed out')
+    // Clean up any stale data
+    try { localStorage.removeItem('repmax-auth') } catch {}
   }
 })

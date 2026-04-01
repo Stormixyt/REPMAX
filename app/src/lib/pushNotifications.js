@@ -1,0 +1,64 @@
+// Push notification system for REPMAX
+// Uses Web Push API with the service worker
+
+const VAPID_PUBLIC_KEY = 'BLSvlmEe58YkUFallFM3lXlTHiEBbAzrOWc9DwFuV5QJZtKaFded_2WV_FF1oBPaJccFhZW-H82GxlY8gRG7c_0'
+
+export async function requestNotificationPermission() {
+  if (!('Notification' in window)) return false
+  if (!('serviceWorker' in navigator)) return false
+  
+  const permission = await Notification.requestPermission()
+  return permission === 'granted'
+}
+
+export async function subscribeToPush() {
+  try {
+    const granted = await requestNotificationPermission()
+    if (!granted) return null
+
+    const registration = await navigator.serviceWorker.ready
+    
+    // Check for existing subscription
+    let subscription = await registration.pushManager.getSubscription()
+    
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      })
+    }
+
+    return subscription
+  } catch (err) {
+    console.warn('[REPMAX] Push subscription failed:', err)
+    return null
+  }
+}
+
+export function showLocalNotification(title, body, options = {}) {
+  if (Notification.permission !== 'granted') return
+  
+  navigator.serviceWorker.ready.then(registration => {
+    registration.showNotification(title, {
+      body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-72.png',
+      tag: options.tag || 'repmax-' + Date.now(),
+      vibrate: [200, 100, 200],
+      data: options.data || {},
+      ...options
+    })
+  })
+}
+
+// Helper to convert VAPID key
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i)
+  }
+  return outputArray
+}

@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react'
-import { supabase } from '../lib/supabase'
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
+import { supabase, ensureSession } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
@@ -12,16 +12,25 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     mounted.current = true
 
-    // Safety net: never stay on splash screen longer than 6 seconds
+    // Safety net: NEVER stay on splash screen longer than 4 seconds (was 6, too slow)
     const safetyTimer = setTimeout(() => {
-      if (mounted.current && loading) setLoading(false)
-    }, 6000)
+      if (mounted.current && loading) {
+        console.warn('[REPMAX] Safety timeout — forcing load complete')
+        setLoading(false)
+      }
+    }, 4000)
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Use ensureSession which handles corrupted tokens
+    ensureSession().then((session) => {
       if (!mounted.current) return
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else setLoading(false)
+      if (session?.user) {
+        setUser(session.user)
+        fetchProfile(session.user.id)
+      } else {
+        setUser(null)
+        setProfile(null)
+        setLoading(false)
+      }
     }).catch(() => {
       if (mounted.current) setLoading(false)
     })
@@ -29,9 +38,10 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (!mounted.current) return
-        setUser(session?.user ?? null)
-        if (session?.user) {
-          await fetchProfile(session.user.id)
+        const newUser = session?.user ?? null
+        setUser(newUser)
+        if (newUser) {
+          await fetchProfile(newUser.id)
         } else {
           setProfile(null)
           setLoading(false)
@@ -53,24 +63,16 @@ export function AuthProvider({ children }) {
     return code
   }
 
-  async function fetchProfile(userId, retries = 3) {
+  async function fetchProfile(userId, retries = 2) {
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
+        .from('profiles').select('*').eq('id', userId).single()
 
       if (error) {
-        if (error.code === 'PGRST116' && retries > 0) {
-          setTimeout(() => fetchProfile(userId, retries - 1), 600)
-          return
-        }
         if (retries > 0) {
-          setTimeout(() => fetchProfile(userId, retries - 1), 1500)
+          setTimeout(() => fetchProfile(userId, retries - 1), 800)
           return
         }
-        // Out of retries — stop loading so user isn't stuck
         if (mounted.current) setLoading(false)
         return
       }
@@ -78,20 +80,17 @@ export function AuthProvider({ children }) {
       if (data && mounted.current) {
         if (!data.friend_code) {
           const friendCode = generateFriendCode()
-          const { data: updated, error: updateErr } = await supabase
-            .from('profiles')
-            .update({ friend_code: friendCode })
-            .eq('id', userId)
-            .select()
-            .single()
-          setProfile(!updateErr && updated ? updated : { ...data, friend_code: friendCode })
+          const { data: updated } = await supabase
+            .from('profiles').update({ friend_code: friendCode })
+            .eq('id', userId).select().single()
+          setProfile(updated || { ...data, friend_code: friendCode })
         } else {
           setProfile(data)
         }
       }
-    } catch (err) {
+    } catch {
       if (retries > 0) {
-        setTimeout(() => fetchProfile(userId, retries - 1), 1500)
+        setTimeout(() => fetchProfile(userId, retries - 1), 1000)
         return
       }
     }
@@ -102,20 +101,14 @@ export function AuthProvider({ children }) {
     if (!user) return { error: 'Not authenticated' }
     const safeUpdates = { ...updates, updated_at: new Date().toISOString() }
     const { data, error } = await supabase
-      .from('profiles')
-      .update(safeUpdates)
-      .eq('id', user.id)
-      .select()
-      .single()
-
+      .from('profiles').update(safeUpdates).eq('id', user.id).select().single()
     if (!error && data) setProfile(data)
     return { data, error }
   }
 
   async function signUp(email, password, displayName) {
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+      email, password,
       options: { data: { display_name: displayName } }
     })
     return { data, error }
@@ -130,16 +123,16 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
+    // Clear ALL storage to prevent stale token issues
+    try {
+      localStorage.removeItem('repmax-auth')
+      sessionStorage.clear()
+    } catch {}
   }
 
   const value = {
-    user,
-    profile,
-    loading,
-    signUp,
-    signIn,
-    signOut,
-    updateProfile,
+    user, profile, loading,
+    signUp, signIn, signOut, updateProfile,
     fetchProfile: () => user && fetchProfile(user.id),
     isOnboarded: profile?.onboarded === true,
     isPro: (profile?.subscription_status === 'pro') || (profile?.pro_until && new Date(profile.pro_until) > new Date())
