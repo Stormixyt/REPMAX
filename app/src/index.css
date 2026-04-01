@@ -6053,3 +6053,377 @@ body * {
     background: rgba(255, 255, 255, 0.15);
     margin: 0 auto 20px;
 }
+
+/* ============================================
+   VICTORY REPLAY — Cinematic Post-Workout
+   ============================================ */
+.victory-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    overflow: hidden;
+}
+.victory-bg-pulse {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, var(--accent-glow-strong) 0%, transparent 55%);
+    animation: victoryPulse 3s ease-in-out infinite;
+}
+@keyframes victoryPulse {
+    0%,100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+}
+.victory-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 32px 24px;
+    width: 100%;
+    max-width: 400px;
+}
+.victory-icon {
+    color: var(--accent);
+    margin-bottom: 16px;
+    opacity: 0;
+    transform: scale(0.3) translateY(30px);
+    transition: all 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+.victory-icon.visible {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+.victory-title {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0 0 24px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s ease;
+}
+.victory-title.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.victory-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s ease;
+}
+.victory-stats.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.victory-stat {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 12px;
+}
+.victory-stat-value {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--accent);
+}
+.victory-stat-label {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+.victory-prs {
+    background: rgba(255, 215, 0, 0.06);
+    border: 1px solid rgba(255, 215, 0, 0.15);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 24px;
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    transition: all 0.5s ease;
+}
+.victory-prs.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+.victory-pr-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #ffd700;
+    margin-bottom: 10px;
+}
+.victory-pr-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 0.88rem;
+    border-top: 1px solid rgba(255,215,0,0.08);
+}
+.victory-pr-weight {
+    font-weight: 700;
+    color: #ffd700;
+    font-family: var(--font-display);
+}
+.victory-btn {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: all 0.4s ease;
+}
+.victory-btn.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ============================================
+   GHOST SETS — Train Against Your Past Self
+   ============================================ */
+.ghost-hint {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    opacity: 0.4;
+    font-weight: 500;
+    pointer-events: none;
+    font-style: italic;
+}
+@keyframes ghostBeat {
+    0% { box-shadow: none; }
+    50% { box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.2); }
+    100% { box-shadow: none; }
+}
+.set-row.ghost-beaten {
+    animation: ghostBeat 0.8s ease;
+}
+
+/* ============================================
+   EXERCISE CARD — Refined Workout UI
+   ============================================ */
+.exercise-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: border-color 0.3s;
+}
+.exercise-card.done {
+    border-color: var(--success);
+}
+.exercise-header {
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+}
+.exercise-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    transition: color 0.3s;
+}
+.exercise-counter {
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+}
+.set-header-row {
+    display: flex;
+    font-size: 0.62rem;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    padding: 10px 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ============================================
+   REP AURA — Dynamic Profile Energy Ring
+   ============================================ */
+@keyframes auraBreath {
+    0%,100% { box-shadow: 0 0 12px 2px var(--accent-glow), 0 0 24px 4px var(--accent-glow); opacity: 0.6; }
+    50% { box-shadow: 0 0 20px 6px var(--accent-glow-strong), 0 0 40px 12px var(--accent-glow); opacity: 1; }
+}
+@keyframes auraFire {
+    0%,100% { box-shadow: 0 0 16px 4px var(--accent-glow-strong), 0 0 32px 8px var(--accent-glow), 0 0 48px 16px rgba(255,120,0,0.1); }
+    33% { box-shadow: 0 0 24px 8px var(--accent-glow-strong), 0 0 48px 16px var(--accent-glow), 0 0 60px 20px rgba(255,120,0,0.15); }
+    66% { box-shadow: 0 0 20px 6px var(--accent-glow-strong), 0 0 36px 12px var(--accent-glow), 0 0 52px 18px rgba(255,120,0,0.12); }
+}
+.aura-ring {
+    border-radius: 50%;
+    transition: box-shadow 0.5s ease;
+}
+.aura-ring.low {
+    box-shadow: 0 0 8px 1px var(--accent-glow);
+}
+.aura-ring.medium {
+    animation: auraBreath 3s ease-in-out infinite;
+}
+.aura-ring.high {
+    animation: auraBreath 2s ease-in-out infinite;
+}
+.aura-ring.fire {
+    animation: auraFire 2s ease-in-out infinite;
+}
+
+/* ============================================
+   DAILY CHALLENGE — Dashboard Micro-Mission
+   ============================================ */
+.challenge-card {
+    background: linear-gradient(135deg, rgba(204,255,0,0.06) 0%, rgba(204,255,0,0.02) 100%);
+    border: 1px solid rgba(204,255,0,0.12);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+}
+.challenge-card:active { transform: scale(0.98); }
+.challenge-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.challenge-text {
+    flex: 1;
+    min-width: 0;
+}
+.challenge-title {
+    font-weight: 700;
+    font-size: 0.88rem;
+    margin-bottom: 2px;
+}
+.challenge-desc {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+.challenge-progress {
+    height: 3px;
+    background: var(--bg-elevated);
+    border-radius: 99px;
+    margin-top: 6px;
+    overflow: hidden;
+}
+.challenge-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+/* ============================================
+   WORKOUT DNA — Shareable Identity Card
+   ============================================ */
+.dna-card {
+    background: linear-gradient(145deg, var(--bg-card) 0%, var(--bg-elevated) 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+}
+.dna-card::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: var(--accent-glow);
+    filter: blur(40px);
+    pointer-events: none;
+}
+.dna-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+}
+.dna-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+}
+.dna-name {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 800;
+}
+.dna-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    font-weight: 700;
+    display: inline-block;
+    margin-top: 4px;
+}
+.dna-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+}
+.dna-stat {
+    text-align: center;
+    padding: 12px 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+.dna-stat-value {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--accent);
+}
+.dna-stat-label {
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+.dna-watermark {
+    position: absolute;
+    bottom: 12px;
+    right: 16px;
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.06);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+

@@ -8,6 +8,14 @@ import ThemeSelector from '../components/ThemeSelector'
 import AvatarBuilder from '../components/AvatarBuilder'
 import { RiSettings3Fill, RiRefreshLine, RiVipCrownFill, RiStarFill, RiChat3Fill, RiFireFill, RiCalendarCheckFill, RiFlashlightFill, RiCheckFill, RiArrowRightSLine, RiMedalFill, RiTeamFill, RiCrosshair2Fill, RiShuffleFill, RiPencilFill, RiImageEditFill } from '@remixicon/react'
 
+function getAuraLevel(streak) {
+  if (streak >= 30) return 'fire'
+  if (streak >= 14) return 'high'
+  if (streak >= 7) return 'medium'
+  if (streak >= 3) return 'low'
+  return ''
+}
+
 export default function Profile() {
   const { user, profile, signOut, updateProfile, fetchProfile, isPro } = useAuth()
   const navigate = useNavigate()
@@ -80,7 +88,7 @@ export default function Profile() {
 
       {/* Avatar + Info */}
       <div className="profile-hero" style={{ position: 'relative' }}>
-        <div className="profile-avatar-lg" style={{ position: 'relative', overflow: 'visible', background: 'var(--bg-elevated)', border: isPro ? '3px solid var(--accent)' : '2px solid var(--border)' }}>
+        <div className={`profile-avatar-lg aura-ring ${getAuraLevel(profile?.current_streak || 0)}`} style={{ position: 'relative', overflow: 'visible', background: 'var(--bg-elevated)', border: isPro ? '3px solid var(--accent)' : '2px solid var(--border)' }}>
           <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
           {/* Edit avatar button */}
           <button

@@ -2,8 +2,30 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill, RiTeamFill, RiLeafFill } from '@remixicon/react'
+import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill, RiFireFill, RiWaterFlashFill, RiRunFill, RiScalesFill } from '@remixicon/react'
 import ProBadge from '../components/ProBadge'
+
+// Daily challenge generation
+function generateDailyChallenge(profile, stats) {
+  const day = new Date().getDate()
+  const challenges = [
+    { icon: <RiFireFill size={20} />, title: 'Complete today\'s workout', desc: 'Finish every set in your session', type: 'workout' },
+    { icon: <RiWaterFlashFill size={20} />, title: 'Drink 8 glasses of water', desc: 'Stay hydrated throughout the day', type: 'water' },
+    { icon: <RiScalesFill size={20} />, title: `Log ${profile?.goal === 'hypertrophy' ? '150' : '120'}g protein`, desc: 'Hit your protein target today', type: 'protein' },
+    { icon: <RiRunFill size={20} />, title: 'Train under 50 minutes', desc: 'Keep rest times tight and efficient', type: 'speed' },
+    { icon: <RiTrophyFill size={20} />, title: 'Beat a previous set', desc: 'Lift heavier or hit more reps than last time', type: 'pr' },
+    { icon: <RiFlashlightFill size={20} />, title: 'Start within 30 minutes', desc: 'No procrastination — hit the gym now', type: 'quick' },
+  ]
+  return challenges[day % challenges.length]
+}
+
+function getAuraLevel(streak) {
+  if (streak >= 30) return 'fire'
+  if (streak >= 14) return 'high'
+  if (streak >= 7) return 'medium'
+  if (streak >= 3) return 'low'
+  return ''
+}
 
 export default function Dashboard() {
   const { user, profile, isPro } = useAuth()
@@ -17,9 +39,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const mounted = useRef(true)
 
-  useEffect(() => { 
+  useEffect(() => {
     mounted.current = true
-    loadDashboard() 
+    loadDashboard()
     return () => { mounted.current = false }
   }, [])
 
@@ -83,6 +105,9 @@ export default function Dashboard() {
   const greeting = getGreeting()
   const firstName = profile?.display_name?.split(' ')[0] || 'Athlete'
   const unit = profile?.units || 'lbs'
+  const challenge = generateDailyChallenge(profile, stats)
+  const auraLevel = getAuraLevel(stats.streak)
+  const avatarSeed = profile?.avatar_seed || user?.id || 'default'
 
   if (loading) {
     return (
@@ -103,16 +128,39 @@ export default function Dashboard() {
 
   return (
     <div className="page">
+      {/* Header with Aura Avatar */}
       <div className="page-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <p className="page-greeting">{greeting}</p>
-            <h1 className="page-title">{firstName} {isPro && <ProBadge size="md" />}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div className={`aura-ring ${auraLevel}`} style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+              <img
+                src={`https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`}
+                alt="" style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-card)' }}
+              />
+            </div>
+            <div>
+              <p className="page-greeting">{greeting}</p>
+              <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {firstName} {isPro && <ProBadge size="md" />}
+              </h1>
+            </div>
           </div>
           <button className="notif-badge" onClick={() => navigate('/notifications')}>
             <RiNotification3Fill size={20} />
             {unreadNotifs > 0 && <span className="notif-count">{unreadNotifs}</span>}
           </button>
+        </div>
+      </div>
+
+      {/* Daily Challenge */}
+      <div className="challenge-card">
+        <div className="challenge-icon">{challenge.icon}</div>
+        <div className="challenge-text">
+          <div className="challenge-title">{challenge.title}</div>
+          <div className="challenge-desc">{challenge.desc}</div>
+          <div className="challenge-progress">
+            <div className="challenge-progress-fill" style={{ width: '0%' }} />
+          </div>
         </div>
       </div>
 
@@ -130,13 +178,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* PRO Upsell Banner (for free users) */}
+      {/* PRO Upsell Banner */}
       {!isPro && stats.total >= 3 && (
         <div className="card card-pro-upsell" style={{ marginBottom: 12 }} onClick={() => navigate('/subscribe')}>
           <RiVipCrownFill size={20} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Unlock PRO</div>
-            <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>AI Coach, unlimited friends, advanced analytics</div>
+            <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>AI Coach, custom themes, unlimited friends</div>
           </div>
           <RiArrowRightLine size={18} />
         </div>
@@ -164,8 +212,8 @@ export default function Dashboard() {
               </p>
             )}
           </div>
-          <button className="btn btn-primary btn-full btn-lg" onClick={startWorkout} style={{ animation: 'pulseGlow 2.5s ease-in-out infinite', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <RiFlashlightFill size={20} /> Start Workout
+          <button className="btn btn-primary btn-full" onClick={startWorkout}>
+            <RiFlashlightFill size={18} /> Start Workout
           </button>
         </div>
       ) : (
@@ -188,8 +236,34 @@ export default function Dashboard() {
         </div>
         <div className="stat-box">
           <div className="stat-value">{stats.volume > 1000 ? `${(stats.volume / 1000).toFixed(1)}k` : stats.volume}</div>
-          <div className="stat-desc">{unit.charAt(0).toUpperCase() + unit.slice(1)} Lifted</div>
+          <div className="stat-desc">{unit} Lifted</div>
         </div>
+      </div>
+
+      {/* Workout DNA Card */}
+      <div className="dna-card" style={{ marginTop: 16 }}>
+        <div className="dna-header">
+          <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}`} alt="" className="dna-avatar" style={{ background: 'var(--bg-elevated)' }} />
+          <div>
+            <div className="dna-name">{profile?.display_name || 'Athlete'}</div>
+            {isPro && <div className="dna-badge">PRO</div>}
+          </div>
+        </div>
+        <div className="dna-stats">
+          <div className="dna-stat">
+            <div className="dna-stat-value">{stats.total}</div>
+            <div className="dna-stat-label">Sessions</div>
+          </div>
+          <div className="dna-stat">
+            <div className="dna-stat-value">{stats.streak}</div>
+            <div className="dna-stat-label">Streak</div>
+          </div>
+          <div className="dna-stat">
+            <div className="dna-stat-value">{profile?.preferred_split?.replace('_', '/').toUpperCase() || '—'}</div>
+            <div className="dna-stat-label">Split</div>
+          </div>
+        </div>
+        <div className="dna-watermark">REPMAX</div>
       </div>
 
       {/* Current Program */}
@@ -211,22 +285,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Quick Actions Row */}
-      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-        <div className="card" style={{ flex: 1, cursor: 'pointer', textAlign: 'center', padding: 16 }} onClick={() => navigate('/social')}>
-          <RiTeamFill size={22} style={{ color: 'var(--accent)', marginBottom: 6 }} />
-          <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>Social</div>
-        </div>
-        <div className="card" style={{ flex: 1, cursor: 'pointer', textAlign: 'center', padding: 16 }} onClick={() => navigate('/nutrition')}>
-          <RiLeafFill size={22} style={{ color: 'var(--accent)', marginBottom: 6 }} />
-          <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>Nutrition</div>
-        </div>
-        <div className="card" style={{ flex: 1, cursor: 'pointer', textAlign: 'center', padding: 16 }} onClick={() => navigate('/subscribe')}>
-          <RiVipCrownFill size={22} style={{ color: 'var(--accent)', marginBottom: 6 }} />
-          <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>PRO</div>
-        </div>
-      </div>
 
       {/* Recent PRs */}
       {recentPRs.length > 0 && (
