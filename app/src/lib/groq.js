@@ -323,3 +323,78 @@ Create the program now.`;
 
 // Exported for use in Nutrition.jsx and other pages
 export { callGroq, VISION_MODEL, MODEL };
+
+export async function generateProgramFromImages(base64Images) {
+  const VISION_PROMPT = `You are REPMAX Vision, an expert fitness AI. Your task is to extract the training routine shown in the provided images and output it EXACTLY matching the strict JSON format below.
+
+IF any vital data (like RPE or Rest time) is missing from the images, you MUST invent sensible defaults (e.g. RPE 8, 120s rest).
+Assume 4 weeks of training (just duplicate week 1 into week 2, 3, and 4 if only 1 week is shown).
+
+OUTPUT FORMAT: You MUST respond with ONLY valid JSON matching this structure exactly (do not wrap in markdown blocks, just raw JSON):
+{
+  "name": "Custom Routine",
+  "split_type": "custom",
+  "weeks": [
+    {
+      "week_number": 1,
+      "is_deload": false,
+      "days": [
+        {
+          "day_name": "Day 1",
+          "target_muscles": ["chest", "shoulders"],
+          "exercises": [
+            {
+              "name": "Barbell Bench Press",
+              "sets": 4,
+              "reps": 8,
+              "rpe": 7.5,
+              "rest_seconds": 180,
+              "notes": "Any notes from the image"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
+
+  try {
+    const userMessageContent = [
+      { type: "text", text: "Parse the training routines in these images and give me the perfect JSON structure." }
+    ];
+
+    for (const img of base64Images) {
+      userMessageContent.push({
+        type: "image_url",
+        image_url: { url: img }
+      });
+    }
+
+    const data = await callGroq({
+      messages: [
+        { role: "system", content: VISION_PROMPT },
+        { role: "user", content: userMessageContent },
+      ],
+      model: "llama-3.2-90b-vision-preview",
+      temperature: 0.2, // Low temp for extraction tasks
+      max_tokens: 6000,
+    });
+
+    let rawOutput = data.choices[0].message.content;
+    
+    // Strip markdown JSON wrapping if present
+    if (rawOutput.includes('\`\`\`json')) {
+      rawOutput = rawOutput.split('\`\`\`json')[1].split('\`\`\`')[0];
+    } else if (rawOutput.includes('\`\`\`')) {
+      rawOutput = rawOutput.split('\`\`\`')[1].split('\`\`\`')[0];
+    }
+
+    const programJson = JSON.parse(rawOutput.trim());
+    return { success: true, program: programJson };
+  } catch(err) {
+    console.error("Vision AI failed:", err);
+    return { success: false, error: err };
+  }
+}

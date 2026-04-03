@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { generateProgram } from '../lib/groq'
 import { supabase } from '../lib/supabase'
-import { RiBoxingFill, RiFlashlightFill, RiSpeedFill, RiFireFill, RiSeedlingFill, RiLineChartFill, RiTrophyFill, RiCalendarCheckFill, RiStore2Fill, RiHandHeartFill, RiCrosshair2Fill, RiBrainFill, RiCheckFill, RiArrowRightLine, RiRocketFill } from '@remixicon/react'
+import { RiBoxingFill, RiFlashlightFill, RiSpeedFill, RiBodyScanFill, RiFireFill, RiSeedlingFill, RiLineChartFill, RiTrophyFill, RiCalendarCheckFill, RiImageFill, RiUploadCloud2Fill, RiStore2Fill, RiHandHeartFill, RiCrosshair2Fill, RiBrainFill, RiCheckFill, RiArrowRightLine, RiRocketFill } from '@remixicon/react'
 
 const GOALS = [
   { id: 'strength', icon: <RiBoxingFill size={28} />, label: 'Strength', desc: 'Maximize lifts & power' },
@@ -50,7 +50,7 @@ const SPLITS = {
 }
 
 export default function Onboarding() {
-  const { user, updateProfile, fetchProfile } = useAuth()
+  const { user, updateProfile, fetchProfile, isPro } = useAuth()
   const [step, setStep] = useState(0)
   const [generating, setGenerating] = useState(false)
   const [genStep, setGenStep] = useState(0)
@@ -61,6 +61,7 @@ export default function Onboarding() {
   const [equipment, setEquipment] = useState([])
   const [focus, setFocus] = useState([])
   const [split, setSplit] = useState('')
+  const [visionImages, setVisionImages] = useState([])
 
   function toggleDay(day) {
     setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])
@@ -72,6 +73,53 @@ export default function Onboarding() {
 
   function toggleFocus(item) {
     setFocus(prev => prev.includes(item) ? prev.filter(e => e !== item) : [...prev, item])
+  }
+
+  function handleVisionUpload(e) {
+    const files = Array.from(e.target.files)
+    if (!files.length) return
+
+    let loaded = 0
+    const newImages = []
+
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          
+          let width = img.width
+          let height = img.height
+          const MAX_SIZE = 1000
+          
+          if (width > height && width > MAX_SIZE) {
+            height *= MAX_SIZE / width
+            width = MAX_SIZE
+          } else if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height
+            height = MAX_SIZE
+          }
+          
+          canvas.width = width
+          canvas.height = height
+          ctx.drawImage(img, 0, 0, width, height)
+          
+          newImages.push(canvas.toDataURL('image/jpeg', 0.6)) // Aggressive compression for API
+          loaded++
+          
+          if (loaded === files.length) {
+            setVisionImages(prev => {
+              const combined = [...prev, ...newImages]
+              return combined.slice(0, 3) // max 3
+            })
+          }
+        }
+        img.src = event.target.result
+      }
+      reader.readAsDataURL(file)
+    })
   }
 
   async function finishOnboarding() {
@@ -121,6 +169,49 @@ export default function Onboarding() {
     setStep(1)
   }
 
+  async function finishVisionOnboarding() {
+    if (!visionImages.length) return
+    setGenerating(true)
+    setGenStep(0)
+
+    const profileData = {
+      display_name: user?.user_metadata?.display_name || user?.email?.split('@')[0]
+    }
+
+    await updateProfile(profileData)
+    setGenStep(1)
+
+    await new Promise(r => setTimeout(r, 800))
+    setGenStep(2)
+    // Needs to be imported from groq
+    const { generateProgramFromImages } = await import('../lib/groq.js') 
+    const result = await generateProgramFromImages(visionImages)
+    setGenStep(3)
+
+    if (result.success) {
+      const { error } = await supabase.from('programs').insert({
+        user_id: user.id,
+        name: result.program.name || 'Custom routine',
+        split_type: 'custom',
+        total_weeks: result.program.weeks?.length || 4,
+        program_data: result.program,
+        active: true
+      })
+      
+      if (!error) {
+        setGenStep(4)
+        await updateProfile({ onboarded: true })
+        await fetchProfile()
+        setGenStep(5)
+        return
+      }
+    }
+    
+    alert("Image Parsing failed. Please try again.")
+    setGenerating(false)
+    setStep(10)
+  }
+
   const totalSteps = 5
   const availableSplits = SPLITS[selectedDays.length] || SPLITS[3]
 
@@ -166,9 +257,22 @@ export default function Onboarding() {
           <p className="onboarding-subtitle">
             Answer a few quick questions and our AI will create a fully periodized training program designed specifically for you. Takes about 60 seconds.
           </p>
-          <div className="onboarding-actions">
+          <div className="onboarding-actions" style={{ flexDirection: 'column', gap: 12 }}>
             <button className="btn btn-primary btn-full btn-lg" onClick={() => setStep(1)}>
-              Let's Go <RiArrowRightLine size={18} />
+              Let's Go (AI Guided) <RiArrowRightLine size={18} />
+            </button>
+            <button 
+              className="btn btn-secondary btn-full" 
+              onClick={() => {
+                if (isPro) {
+                  setStep(10)
+                } else {
+                  alert("Upgrade to PRO in your settings to unlock Custom Image Routine parsing!")
+                }
+              }}
+              style={{ padding: '12px', fontSize: '0.9rem' }}
+            >
+              Upload Routine Image (PRO)
             </button>
           </div>
         </div>
