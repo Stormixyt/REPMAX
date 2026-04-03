@@ -407,6 +407,69 @@ export default function Onboarding() {
           </div>
         </div>
       )}
+
+      {step === 10 && (
+        <div className="onboarding-content" key="vision-upload">
+          <div className="onboarding-emoji"><RiImageFill size={40} /></div>
+          <h1 className="onboarding-title">Upload Custom Routine</h1>
+          <p className="onboarding-subtitle">Upload up to 3 pictures of your training routine (screenshots of notes or spreadsheets) and our AI will translate it into your REPMAX program.</p>
+          
+          <div style={{ marginTop: 24, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {visionImages.length < 3 && (
+              <label style={{
+                background: 'var(--bg-card)', 
+                border: '2px dashed var(--border)',
+                borderRadius: 16,
+                padding: '32px 16px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 12
+              }}>
+                <RiUploadCloud2Fill size={32} color="var(--accent)" />
+                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Tap to select pictures ({3 - visionImages.length} remaining)</span>
+                <input 
+                  type="file" 
+                  accept="image/jpeg, image/png, image/webp" 
+                  multiple 
+                  style={{ display: 'none' }} 
+                  onChange={handleVisionUpload}
+                />
+              </label>
+            )}
+
+            {visionImages.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {visionImages.map((src, i) => (
+                  <div key={i} style={{ position: 'relative', aspectRatio: '1', borderRadius: 12, overflow: 'hidden' }}>
+                    <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button 
+                      onClick={() => setVisionImages(prev => prev.filter((_, idx) => idx !== i))}
+                      style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', color: 'white', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="onboarding-actions">
+            <button className="btn btn-secondary" onClick={() => {
+              setVisionImages([])
+              // If we arrived via settings, ?vision=true might be un-removable without react-router
+              // But setting step to 0 is fine
+              setStep(0)
+            }}>Back</button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={finishVisionOnboarding} disabled={visionImages.length === 0}>
+              Build Program ✨
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
