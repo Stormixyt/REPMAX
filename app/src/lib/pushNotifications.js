@@ -1,7 +1,8 @@
 // Push notification system for REPMAX
 // Uses Web Push API with the service worker
 
-const VAPID_PUBLIC_KEY = 'BLSvlmEe58YkUFallFM3lXlTHiEBbAzrOWc9DwFuV5QJZtKaFded_2WV_FF1oBPaJccFhZW-H82GxlY8gRG7c_0'
+// The VAPID Public Key must match your backend's VAPID keys!
+const VAPID_PUBLIC_KEY = 'BNjAffK4G4cz6g8n96rLuYIfeU05Da8bkKagttIx2ks2nTSHNEuTVwjtWGpXNArDvOv3mmOSG2Ga4oSZKc-hgpw'
 
 export async function requestNotificationPermission() {
   if (!('Notification' in window)) return false

@@ -7,12 +7,11 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 // In a real app, these should be in your Supabase Vault or .env file
-// Public: BLSvlmEe58YkUFallFM3lXlTHiEBbAzrOWc9DwFuV5QJZtKaFded_2WV_FF1oBPaJccFhZW-H82GxlY8gRG7c_0
 const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY') || 'NOT_SET'
 
 webpush.setVapidDetails(
   'mailto:support@repmax-app.com', // Must be an email
-  'BLSvlmEe58YkUFallFM3lXlTHiEBbAzrOWc9DwFuV5QJZtKaFded_2WV_FF1oBPaJccFhZW-H82GxlY8gRG7c_0',
+  'BNjAffK4G4cz6g8n96rLuYIfeU05Da8bkKagttIx2ks2nTSHNEuTVwjtWGpXNArDvOv3mmOSG2Ga4oSZKc-hgpw',
   vapidPrivateKey
 )
 
