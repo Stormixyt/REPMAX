@@ -64,6 +64,7 @@ export default function App() {
   // Fully authenticated (profile might be null if fetch failed — app handles it)
   return (
     <Routes>
+      <Route path="/setup" element={<Onboarding />} />
       <Route path="/workout/:workoutId" element={<Workout />} />
       <Route path="/subscribe" element={<Subscription />} />
       <Route path="/settings" element={<Settings />} />
