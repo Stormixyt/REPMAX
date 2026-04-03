@@ -128,6 +128,7 @@ export default function Dashboard() {
   const challenge = generateDailyChallenge(profile)
   const auraLevel = getAuraLevel(stats.streak)
   const avatarSeed = profile?.avatar_seed || user?.id || 'default'
+  const avatarUrl = profile?.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
 
   if (loading) {
     return (
