@@ -299,16 +299,15 @@ function buildUserPrompt(profile) {
   const equipment = profile.equipment || [];
   const split = splitMap[profile.preferred_split] || profile.preferred_split;
   const goal = goalDesc[profile.goal] || profile.goal;
-  const level = profile.experience_level || "intermediate";
+  const prompt = `As an elite strength and conditioning coach, generate a highly optimized ${profile.total_weeks || 4}-week training program in strict JSON format.
 
-  return `Create a complete 4-week training program for me.
-
-MY PROFILE:
-- Experience: ${level}
-- Goal: ${goal}
-- Training days per week: ${days.length} (${days.join(", ")})
-- Preferred split: ${split}
-- Available equipment: ${equipment.join(", ")}
+Client Profile:
+- Goal: ${profile.goal}
+- Experience Level: ${profile.experience_level}
+- Training Days per Week: ${profile.training_days?.length || 3} (${profile.training_days?.join(', ')})
+- Equipment Available: ${profile.equipment?.join(', ') || 'Standard Gym'}
+- Split: ${profile.preferred_split}
+${profile.focus_muscles?.length > 0 ? `- Primary Muscle Focuses: ${profile.focus_muscles.join(', ')} (PRIORITIZE THESE IN VOLUME/INTENSITY)` : ''}
 - Name: ${profile.display_name || "Athlete"}
 
 REQUIREMENTS:

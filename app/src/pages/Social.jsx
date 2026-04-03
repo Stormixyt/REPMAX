@@ -336,7 +336,7 @@ export default function Social() {
                 </h3>
                 {pending.map(p => (
                   <div key={p.id} className="pending-card">
-                    <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${p.avatar_seed || p.id}&backgroundColor=transparent`} className="pending-card-avatar" alt="" />
+                    <img src={p.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${p.avatar_seed || p.id}&backgroundColor=transparent`} className="pending-card-avatar" alt="" />
                     <div className="pending-card-info">
                       <div className="pending-card-name">{p.display_name || 'Unknown'}</div>
                       <div className="pending-card-label">Wants to connect</div>

@@ -45,10 +45,15 @@ export async function generateDNAImage(profile, stats, theme = 'green') {
 
   // Load avatar
   try {
-    const seed = profile?.avatar_seed || 'default'
-    const img = await loadImage(`https://api.dicebear.com/7.x/micah/svg?seed=${seed}&backgroundColor=transparent`)
+    let avatarImg
+    if (profile.image_url) {
+      avatarImg = await loadImage(profile.image_url)
+    } else {
+      const avatarSeed = profile?.avatar_seed || profile?.id || 'default'
+      avatarImg = await loadImage(`https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`)
+    }
     ctx.clip()
-    ctx.drawImage(img, 440, 280, 200, 200)
+    ctx.drawImage(avatarImg, 440, 280, 200, 200)
   } catch {}
   ctx.restore()
 

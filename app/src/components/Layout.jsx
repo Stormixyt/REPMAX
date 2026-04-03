@@ -28,6 +28,56 @@ export default function Layout() {
     { path: '/profile', label: 'Profile', ActiveIcon: RiUser3Fill, Icon: RiUser3Line },
   ]
 
+  // Global Swipe Navigation Logic
+  useEffect(() => {
+    let touchStartX = 0
+    let touchStartY = 0
+    let lastValidTarget = null
+
+    const handleTouchStart = (e) => {
+      touchStartX = e.changedTouches[0].screenX
+      touchStartY = e.changedTouches[0].screenY
+      lastValidTarget = e.target
+    }
+
+    const handleTouchEnd = (e) => {
+      const touchEndX = e.changedTouches[0].screenX
+      const touchEndY = e.changedTouches[0].screenY
+      
+      const diffX = touchStartX - touchEndX
+      const diffY = touchStartY - touchEndY
+      
+      // If scroll up/down is more than left/right, ignore
+      if (Math.abs(diffY) > Math.abs(diffX)) return
+      
+      // Ignore if targeting horizontal scrollable elements like sliders, canvases or buttons
+      if (lastValidTarget && lastValidTarget.closest('input, button, canvas, .horizontal-scroll, .scroll-x')) return
+      
+      // Swipe threshold
+      if (Math.abs(diffX) > 80) {
+        const paths = navItems.map(n => n.path)
+        const currentIndex = paths.indexOf(path)
+        
+        if (currentIndex !== -1) {
+          if (diffX > 0 && currentIndex < paths.length - 1) {
+            // Swiped Left - go Next
+            navigate(paths[currentIndex + 1])
+          } else if (diffX < 0 && currentIndex > 0) {
+            // Swiped Right - go Prev
+            navigate(paths[currentIndex - 1])
+          }
+        }
+      }
+    }
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [path, navigate])
+
   return (
     <div className="app-wrapper">
       <div className="app-content"><Outlet /></div>

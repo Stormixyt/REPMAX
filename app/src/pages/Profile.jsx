@@ -30,7 +30,8 @@ export default function Profile() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   const avatarSeed = profile?.avatar_seed || user?.id || 'default'
-  const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
+  const drawnAvatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
+  const avatarUrl = profile?.image_url || drawnAvatarUrl
 
   const canFeedback = (profile?.total_workouts || 0) >= 6
 

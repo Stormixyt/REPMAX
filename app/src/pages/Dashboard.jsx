@@ -173,7 +173,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div className={`aura-ring ${auraLevel}`} style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
               <img
-                src={`https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`}
+                src={avatarUrl}
                 alt="" style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-card)' }}
               />
             </div>

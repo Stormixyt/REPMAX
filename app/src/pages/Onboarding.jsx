@@ -24,6 +24,11 @@ const EQUIPMENT = [
   'Pull-up Bar', 'Bench', 'Squat Rack', 'Bodyweight Only'
 ]
 
+const FOCUS_MUSCLES = [
+  'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 
+  'Quads', 'Hamstrings', 'Calves', 'Abs', 'Glutes', 'Forearms'
+]
+
 const SPLITS = {
   3: [
     { id: 'full_body', label: 'Full Body', desc: 'Hit everything 3x/week' },
@@ -54,6 +59,7 @@ export default function Onboarding() {
   const [level, setLevel] = useState('')
   const [selectedDays, setSelectedDays] = useState([])
   const [equipment, setEquipment] = useState([])
+  const [focus, setFocus] = useState([])
   const [split, setSplit] = useState('')
 
   function toggleDay(day) {
@@ -62,6 +68,10 @@ export default function Onboarding() {
 
   function toggleEquipment(item) {
     setEquipment(prev => prev.includes(item) ? prev.filter(e => e !== item) : [...prev, item])
+  }
+
+  function toggleFocus(item) {
+    setFocus(prev => prev.includes(item) ? prev.filter(e => e !== item) : [...prev, item])
   }
 
   async function finishOnboarding() {
@@ -73,6 +83,7 @@ export default function Onboarding() {
       experience_level: level,
       training_days: selectedDays,
       equipment,
+      focus_muscles: focus,
       preferred_split: split,
       display_name: user?.user_metadata?.display_name || user?.email?.split('@')[0]
     }
@@ -241,6 +252,32 @@ export default function Onboarding() {
       )}
 
       {step === 4 && (
+        <div className="onboarding-content" key="focus">
+          <div className="onboarding-emoji"><RiCrosshair2Fill size={40} /></div>
+          <h1 className="onboarding-title">Muscle Focus</h1>
+          <p className="onboarding-subtitle">Choose up to 3 muscle groups you want to prioritize for extra volume.</p>
+          <div className="tag-grid">
+            {FOCUS_MUSCLES.map(m => (
+              <div 
+                key={m} 
+                className={`tag ${focus.includes(m) ? 'selected' : ''}`} 
+                onClick={() => {
+                  if (focus.includes(m)) toggleFocus(m)
+                  else if (focus.length < 3) toggleFocus(m)
+                }}
+              >
+                {m}
+              </div>
+            ))}
+          </div>
+          <div className="onboarding-actions" style={{ marginTop: 28 }}>
+            <button className="btn btn-secondary" onClick={() => setStep(3)}>Back</button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStep(5)}>Next</button>
+          </div>
+        </div>
+      )}
+
+      {step === 5 && (
         <div className="onboarding-content" key="equipment">
           <div className="onboarding-emoji"><RiStore2Fill size={40} /></div>
           <h1 className="onboarding-title">What equipment do you have?</h1>
@@ -251,7 +288,7 @@ export default function Onboarding() {
             ))}
           </div>
           <div className="onboarding-actions" style={{ marginTop: 28 }}>
-            <button className="btn btn-secondary" onClick={() => setStep(3)}>Back</button>
+            <button className="btn btn-secondary" onClick={() => setStep(4)}>Back</button>
             <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={finishOnboarding} disabled={equipment.length === 0}>
               <RiRocketFill size={18} /> Build My Program
             </button>

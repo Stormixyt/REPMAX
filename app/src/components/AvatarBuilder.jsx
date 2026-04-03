@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { RiCheckFill, RiCloseLine, RiShuffleFill, RiVipCrownFill } from '@remixicon/react'
+import { supabase } from '../lib/supabase'
+import { RiCheckFill, RiCloseLine, RiShuffleFill, RiVipCrownFill, RiUploadCloud2Fill } from '@remixicon/react'
 
 const HAIR_STYLES = ['fonze', 'mrT', 'dougFunny', 'mrClean', 'dannyPhantom', 'full', 'turpiSpaceMan', 'pixie']
 const HAIR_COLORS = ['#2c1b18', '#4a3728', '#71523e', '#b7a69e', '#d4c4b0', '#c9b037', '#e8d44d', '#a52019', '#e74c3c', '#1abc9c', '#8e44ad', '#3498db']
@@ -12,10 +13,12 @@ const POSES = ['idle', 'flex', 'victory', 'wave']
 const BG_COLORS = ['transparent', '#1a1a2e', '#0a2647', '#2c1810', '#1a2e1a', '#2e1a2e', '#0d0d0d', '#1e3a5f', '#3d1c02']
 
 export default function AvatarBuilder({ onClose }) {
-  const { profile, updateProfile, isPro } = useAuth()
+  const { user, profile, updateProfile, isPro } = useAuth()
   const [activeTab, setActiveTab] = useState('hair')
   const [currentPose, setCurrentPose] = useState('idle')
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef(null)
 
   const [config, setConfig] = useState({
     hair: profile?.avatar_config?.hair || 'fonze',
@@ -26,7 +29,8 @@ export default function AvatarBuilder({ onClose }) {
     glasses: profile?.avatar_config?.glasses || 'none',
     bgColor: profile?.avatar_config?.bgColor || 'transparent',
     pose: profile?.avatar_config?.pose || 'idle',
-    seed: profile?.avatar_seed || Math.random().toString(36).substring(7)
+    seed: profile?.avatar_seed || Math.random().toString(36).substring(7),
+    imageUrl: profile?.image_url || null
   })
 
   // Cycle through poses for animation preview
@@ -38,6 +42,8 @@ export default function AvatarBuilder({ onClose }) {
 
   function getAvatarUrl(overrides = {}) {
     const c = { ...config, ...overrides }
+    if (c.imageUrl && activeTab === 'upload') return c.imageUrl // show uploaded image if in upload tab
+    
     const params = new URLSearchParams({
       seed: c.seed,
       hair: c.hair,
@@ -60,6 +66,7 @@ export default function AvatarBuilder({ onClose }) {
     setConfig(prev => ({
       ...prev,
       seed: Math.random().toString(36).substring(7),
+      imageUrl: null, // clear custom image on randomize
       hair: HAIR_STYLES[Math.floor(Math.random() * HAIR_STYLES.length)],
       hairColor: HAIR_COLORS[Math.floor(Math.random() * HAIR_COLORS.length)],
       mouth: MOUTH_STYLES[Math.floor(Math.random() * MOUTH_STYLES.length)],
@@ -67,12 +74,59 @@ export default function AvatarBuilder({ onClose }) {
       eyebrows: EYEBROW_STYLES[Math.floor(Math.random() * EYEBROW_STYLES.length)],
     }))
     setCurrentPose('victory')
+    if (activeTab === 'upload') setActiveTab('hair')
+  }
+
+  async function handleFileUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be under 2MB')
+      return
+    }
+
+    setUploading(true)
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${user.id}-${Math.random()}.${fileExt}`
+    
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true })
+        
+      if (uploadError) throw uploadError
+      
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName)
+      
+      setConfig(prev => ({ ...prev, imageUrl: data.publicUrl }))
+      setCurrentPose('flex')
+    } catch (err) {
+      console.error('Upload failed:', err)
+      alert('Failed to upload image')
+    } finally {
+      setUploading(false)
+    }
   }
 
   async function save() {
     setSaving(true)
     setCurrentPose('flex')
-    await updateProfile({ avatar_seed: config.seed, avatar_config: { ...config, pose: config.pose } })
+    
+    const updates = { 
+      avatar_seed: config.seed, 
+      avatar_config: { ...config, pose: config.pose },
+    }
+    
+    // If they switched back to drawn avatar, clear the image property
+    if (activeTab !== 'upload' && config.imageUrl) {
+      updates.image_url = null
+      setConfig(prev => ({ ...prev, imageUrl: null }))
+    } else if (activeTab === 'upload' && config.imageUrl) {
+      updates.image_url = config.imageUrl
+    }
+    
+    await updateProfile(updates)
     setTimeout(() => { setSaving(false); onClose() }, 800)
   }
 
@@ -82,11 +136,13 @@ export default function AvatarBuilder({ onClose }) {
     { id: 'face', label: '😊' },
     { id: 'extras', label: '👓' },
     { id: 'pose', label: '💪' },
-    { id: 'bg', label: '🖼️' }
+    { id: 'bg', label: '🖼️' },
+    { id: 'upload', label: '📸' }
   ]
 
   // Animation class based on current pose
   const poseClass = `avatar-pose-${currentPose}`
+  const displayUrl = activeTab === 'upload' && config.imageUrl ? config.imageUrl : getAvatarUrl()
 
   return (
     <div className="avatar-builder-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -103,11 +159,11 @@ export default function AvatarBuilder({ onClose }) {
 
         {/* Preview with animated pose */}
         <div className="avatar-builder-preview">
-          <div className={`avatar-character ${poseClass}`}>
-            <img src={getAvatarUrl()} alt="Avatar" />
+          <div className={activeTab === 'upload' && config.imageUrl ? '' : `avatar-character ${poseClass}`} style={activeTab === 'upload' && config.imageUrl ? { width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden' } : {}}>
+            <img src={displayUrl} alt="Avatar" style={activeTab === 'upload' && config.imageUrl ? { objectFit: 'cover' } : {}} />
           </div>
           {/* Pose indicator */}
-          <div className="avatar-pose-label">{currentPose.toUpperCase()}</div>
+          {activeTab !== 'upload' && <div className="avatar-pose-label">{currentPose.toUpperCase()}</div>}
         </div>
 
         {/* Action buttons */}
@@ -115,7 +171,7 @@ export default function AvatarBuilder({ onClose }) {
           <button className="btn btn-sm btn-secondary" onClick={randomize} style={{ gap: 6 }}>
             <RiShuffleFill size={14} /> Randomize
           </button>
-          {POSES.map(p => (
+          {activeTab !== 'upload' && POSES.map(p => (
             <button
               key={p}
               className={`avatar-pose-btn ${currentPose === p ? 'active' : ''}`}
@@ -244,13 +300,52 @@ export default function AvatarBuilder({ onClose }) {
               </div>
             </>
           )}
+          
+          {activeTab === 'upload' && (
+            <>
+              <div className="input-label" style={{ marginBottom: 10, textAlign: 'center' }}>Custom Picture</div>
+              <input 
+                type="file" 
+                accept="image/jpeg,image/png,image/webp" 
+                ref={fileInputRef} 
+                style={{ display: 'none' }} 
+                onChange={handleFileUpload} 
+              />
+              <div 
+                style={{ 
+                  border: '2px dashed var(--border)', 
+                  borderRadius: 16, 
+                  padding: 32, 
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: 'var(--bg-elevated)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 12
+                }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? (
+                  <span className="spinner" style={{ width: 32, height: 32, borderWidth: 3 }} />
+                ) : (
+                  <>
+                    <RiUploadCloud2Fill size={40} color="var(--accent)" />
+                    <div style={{ fontWeight: 600 }}>Tap to upload custom image</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>JPG, PNG or WebP under 2MB</div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Save */}
-        <button className="btn btn-primary btn-full btn-lg" onClick={save} disabled={saving} style={{ marginTop: 16 }}>
-          {saving ? <span className="spinner-sm" /> : <><RiCheckFill size={18} /> Save Avatar</>}
+        <button className="btn btn-primary btn-full btn-lg" onClick={save} disabled={saving || uploading} style={{ marginTop: 16 }}>
+          {saving ? <span className="spinner-sm" /> : <><RiCheckFill size={18} /> {activeTab === 'upload' ? 'Use Picture' : 'Save Avatar'}</>}
         </button>
       </div>
     </div>
   )
 }
+

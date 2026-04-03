@@ -68,6 +68,30 @@ body.theme-gold {
     --border-accent: rgba(255, 184, 0, 0.2);
 }
 
+body.theme-cherry-red {
+    --accent: #ff003c;
+    --accent-dim: #cc0030;
+    --accent-glow: rgba(255, 0, 60, 0.12);
+    --accent-glow-strong: rgba(255, 0, 60, 0.25);
+    --border-accent: rgba(255, 0, 60, 0.2);
+}
+
+body.theme-neon-purple {
+    --accent: #b026ff;
+    --accent-dim: #8d1ecd;
+    --accent-glow: rgba(176, 38, 255, 0.12);
+    --accent-glow-strong: rgba(176, 38, 255, 0.25);
+    --border-accent: rgba(176, 38, 255, 0.2);
+}
+
+body.theme-cyber-orange {
+    --accent: #ff5e00;
+    --accent-dim: #cc4b00;
+    --accent-glow: rgba(255, 94, 0, 0.12);
+    --accent-glow-strong: rgba(255, 94, 0, 0.25);
+    --border-accent: rgba(255, 94, 0, 0.2);
+}
+
 :root {
 
     --font-display: "Space Grotesk", sans-serif;
@@ -6723,18 +6747,21 @@ body * {
 /* Invite accept button */
 .invite-accept-btn {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     background: var(--accent);
     color: var(--text-on-accent);
     border: none;
     border-radius: 12px;
-    font-weight: 700;
-    font-size: 0.88rem;
+    font-weight: 800;
+    font-size: 0.95rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 14px rgba(204,255,0,0.3);
 }
 .invite-accept-btn:active { transform: scale(0.97); }
 

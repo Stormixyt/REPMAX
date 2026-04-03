@@ -11,7 +11,7 @@ export async function requestNotificationPermission() {
   return permission === 'granted'
 }
 
-export async function subscribeToPush() {
+export async function subscribeToPush(userId = null) {
   try {
     const granted = await requestNotificationPermission()
     if (!granted) return null
@@ -26,6 +26,13 @@ export async function subscribeToPush() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       })
+    }
+
+    if (subscription && userId) {
+      const { supabase } = await import('./supabase')
+      await supabase.from('profiles').update({
+        push_subscription: JSON.parse(JSON.stringify(subscription))
+      }).eq('id', userId)
     }
 
     return subscription

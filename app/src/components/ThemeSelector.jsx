@@ -9,7 +9,10 @@ export default function ThemeSelector() {
     { id: 'green', name: 'Neon Green', color: '#ccff00' },
     { id: 'pink', name: 'Hot Pink', color: '#ff2a85' },
     { id: 'blue', name: 'Deep Blue', color: '#00d4ff' },
-    { id: 'gold', name: 'Royal Gold', color: '#ffb800' }
+    { id: 'gold', name: 'Royal Gold', color: '#ffb800' },
+    { id: 'cherry-red', name: 'Cherry Red', color: '#ff003c' },
+    { id: 'neon-purple', name: 'Neon Purple', color: '#b026ff' },
+    { id: 'cyber-orange', name: 'Cyber Orange', color: '#ff5e00' }
   ];
 
   const currentTheme = profile?.theme_color || 'green';
@@ -30,7 +33,7 @@ export default function ThemeSelector() {
         {!isPro && <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--warning)', fontSize: '0.75rem', fontWeight: 600 }}><RiVipCrownFill size={14}/> PRO</div>}
       </div>
 
-      <div style={{ display: 'flex', gap: 12, opacity: isPro ? 1 : 0.5 }}>
+      <div style={{ display: 'flex', gap: 12, opacity: isPro ? 1 : 0.5, flexWrap: 'wrap' }}>
         {themes.map(t => (
           <button
             key={t.id}

@@ -34,7 +34,7 @@ export default function Settings() {
     if (newValue) {
       const granted = await requestNotificationPermission()
       if (granted) {
-        await subscribeToPush()
+        await subscribeToPush(user.id)
       }
     }
   }
