@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { generateProgram } from '../lib/groq'
 import { supabase } from '../lib/supabase'
@@ -62,6 +63,13 @@ export default function Onboarding() {
   const [focus, setFocus] = useState([])
   const [split, setSplit] = useState('')
   const [visionImages, setVisionImages] = useState([])
+
+  const location = useLocation()
+  useEffect(() => {
+    if (location.search.includes('step=10') || location.search.includes('vision')) {
+      if (isPro) setStep(10)
+    }
+  }, [location, isPro])
 
   function toggleDay(day) {
     setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])

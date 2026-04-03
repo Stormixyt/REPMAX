@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import ProBadge from '../components/ProBadge'
-import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine } from '@remixicon/react'
+import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine, RiImageFill } from '@remixicon/react'
 import { requestNotificationPermission, subscribeToPush } from '../lib/pushNotifications'
 
 export default function Settings() {
@@ -131,6 +131,23 @@ export default function Settings() {
           <div>
             <div className="settings-label">Training Preferences</div>
             <div className="settings-value">Goal, split, equipment</div>
+          </div>
+        </div>
+        <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      <div className="settings-item" onClick={() => {
+        if (!isPro) {
+          navigate('/subscribe')
+        } else {
+          navigate('/setup?vision=true')
+        }
+      }}>
+        <div className="settings-item-left">
+          <div className="settings-icon"><RiImageFill size={18} /></div>
+          <div>
+            <div className="settings-label" style={{ color: isPro ? 'var(--text-primary)' : 'var(--accent)' }}>Upload Custom Routine</div>
+            <div className="settings-value">{isPro ? 'Build program from pictures' : 'PRO Feature'}</div>
           </div>
         </div>
         <RiArrowRightSLine size={20} className="settings-chevron" />
