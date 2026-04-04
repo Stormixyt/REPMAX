@@ -6,17 +6,15 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// In a real app, these should be in your Supabase Vault or .env file
-const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY') || 'NOT_SET'
-
-webpush.setVapidDetails(
-  'mailto:support@repmax-app.com', // Must be an email
-  'BNjAffK4G4cz6g8n96rLuYIfeU05Da8bkKagttIx2ks2nTSHNEuTVwjtWGpXNArDvOv3mmOSG2Ga4oSZKc-hgpw',
-  vapidPrivateKey
-)
-
 serve(async (req) => {
   try {
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY') || 'onCjTbHt0Zzz041u7Tu7cg9uw5Mj8DRJey3UzLP5rvQ='
+
+    webpush.setVapidDetails(
+      'mailto:support@repmax-app.com',
+      'BNBo_jz-q5KOGSbK1Y43HB_UoZim9DwFNVOPGmUThMBDYihvSnX2zPCpqtck6NSiUE--C7ag2p5N4vv97aXh_Hg',
+      vapidPrivateKey
+    )
     const payload = await req.json()
     // This is triggered from a Database Webhook on "messages" table
     const { record: msg } = payload

@@ -43,10 +43,11 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_subscription jsonb;
 CREATE OR REPLACE FUNCTION notify_send_push()
 RETURNS TRIGGER AS $$
 BEGIN
-  PERFORM http_post(
-    'https://[YOUR_PROJECT_REF].supabase.co/functions/v1/send-push',
-    json_build_object('record', row_to_json(NEW))::text,
-    'application/json'
+  PERFORM net.http_post(
+    'https://hqwnyzmipumhhqmvdzus.supabase.co/functions/v1/send-push',
+    jsonb_build_object('record', row_to_json(NEW)),
+    null,
+    jsonb_build_object('Content-Type', 'application/json')
   );
   RETURN NEW;
 END;

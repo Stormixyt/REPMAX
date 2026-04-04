@@ -10,6 +10,7 @@ export default function Social() {
   const navigate = useNavigate()
   const [tab, setTab] = useState('messages')
   const [friends, setFriends] = useState([])
+  const [appointments, setAppointments] = useState([])
   const [chats, setChats] = useState([])
   const [pending, setPending] = useState([])
   const [searchCode, setSearchCode] = useState('')
@@ -17,6 +18,9 @@ export default function Social() {
   const [searching, setSearching] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showGroupForm, setShowGroupForm] = useState(false)
+  const [inviteFriendId, setInviteFriendId] = useState(null)
+  const [inviteGymName, setInviteGymName] = useState('')
+  const [inviteDate, setInviteDate] = useState('')
   const [groupName, setGroupName] = useState('')
   const [selectedFriends, setSelectedFriends] = useState([])
   const [toast, setToast] = useState('')
@@ -32,9 +36,10 @@ export default function Social() {
 
   async function loadSocial() {
     try {
-      const [friendsRes, pendingRes] = await Promise.all([
+      const [friendsRes, pendingRes, apptRes] = await Promise.all([
         supabase.from('friendships').select('*, friend:friend_id(id, display_name, total_workouts, subscription_status, avatar_seed), requester:user_id(id, display_name, total_workouts, subscription_status, avatar_seed)').or(`user_id.eq.${user.id},friend_id.eq.${user.id}`).eq('status', 'accepted'),
         supabase.from('friendships').select('*, requester:user_id(id, display_name, total_workouts, avatar_seed)').eq('friend_id', user.id).eq('status', 'pending'),
+        supabase.rpc('get_my_appointments').catch(() => supabase.from('gym_appointments').select('*, guest:guest_id(display_name, avatar_seed), creator:creator_id(display_name, avatar_seed)').or(`creator_id.eq.${user.id},guest_id.eq.${user.id}`).in('status', ['pending', 'accepted']).order('scheduled_at', { ascending: true }))
       ])
 
       let chatsRes = { data: [] }
@@ -57,6 +62,7 @@ export default function Social() {
       if (!mounted.current) return
       setFriends(friendsList)
       setPending(pendingList)
+      setAppointments(apptRes?.data || [])
 
       const formattedChats = (chatsRes.data || []).map(c => {
         if (c.type === 'direct') {
@@ -116,6 +122,38 @@ export default function Social() {
     loadSocial()
   }
 
+  async function sendInvite() {
+    if (!inviteGymName || !inviteDate || !inviteFriendId) return
+    const { error } = await supabase.from('gym_appointments').insert({
+      creator_id: user.id,
+      guest_id: inviteFriendId,
+      gym_name: inviteGymName,
+      scheduled_at: new Date(inviteDate).toISOString(),
+      status: 'pending'
+    })
+    
+    if (!error) {
+      showToast('Invite sent!')
+      setInviteFriendId(null)
+      setInviteGymName('')
+      setInviteDate('')
+      await loadSocial()
+      
+      // Also send a direct message in their chat
+      const chatIdRes = await supabase.rpc('get_direct_chat', { peer_id: inviteFriendId })
+      if (chatIdRes.data) {
+         await supabase.from('messages').insert({
+           chat_id: chatIdRes.data,
+           sender_id: user.id,
+           content: `Hey! Let's hit ${inviteGymName} at ${new Date(inviteDate).toLocaleString()}`,
+           type: 'invite'
+         })
+      }
+    } else {
+      showToast('Failed to send invite')
+    }
+  }
+
   async function openDirectChat(friendId) {
     const { error: testErr } = await supabase.from('chats').select('id').limit(1)
     if (testErr) { showToast("Chat tables not set up yet"); return }
@@ -170,11 +208,87 @@ export default function Social() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header" style={{ paddingBottom: 0 }}>
         <h1 className="page-title">Social</h1>
 
+        {appointments.length > 0 && (
+          <div style={{ marginTop: 20, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Upcoming Sessions</h3>
+            </div>
+            <div className="stagger-children" style={{ display: 'flex', overflowX: 'auto', gap: 12, paddingBottom: 8, margin: '0 -16px', padding: '0 16px' }}>
+              {appointments.map(a => {
+                const isCreator = a.creator_id === user.id
+                const other = isCreator ? a.guest : a.creator
+                const arrived = isCreator ? a.creator_arrived : a.guest_arrived
+                const partnerArrived = isCreator ? a.guest_arrived : a.creator_arrived
+                
+                return (
+                  <div key={a.id} className="glass-card" style={{ padding: 16, borderRadius: 20, minWidth: 260, flexShrink: 0, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+                      <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${other?.avatar_seed || 'default'}&backgroundColor=transparent`} style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Workout with {other?.display_name || 'Friend'}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>
+                          {new Date(a.scheduled_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      <RiFlashlightFill size={14} /> {a.gym_name}
+                    </div>
+                    {a.status === 'pending' ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {!isCreator ? (
+                          <>
+                            <button className="btn btn-primary" style={{ flex: 1, padding: '8px 0', fontSize: '0.85rem' }} onClick={async () => {
+                              await supabase.from('gym_appointments').update({ status: 'accepted' }).eq('id', a.id)
+                              await loadSocial()
+                            }}>Accept</button>
+                            <button className="btn btn-secondary" style={{ flex: 1, padding: '8px 0', fontSize: '0.85rem' }} onClick={async () => {
+                              await supabase.from('gym_appointments').update({ status: 'declined' }).eq('id', a.id)
+                              await loadSocial()
+                            }}>Decline</button>
+                          </>
+                        ) : (
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>Awaiting response...</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-secondary" style={{ flex: 1, padding: '8px 0', fontSize: '0.85rem', background: 'var(--bg-elevated)', border: '1px solid var(--border)' }} onClick={() => window.open(`http://maps.apple.com/?q=${encodeURIComponent(a.gym_name)}`, '_blank')}>
+                          Directions
+                        </button>
+                        <button 
+                          className={`btn ${arrived ? 'btn-secondary' : 'btn-primary'}`} 
+                          style={{ flex: 1, padding: '8px 0', fontSize: '0.85rem', ...(arrived && { background: 'var(--success)', color: '#000', borderColor: 'var(--success)' }) }}
+                          onClick={async () => {
+                            if (arrived) return
+                            const updates = isCreator ? { creator_arrived: true } : { guest_arrived: true }
+                            await supabase.from('gym_appointments').update(updates).eq('id', a.id)
+                            // Optionally send a ping message
+                            await supabase.from('messages').insert({ chat_id: (await supabase.rpc('get_direct_chat', { peer_id: isCreator ? a.guest_id : a.creator_id })).data, sender_id: user.id, content: "I've arrived at the gym! 📍", type: 'text' })
+                            await loadSocial()
+                          }}
+                        >
+                          {arrived ? 'Arrived' : 'I\'m Here!'}
+                        </button>
+                      </div>
+                    )}
+                    {partnerArrived && (
+                      <div style={{ marginTop: 12, fontSize: '0.8rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <RiCheckFill size={14} /> {other?.display_name} has arrived
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Premium tab bar */}
-        <div className="v3-tabs" style={{ marginTop: 16 }}>
+        <div className="v3-tabs" style={{ marginTop: 8 }}>
           {[
             { id: 'messages', label: 'Chats', icon: <RiChat3Fill size={15} /> },
             { id: 'friends', label: 'Friends', icon: <RiTeamFill size={15} /> },
@@ -260,8 +374,8 @@ export default function Social() {
                       <button className="v3-action-btn accent" onClick={e => { e.stopPropagation(); openDirectChat(f.id) }} title="Message">
                         <RiChat3Fill size={18} />
                       </button>
-                      <button className="v3-action-btn" onClick={e => { e.stopPropagation(); }} title="Nudge">
-                        <RiNotification3Fill size={18} />
+                      <button className="v3-action-btn" onClick={e => { e.stopPropagation(); setInviteFriendId(f.id) }} title="Plan Workout" style={{ color: 'var(--accent)' }}>
+                        <RiFlashlightFill size={18} />
                       </button>
                     </div>
                   </div>
@@ -417,6 +531,27 @@ export default function Social() {
             <button className="btn btn-primary btn-full btn-lg" onClick={createGroup} disabled={!groupName.trim() || selectedFriends.length === 0} style={{ marginTop: 12 }}>
               Create Group
             </button>
+          </div>
+        </div>
+      )}
+
+      {inviteFriendId && (
+        <div className="v3-modal-overlay">
+          <div className="v3-modal" style={{ padding: 24 }}>
+            <h2 style={{ fontSize: '1.25rem', marginBottom: 8 }}>Plan a Workout</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 20, fontSize: '0.9rem' }}>Send an invite to sync your session.</p>
+            <div className="input-group">
+              <label className="input-label">Gym Name or Location</label>
+              <input type="text" className="v3-input" placeholder="e.g. Gold's Gym Downtown" value={inviteGymName} onChange={e => setInviteGymName(e.target.value)} />
+            </div>
+            <div className="input-group" style={{ marginTop: 16 }}>
+              <label className="input-label">Date & Time</label>
+              <input type="datetime-local" className="v3-input" value={inviteDate} onChange={e => setInviteDate(e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setInviteFriendId(null)}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={sendInvite} disabled={!inviteDate || !inviteGymName}>Send Invite</button>
+            </div>
           </div>
         </div>
       )}
