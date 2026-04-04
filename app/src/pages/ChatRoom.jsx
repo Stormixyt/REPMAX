@@ -115,32 +115,51 @@ export default function ChatRoom() {
     return member?.profiles?.display_name || 'Someone'
   }
 
+  function formatInviteTime(dateStr) {
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return dateStr
+      const now = new Date()
+      const tomorrow = new Date(now)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      let dayPart
+      if (d.toDateString() === now.toDateString()) dayPart = 'Today'
+      else if (d.toDateString() === tomorrow.toDateString()) dayPart = 'Tomorrow'
+      else dayPart = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      return `${dayPart} at ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+    } catch { return dateStr }
+  }
+
   async function submitLightningInvite() {
     if (!inviteForm.location.trim() || !inviteForm.time.trim()) return
     setShowInviteMenu(false)
-    
-    // Instead of old chat-only logic, we integrate with Gym Appointments for the carousel!
+
+    const loc = inviteForm.location.trim()
+    const friendlyTime = formatInviteTime(inviteForm.time)
+
+    // Insert gym appointments for all other members
     const membersToInvite = chatMeta?.members?.filter(m => m.user_id !== user.id) || []
     if (membersToInvite.length > 0) {
-      const appointments = membersToInvite.map(m => ({
-        creator_id: user.id,
-        guest_id: m.user_id,
-        gym_name: inviteForm.location.trim(),
-        scheduled_at: new Date(inviteForm.time).toISOString(),
-        status: 'pending'
-      }))
-      await supabase.from('gym_appointments').insert(appointments)
+      try {
+        await supabase.from('gym_appointments').insert(
+          membersToInvite.map(m => ({
+            creator_id: user.id,
+            guest_id: m.user_id,
+            gym_name: loc,
+            scheduled_at: new Date(inviteForm.time).toISOString(),
+            status: 'pending'
+          }))
+        )
+      } catch {}
     }
 
-    const payload = { location: inviteForm.location.trim(), time: inviteForm.time.trim(), acceptedBy: [] }
+    const payload = { location: loc, time: friendlyTime, acceptedBy: [] }
     const contentStr = JSON.stringify(payload)
     const tempId = crypto.randomUUID()
-    
-    // Optimistic UI for the chat message
+
     setMessages(prev => [...prev, { id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite', created_at: new Date().toISOString() }])
     requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }))
 
-    // Insert traditional invite message into the chat room
     await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite' })
     setInviteForm({ location: '', time: '' })
   }
@@ -358,23 +377,30 @@ export default function ChatRoom() {
 
       {/* Lightning Invite Modal */}
       {showInviteMenu && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(10px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={(e) => { if (e.target === e.currentTarget) setShowInviteMenu(false) }}>
-          <div style={{ background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', position: 'relative' }}>
-            <button style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }} onClick={() => setShowInviteMenu(false)}>✕</button>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: 8, color: '#fff', fontWeight: 600 }}>Plan a Workout</h2>
-            <p style={{ color: '#888', marginBottom: 20, fontSize: '0.9rem' }}>Send an invite to sync your session.</p>
+        <div className="modal-slide">
+          <div className="modal-slide-backdrop" onClick={() => setShowInviteMenu(false)} />
+          <div className="modal-slide-content">
+            <div className="modal-slide-handle" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RiFlashlightFill size={24} color="var(--text-on-accent)" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Plan a Workout</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>Send an invite to the chat</p>
+              </div>
+            </div>
             <div className="input-group">
-              <label style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4, display: 'block' }}>Gym Name or Location</label>
-              <input type="text" className="v3-input" placeholder="e.g. Gold's Gym" value={inviteForm.location} onChange={e => setInviteForm({ ...inviteForm, location: e.target.value })} style={{ width: '100%', background: '#2c2c2e', border: '1px solid #3c3c3e', padding: '12px 16px', borderRadius: '12px', color: '#fff' }} />
+              <label className="input-label">Gym or Location</label>
+              <input type="text" className="input" placeholder="e.g. Gold's Gym Downtown" value={inviteForm.location} onChange={e => setInviteForm({ ...inviteForm, location: e.target.value })} autoFocus />
             </div>
-            <div className="input-group" style={{ marginTop: 16 }}>
-              <label style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4, display: 'block' }}>Date & Time</label>
-              <input type="datetime-local" className="v3-input" value={inviteForm.time} onChange={e => setInviteForm({ ...inviteForm, time: e.target.value })} style={{ width: '100%', background: '#2c2c2e', border: '1px solid #3c3c3e', padding: '12px 16px', borderRadius: '12px', color: '#fff' }} />
+            <div className="input-group">
+              <label className="input-label">Date & Time</label>
+              <input type="datetime-local" className="input" value={inviteForm.time} onChange={e => setInviteForm({ ...inviteForm, time: e.target.value })} />
             </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-              <button style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#2c2c2e', color: '#fff', border: '1px solid #3c3c3e', fontWeight: 600, cursor: 'pointer' }} onClick={() => setShowInviteMenu(false)}>Cancel</button>
-              <button style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#d4ff00', color: '#000', border: 'none', fontWeight: 600, cursor: 'pointer', opacity: (!inviteForm.time || !inviteForm.location) ? 0.5 : 1 }} disabled={!inviteForm.time || !inviteForm.location} onClick={submitLightningInvite}>Send Invite</button>
-            </div>
+            <button className="btn btn-primary btn-full btn-lg" onClick={submitLightningInvite} disabled={!inviteForm.location.trim() || !inviteForm.time.trim()} style={{ marginTop: 8 }}>
+              <RiFlashlightFill size={18} /> Send Invite
+            </button>
           </div>
         </div>
       )}

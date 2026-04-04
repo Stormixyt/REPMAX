@@ -2,7 +2,7 @@
 // Uses Web Push API with the service worker
 
 // The VAPID Public Key must match your backend's VAPID keys!
-const VAPID_PUBLIC_KEY = 'BNBo_jz-q5KOGSbK1Y43HB_UoZim9DwFNVOPGmUThMBDYihvSnX2zPCpqtck6NSiUE--C7ag2p5N4vv97aXh_Hg='
+const VAPID_PUBLIC_KEY = 'BNBo_jz-q5KOGSbK1Y43HB_UoZim9DwFNVOPGmUThMBDYihvSnX2zPCpqtck6NSiUE--C7ag2p5N4vv97aXh_Hg'
 
 export async function requestNotificationPermission() {
   if (!('Notification' in window)) return false
