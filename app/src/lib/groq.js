@@ -299,6 +299,7 @@ function buildUserPrompt(profile) {
   const equipment = profile.equipment || [];
   const split = splitMap[profile.preferred_split] || profile.preferred_split;
   const goal = goalDesc[profile.goal] || profile.goal;
+  const level = profile.experience_level || 'intermediate';
   const prompt = `As an elite strength and conditioning coach, generate a highly optimized ${profile.total_weeks || 4}-week training program in strict JSON format.
 
 Client Profile:
@@ -319,6 +320,8 @@ REQUIREMENTS:
 - Suggest starting weights appropriate for a ${level} lifter (in lbs)
 
 Create the program now.`;
+
+  return prompt;
 }
 
 // Exported for use in Nutrition.jsx and other pages
