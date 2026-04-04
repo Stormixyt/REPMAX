@@ -26,7 +26,7 @@ export default function ChatRoom() {
 
     async function init() {
       const [metaRes, msgRes] = await Promise.all([
-        supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed))').eq('id', chatId).single(),
+        supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed, image_url))').eq('id', chatId).single(),
         supabase.from('messages').select('*').eq('chat_id', chatId).order('created_at', { ascending: true }).limit(200)
       ])
 
@@ -35,7 +35,7 @@ export default function ChatRoom() {
       if (metaRes.data) {
         if (metaRes.data.type === 'direct') {
           const other = metaRes.data.chat_members?.find(m => m.user_id !== user.id)
-          setChatMeta({ type: 'direct', title: other?.profiles?.display_name || 'User', avatar: other?.profiles?.avatar_seed || 'default', members: metaRes.data.chat_members })
+          setChatMeta({ type: 'direct', title: other?.profiles?.display_name || 'User', avatar: other?.profiles?.avatar_seed || 'default', image_url: other?.profiles?.image_url, members: metaRes.data.chat_members })
         } else {
           setChatMeta({ type: 'group', title: metaRes.data.name || 'Group Chat', members: metaRes.data.chat_members })
         }
@@ -229,7 +229,7 @@ export default function ChatRoom() {
           <RiArrowLeftLine size={22} />
         </button>
         {chatMeta?.type === 'direct' && (
-          <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${chatMeta.avatar}&backgroundColor=transparent`} alt="" className="chat-header-avatar" />
+          <img src={chatMeta.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${chatMeta.avatar}&backgroundColor=transparent`} alt="" className="chat-header-avatar" style={{ objectFit: 'cover' }} />
         )}
         {chatMeta?.type === 'group' && (
           <div className="chat-header-avatar" style={{ background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

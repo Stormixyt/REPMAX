@@ -81,31 +81,62 @@ export default function AvatarBuilder({ onClose }) {
     const file = e.target.files?.[0]
     if (!file) return
     
-    if (file.size > 2 * 1024 * 1024) {
-      alert('File size must be under 2MB')
-      return
-    }
-
     setUploading(true)
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}-${Math.random()}.${fileExt}`
-    
-    try {
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true })
-        
-      if (uploadError) throw uploadError
-      
-      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName)
-      
-      setConfig(prev => ({ ...prev, imageUrl: data.publicUrl }))
-      setCurrentPose('flex')
-    } catch (err) {
-      console.error('Upload failed:', err)
-      alert('Failed to upload image')
-    } finally {
-      setUploading(false)
+
+    // Compress image client-side to max 400x400
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target.result
+      img.onload = async () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+        const MAX = 400
+
+        if (width > height && width > MAX) {
+          height *= MAX / width
+          width = MAX
+        } else if (height > MAX) {
+          width *= MAX / height
+          height = MAX
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            alert('Failed to process image')
+            setUploading(false)
+            return
+          }
+
+          const fileExt = 'jpeg'
+          const fileName = `${user.id}-${Math.random()}.${fileExt}`
+          
+          try {
+            const { error: uploadError } = await supabase.storage
+              .from('avatars')
+              .upload(fileName, blob, { upsert: true, contentType: 'image/jpeg' })
+              
+            if (uploadError) throw uploadError
+            
+            const { data } = supabase.storage.from('avatars').getPublicUrl(fileName)
+            
+            setConfig(prev => ({ ...prev, imageUrl: data.publicUrl }))
+            setCurrentPose('flex')
+          } catch (err) {
+            console.error('Upload failed:', err)
+            alert('Failed to upload image. Did you run setup-avatars.sql in Supabase?')
+          } finally {
+            setUploading(false)
+          }
+        }, 'image/jpeg', 0.85) // 85% quality JPEG
+      }
     }
   }
 

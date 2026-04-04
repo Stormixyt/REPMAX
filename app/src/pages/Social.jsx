@@ -59,15 +59,15 @@ export default function Social() {
     try {
       // Fetch friends and pending in parallel; gym_appointments may not exist yet
       const [friendsRes, pendingRes] = await Promise.all([
-        supabase.from('friendships').select('*, friend:friend_id(id, display_name, total_workouts, subscription_status, avatar_seed), requester:user_id(id, display_name, total_workouts, subscription_status, avatar_seed)').or(`user_id.eq.${user.id},friend_id.eq.${user.id}`).eq('status', 'accepted'),
-        supabase.from('friendships').select('*, requester:user_id(id, display_name, total_workouts, avatar_seed)').eq('friend_id', user.id).eq('status', 'pending'),
+        supabase.from('friendships').select('*, friend:friend_id(id, display_name, total_workouts, subscription_status, avatar_seed, image_url), requester:user_id(id, display_name, total_workouts, subscription_status, avatar_seed, image_url)').or(`user_id.eq.${user.id},friend_id.eq.${user.id}`).eq('status', 'accepted'),
+        supabase.from('friendships').select('*, requester:user_id(id, display_name, total_workouts, avatar_seed, image_url)').eq('friend_id', user.id).eq('status', 'pending'),
       ])
 
       // Appointments — gracefully handle table not existing
       let apptData = []
       try {
         const apptRes = await supabase.from('gym_appointments')
-          .select('*, guest:guest_id(display_name, avatar_seed), creator:creator_id(display_name, avatar_seed)')
+          .select('*, guest:guest_id(display_name, avatar_seed, image_url), creator:creator_id(display_name, avatar_seed, image_url)')
           .or(`creator_id.eq.${user.id},guest_id.eq.${user.id}`)
           .in('status', ['pending', 'accepted'])
           .order('scheduled_at', { ascending: true })
@@ -76,7 +76,7 @@ export default function Social() {
 
       let chatsRes = { data: [] }
       try {
-        chatsRes = await supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed))').order('created_at', { ascending: false })
+        chatsRes = await supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed, image_url))').order('created_at', { ascending: false })
       } catch {}
 
       const friendsList = (friendsRes.data || [])
@@ -99,7 +99,7 @@ export default function Social() {
       const formattedChats = (chatsRes.data || []).map(c => {
         if (c.type === 'direct') {
           const other = c.chat_members?.find(m => m.user_id !== user.id)
-          return { ...c, title: other?.profiles?.display_name || 'User', avatar: other?.profiles?.avatar_seed || 'default' }
+          return { ...c, title: other?.profiles?.display_name || 'User', avatar: other?.profiles?.avatar_seed || 'default', image_url: other?.profiles?.image_url }
         }
         return { ...c, title: c.name || 'Group Chat' }
       })
@@ -117,7 +117,7 @@ export default function Social() {
     const code = searchCode.trim().toUpperCase()
     const { data } = await supabase
       .from('profiles')
-      .select('id, display_name, total_workouts, subscription_status, friend_code, avatar_seed')
+      .select('id, display_name, total_workouts, subscription_status, friend_code, avatar_seed, image_url')
       .eq('friend_code', code)
       .neq('id', user.id)
       .limit(1)
@@ -264,7 +264,6 @@ export default function Social() {
   }
 
   function openDirections(gymName) {
-    // Universal: works on iOS (Apple Maps) and Android (Google Maps)
     const encoded = encodeURIComponent(gymName)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     const url = isIOS
@@ -325,11 +324,17 @@ export default function Social() {
 
                     {/* Friend info */}
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14 }}>
-                      <img
-                        src={`https://api.dicebear.com/7.x/micah/svg?seed=${other?.avatar_seed || 'default'}&backgroundColor=transparent`}
-                        style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: '2px solid var(--border)' }}
-                        alt=""
-                      />
+                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: '2px solid var(--border)', overflow: 'hidden' }}>
+                        {other?.image_url ? (
+                          <img src={other.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <img 
+                            style={{ width: '100%', height: '100%' }} 
+                            src={`https://api.dicebear.com/7.x/micah/svg?seed=${other?.avatar_seed || 'default'}&backgroundColor=transparent`}
+                            alt="" 
+                          />
+                        )}
+                      </div>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
                           {other?.display_name || 'Friend'}
@@ -437,7 +442,7 @@ export default function Social() {
                 {chats.map(c => (
                   <div key={c.id} className="chat-list-item" onClick={() => navigate(`/chat/${c.id}`)}>
                     {c.type === 'direct' ? (
-                      <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${c.avatar}&backgroundColor=transparent`} className="chat-list-avatar" alt="" />
+                      <img src={c.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${c.avatar}&backgroundColor=transparent`} className="chat-list-avatar" alt="" />
                     ) : (
                       <div className="chat-list-avatar group">
                         <RiTeamFill size={22} />
@@ -476,7 +481,7 @@ export default function Social() {
                 {friends.map(f => (
                   <div key={f.id} className="v3-friend-card" onClick={() => openDirectChat(f.id)}>
                     <div className={`v3-friend-avatar ${f.subscription_status === 'pro' ? 'pro' : ''}`}>
-                      <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${f.avatar_seed || f.id}&backgroundColor=transparent`} alt="" />
+                      <img src={f.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${f.avatar_seed || f.id}&backgroundColor=transparent`} alt="" />
                     </div>
                     <div className="v3-friend-info">
                       <div className="v3-friend-name">
@@ -540,7 +545,7 @@ export default function Social() {
                 ) : (
                   <div className="v3-friend-card" style={{ borderColor: 'var(--accent)' }}>
                     <div className={`v3-friend-avatar ${searchResult.subscription_status === 'pro' ? 'pro' : ''}`}>
-                      <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${searchResult.avatar_seed || searchResult.id}&backgroundColor=transparent`} alt="" />
+                      <img src={searchResult.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${searchResult.avatar_seed || searchResult.id}&backgroundColor=transparent`} alt="" />
                     </div>
                     <div className="v3-friend-info">
                       <div className="v3-friend-name">
@@ -620,7 +625,7 @@ export default function Social() {
                         style={{ padding: '10px 14px', borderColor: isSelected ? 'var(--accent)' : 'var(--border)', background: isSelected ? 'var(--accent-glow)' : 'var(--bg-card)' }}
                       >
                         <div className="v3-friend-avatar" style={{ width: 36, height: 36 }}>
-                          <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${f.avatar_seed || f.id}&backgroundColor=transparent`} alt="" />
+                          <img src={f.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${f.avatar_seed || f.id}&backgroundColor=transparent`} alt="" />
                         </div>
                         <div className="v3-friend-info">
                           <div className="v3-friend-name" style={{ fontSize: '0.9rem' }}>{f.display_name}</div>
