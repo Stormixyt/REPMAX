@@ -145,7 +145,7 @@ export default function Social() {
          await supabase.from('messages').insert({
            chat_id: chatIdRes.data,
            sender_id: user.id,
-           content: `Hey! Let's hit ${inviteGymName} at ${new Date(inviteDate).toLocaleString()}`,
+           content: JSON.stringify({ location: inviteGymName, time: new Date(inviteDate).toLocaleString(), acceptedBy: [] }),
            type: 'invite'
          })
       }

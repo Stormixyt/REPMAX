@@ -132,7 +132,8 @@ export default function ChatRoom() {
       await supabase.from('gym_appointments').insert(appointments)
     }
 
-    const contentStr = `Hey! Let's hit ${inviteForm.location.trim()} at ${new Date(inviteForm.time).toLocaleString()}`
+    const payload = { location: inviteForm.location.trim(), time: inviteForm.time.trim(), acceptedBy: [] }
+    const contentStr = JSON.stringify(payload)
     const tempId = crypto.randomUUID()
     
     // Optimistic UI for the chat message
@@ -157,6 +158,13 @@ export default function ChatRoom() {
 
     // Optimistic update locally
     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: updated } : m))
+
+    // Automatically mark the gym appointment as accepted if it exists!
+    await supabase.from('gym_appointments')
+      .update({ status: 'accepted' })
+      .eq('creator_id', msg.sender_id)
+      .eq('guest_id', user.id)
+      .eq('status', 'pending')
 
     // Persist to DB — this triggers realtime UPDATE for ALL clients
     await supabase.from('messages').update({ content: updated }).eq('id', msg.id)
