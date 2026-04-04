@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import GymPicker from '../components/GymPicker'
 import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill } from '@remixicon/react'
 
 export default function ChatRoom() {
@@ -390,10 +391,7 @@ export default function ChatRoom() {
                 <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>Send an invite to the chat</p>
               </div>
             </div>
-            <div className="input-group">
-              <label className="input-label">Gym or Location</label>
-              <input type="text" className="input" placeholder="e.g. Gold's Gym Downtown" value={inviteForm.location} onChange={e => setInviteForm({ ...inviteForm, location: e.target.value })} autoFocus />
-            </div>
+            <GymPicker value={inviteForm.location} onChange={loc => setInviteForm({ ...inviteForm, location: loc })} />
             <div className="input-group">
               <label className="input-label">Date & Time</label>
               <input type="datetime-local" className="input" value={inviteForm.time} onChange={e => setInviteForm({ ...inviteForm, time: e.target.value })} />

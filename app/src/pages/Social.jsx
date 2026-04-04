@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { sendNotification, NotificationTemplates } from '../lib/notifications'
+import GymPicker from '../components/GymPicker'
 import {
   RiUserAddFill, RiSearchLine, RiTeamFill, RiChat3Fill,
   RiVipCrownFill, RiFlashlightFill, RiCheckFill, RiCloseFill,
@@ -664,10 +665,7 @@ export default function Social() {
               </div>
             </div>
 
-            <div className="input-group">
-              <label className="input-label">Gym or Location</label>
-              <input className="input" placeholder="e.g. Gold's Gym Downtown" value={inviteGymName} onChange={e => setInviteGymName(e.target.value)} autoFocus />
-            </div>
+            <GymPicker value={inviteGymName} onChange={setInviteGymName} />
 
             <div className="input-group">
               <label className="input-label">Date & Time</label>
