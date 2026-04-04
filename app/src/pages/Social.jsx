@@ -536,21 +536,22 @@ export default function Social() {
       )}
 
       {inviteFriendId && (
-        <div className="v3-modal-overlay">
-          <div className="v3-modal" style={{ padding: 24 }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: 8 }}>Plan a Workout</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 20, fontSize: '0.9rem' }}>Send an invite to sync your session.</p>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(10px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={(e) => { if (e.target === e.currentTarget) setInviteFriendId(null) }}>
+          <div style={{ background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', position: 'relative' }}>
+            <button style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }} onClick={() => setInviteFriendId(null)}>✕</button>
+            <h2 style={{ fontSize: '1.25rem', marginBottom: 8, color: '#fff', fontWeight: 600 }}>Plan a Workout</h2>
+            <p style={{ color: '#888', marginBottom: 20, fontSize: '0.9rem' }}>Send an invite to sync your session.</p>
             <div className="input-group">
-              <label className="input-label">Gym Name or Location</label>
-              <input type="text" className="v3-input" placeholder="e.g. Gold's Gym Downtown" value={inviteGymName} onChange={e => setInviteGymName(e.target.value)} />
+              <label style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4, display: 'block' }}>Gym Name or Location</label>
+              <input type="text" className="v3-input" placeholder="e.g. Gold's Gym" value={inviteGymName} onChange={e => setInviteGymName(e.target.value)} style={{ width: '100%', background: '#2c2c2e', border: '1px solid #3c3c3e', padding: '12px 16px', borderRadius: '12px', color: '#fff' }} />
             </div>
             <div className="input-group" style={{ marginTop: 16 }}>
-              <label className="input-label">Date & Time</label>
-              <input type="datetime-local" className="v3-input" value={inviteDate} onChange={e => setInviteDate(e.target.value)} />
+              <label style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4, display: 'block' }}>Date & Time</label>
+              <input type="datetime-local" className="v3-input" value={inviteDate} onChange={e => setInviteDate(e.target.value)} style={{ width: '100%', background: '#2c2c2e', border: '1px solid #3c3c3e', padding: '12px 16px', borderRadius: '12px', color: '#fff' }} />
             </div>
             <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setInviteFriendId(null)}>Cancel</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={sendInvite} disabled={!inviteDate || !inviteGymName}>Send Invite</button>
+              <button style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#2c2c2e', color: '#fff', border: '1px solid #3c3c3e', fontWeight: 600, cursor: 'pointer' }} onClick={() => setInviteFriendId(null)}>Cancel</button>
+              <button style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#d4ff00', color: '#000', border: 'none', fontWeight: 600, cursor: 'pointer', opacity: (!inviteDate || !inviteGymName) ? 0.5 : 1 }} disabled={!inviteDate || !inviteGymName} onClick={sendInvite}>Send Invite</button>
             </div>
           </div>
         </div>
