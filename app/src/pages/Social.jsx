@@ -39,7 +39,7 @@ export default function Social() {
       const [friendsRes, pendingRes, apptRes] = await Promise.all([
         supabase.from('friendships').select('*, friend:friend_id(id, display_name, total_workouts, subscription_status, avatar_seed), requester:user_id(id, display_name, total_workouts, subscription_status, avatar_seed)').or(`user_id.eq.${user.id},friend_id.eq.${user.id}`).eq('status', 'accepted'),
         supabase.from('friendships').select('*, requester:user_id(id, display_name, total_workouts, avatar_seed)').eq('friend_id', user.id).eq('status', 'pending'),
-        supabase.rpc('get_my_appointments').catch(() => supabase.from('gym_appointments').select('*, guest:guest_id(display_name, avatar_seed), creator:creator_id(display_name, avatar_seed)').or(`creator_id.eq.${user.id},guest_id.eq.${user.id}`).in('status', ['pending', 'accepted']).order('scheduled_at', { ascending: true }))
+        supabase.from('gym_appointments').select('*, guest:guest_id(display_name, avatar_seed), creator:creator_id(display_name, avatar_seed)').or(`creator_id.eq.${user.id},guest_id.eq.${user.id}`).in('status', ['pending', 'accepted']).order('scheduled_at', { ascending: true })
       ])
 
       let chatsRes = { data: [] }
