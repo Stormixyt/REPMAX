@@ -21,7 +21,7 @@ export async function getUserLocation() {
   })
 }
 
-export async function findNearbyGyms(lat, lon, radiusMeters = 5000) {
+export async function findNearbyGyms(lat, lon, radiusMeters = 15000) {
   // Check cache
   const now = Date.now()
   if (
@@ -38,11 +38,14 @@ export async function findNearbyGyms(lat, lon, radiusMeters = 5000) {
     (
       node["leisure"="fitness_centre"](around:${radiusMeters},${lat},${lon});
       node["leisure"="sports_centre"](around:${radiusMeters},${lat},${lon});
+      node["amenity"="gym"](around:${radiusMeters},${lat},${lon});
       node["sport"="fitness"](around:${radiusMeters},${lat},${lon});
       way["leisure"="fitness_centre"](around:${radiusMeters},${lat},${lon});
       way["leisure"="sports_centre"](around:${radiusMeters},${lat},${lon});
+      way["amenity"="gym"](around:${radiusMeters},${lat},${lon});
+      way["sport"="fitness"](around:${radiusMeters},${lat},${lon});
     );
-    out center 30;
+    out center 50;
   `
 
   try {
@@ -77,11 +80,22 @@ export async function findNearbyGyms(lat, lon, radiusMeters = 5000) {
         }
       })
       .filter(Boolean)
-      .sort((a, b) => a.distance - b.distance)
+
+    // Deduplicate identical gyms (often OpenStreetMap maps the same building and POI twice)
+    const uniqueGyms = []
+    const seenNames = new Set()
+    for (const gym of gyms) {
+      if (!seenNames.has(gym.name)) {
+        seenNames.add(gym.name)
+        uniqueGyms.push(gym)
+      }
+    }
+
+    uniqueGyms.sort((a, b) => a.distance - b.distance)
 
     // Update cache
-    gymCache = { lat, lon, gyms, timestamp: now }
-    return gyms
+    gymCache = { lat, lon, gyms: uniqueGyms, timestamp: now }
+    return uniqueGyms
   } catch (err) {
     console.warn('[REPMAX] Gym finder error:', err)
     return []
