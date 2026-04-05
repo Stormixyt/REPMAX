@@ -302,14 +302,16 @@ export default function ChatRoom() {
           callerName: profile?.display_name || chatMeta?.title || 'Gym Buddy',
           expiresAt
         }
-        if (channelRef.current) {
-          return channelRef.current.send({
-            type: 'broadcast',
-            event: 'offer',
-            payload: offerPayload
-          })
+        if (!channelRef.current) {
+          throw new Error('Chat connection unavailable')
         }
-        return Promise.reject(new Error('Chat channel unavailable'))
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'offer',
+          payload: offerPayload
+        }).catch((error) => {
+          console.error('[REPMAX] Failed to broadcast offer:', error)
+        })
       })
 
       if (calleeId && offerPayload) {
@@ -343,7 +345,7 @@ export default function ChatRoom() {
       })
     } catch (err) {
       console.error('Call failed:', err)
-      showCallToast('Could not start the call')
+      showCallToast(err?.message || 'Could not start the call')
     }
   }
 
