@@ -1,241 +1,981 @@
-import { useState, useEffect, useRef } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import { callGroq } from "../lib/groq";
+import { askCoach } from "../lib/groq";
 import PaywallGate from "../components/PaywallGate";
 import {
+  RiArrowRightSLine,
   RiBrainFill,
+  RiCheckLine,
+  RiHeartPulseFill,
+  RiLoader4Line,
+  RiQuestionLine,
+  RiRestaurantFill,
   RiSendPlaneFill,
   RiSparklingFill,
-  RiQuestionLine,
-  RiHeartPulseFill,
-  RiRestaurantFill,
 } from "@remixicon/react";
+
+const STORAGE_NAMESPACE = "repmax-ai-coach-v3";
+const META_PREFIX = "[[REPMAX_COACH_META:";
+const META_SUFFIX = "]]";
+const MAX_REMOTE_MESSAGES = 200;
+const MAX_CONTEXT_MESSAGES = 14;
+const DEFAULT_COACH_CONTEXT = {
+  activeProgram: null,
+  recentWorkouts: [],
+  recentPRs: [],
+  nutritionProfile: null,
+  todayNutrition: null,
+  todayWater: null,
+};
 
 const SUGGESTED_PROMPTS = [
   {
     icon: <RiQuestionLine size={16} />,
-    text: "How can I improve my bench press?",
+    text: "Based on my profile, what should I focus on this week?",
   },
   {
     icon: <RiHeartPulseFill size={16} />,
-    text: "My shoulder hurts after overhead press. What should I do?",
+    text: "My shoulder hurts after overhead press. What should I change?",
   },
   {
     icon: <RiRestaurantFill size={16} />,
-    text: "What should I eat after training for muscle growth?",
+    text: "Give me a high-protein post-workout meal that fits muscle growth.",
   },
   {
     icon: <RiSparklingFill size={16} />,
-    text: "Create a quick ab workout I can do at home",
+    text: "How should I use REPMAX better to stay consistent?",
   },
 ];
 
+function getStorageKey(userId) {
+  return `${STORAGE_NAMESPACE}:${userId}`;
+}
+
+function summarizePreview(content = "") {
+  return content.replace(/\s+/g, " ").trim().slice(0, 88) || "Fresh chat";
+}
+
+function deriveConversationTitle(text = "") {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned) return "New chat";
+
+  const words = cleaned.split(" ");
+  const short = words.slice(0, 7).join(" ");
+  return short.length < cleaned.length ? `${short}...` : short;
+}
+
+function createMessage(role, content, overrides = {}) {
+  return {
+    id: overrides.id || crypto.randomUUID(),
+    role,
+    content,
+    createdAt: overrides.createdAt || new Date().toISOString(),
+  };
+}
+
+function buildConversationRecord(conversation = {}) {
+  const messages = [...(conversation.messages || [])].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
+  const firstUserMessage = messages.find((message) => message.role === "user");
+  const lastMessage = messages[messages.length - 1];
+  const title =
+    conversation.title && conversation.title !== "New chat"
+      ? conversation.title
+      : deriveConversationTitle(
+          firstUserMessage?.content || lastMessage?.content || "New chat"
+        );
+
+  return {
+    id: conversation.id || crypto.randomUUID(),
+    title,
+    createdAt:
+      conversation.createdAt || messages[0]?.createdAt || new Date().toISOString(),
+    updatedAt:
+      conversation.updatedAt || lastMessage?.createdAt || new Date().toISOString(),
+    preview:
+      conversation.preview ||
+      summarizePreview(lastMessage?.content || firstUserMessage?.content || ""),
+    messages,
+  };
+}
+
+function createConversation(overrides = {}) {
+  return buildConversationRecord({
+    id: overrides.id,
+    title: overrides.title || "New chat",
+    createdAt: overrides.createdAt,
+    updatedAt: overrides.updatedAt,
+    preview: overrides.preview,
+    messages: overrides.messages || [],
+  });
+}
+
+function sortConversations(conversations = []) {
+  return [...conversations].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+}
+
+function readCachedWorkspace(userId) {
+  if (!userId || typeof window === "undefined") {
+    return { activeConversationId: null, conversations: [] };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(getStorageKey(userId));
+    if (!raw) return { activeConversationId: null, conversations: [] };
+    const parsed = JSON.parse(raw);
+    return {
+      activeConversationId: parsed?.activeConversationId || null,
+      conversations: Array.isArray(parsed?.conversations)
+        ? parsed.conversations.map(buildConversationRecord)
+        : [],
+    };
+  } catch {
+    return { activeConversationId: null, conversations: [] };
+  }
+}
+
+function persistWorkspace(userId, activeConversationId, conversations) {
+  if (!userId || typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    getStorageKey(userId),
+    JSON.stringify({
+      activeConversationId,
+      conversations: conversations.map(buildConversationRecord),
+    })
+  );
+}
+
+function packStoredMessage(conversationId, conversationTitle, content) {
+  const meta = JSON.stringify({ conversationId, conversationTitle });
+  return `${META_PREFIX}${meta}${META_SUFFIX}\n${content}`;
+}
+
+function unpackStoredMessage(rawContent = "") {
+  if (!rawContent.startsWith(META_PREFIX)) {
+    return {
+      content: rawContent,
+      conversationId: null,
+      conversationTitle: null,
+    };
+  }
+
+  const metaEndIndex = rawContent.indexOf(META_SUFFIX);
+  if (metaEndIndex === -1) {
+    return {
+      content: rawContent,
+      conversationId: null,
+      conversationTitle: null,
+    };
+  }
+
+  try {
+    const meta = JSON.parse(
+      rawContent.slice(META_PREFIX.length, metaEndIndex)
+    );
+    return {
+      content: rawContent.slice(metaEndIndex + META_SUFFIX.length).replace(/^\n/, ""),
+      conversationId: meta?.conversationId || null,
+      conversationTitle: meta?.conversationTitle || null,
+    };
+  } catch {
+    return {
+      content: rawContent,
+      conversationId: null,
+      conversationTitle: null,
+    };
+  }
+}
+
+function hydrateRemoteConversations(rows = []) {
+  const conversationMap = new Map();
+
+  rows.forEach((row) => {
+    const parsed = unpackStoredMessage(row.content || "");
+    const conversationId = parsed.conversationId || "legacy-import";
+
+    if (!conversationMap.has(conversationId)) {
+      conversationMap.set(
+        conversationId,
+        createConversation({
+          id: conversationId,
+          title: parsed.conversationTitle || "Imported chat",
+          createdAt: row.created_at,
+          updatedAt: row.created_at,
+          preview: summarizePreview(parsed.content),
+          messages: [],
+        })
+      );
+    }
+
+    const conversation = conversationMap.get(conversationId);
+    conversation.messages.push(
+      createMessage(row.role, parsed.content, {
+        id: row.id,
+        createdAt: row.created_at,
+      })
+    );
+    conversation.updatedAt = row.created_at;
+    conversation.preview = summarizePreview(parsed.content);
+
+    if (parsed.conversationTitle && conversation.title === "Imported chat") {
+      conversation.title = parsed.conversationTitle;
+    }
+  });
+
+  return sortConversations(
+    Array.from(conversationMap.values()).map((conversation) =>
+      buildConversationRecord(conversation)
+    )
+  );
+}
+
+function mergeConversations(primary = [], secondary = []) {
+  const merged = new Map();
+
+  [...secondary, ...primary].forEach((conversation) => {
+    const normalized = buildConversationRecord(conversation);
+    const existing = merged.get(normalized.id);
+
+    if (!existing) {
+      merged.set(normalized.id, normalized);
+      return;
+    }
+
+    const messagesById = new Map(
+      existing.messages.map((message) => [message.id, message])
+    );
+
+    normalized.messages.forEach((message) => {
+      messagesById.set(message.id, message);
+    });
+
+    merged.set(
+      normalized.id,
+      buildConversationRecord({
+        ...existing,
+        title:
+          existing.title && existing.title !== "New chat"
+            ? existing.title
+            : normalized.title,
+        createdAt:
+          new Date(existing.createdAt).getTime() <
+          new Date(normalized.createdAt).getTime()
+            ? existing.createdAt
+            : normalized.createdAt,
+        updatedAt:
+          new Date(existing.updatedAt).getTime() >
+          new Date(normalized.updatedAt).getTime()
+            ? existing.updatedAt
+            : normalized.updatedAt,
+        messages: Array.from(messagesById.values()),
+      })
+    );
+  });
+
+  return sortConversations(Array.from(merged.values()));
+}
+
+function insertMessageIntoConversation(
+  conversations,
+  conversationId,
+  message,
+  titleOverride
+) {
+  let found = false;
+
+  const next = conversations.map((conversation) => {
+    if (conversation.id !== conversationId) return conversation;
+    found = true;
+
+    return buildConversationRecord({
+      ...conversation,
+      title: titleOverride || conversation.title,
+      updatedAt: message.createdAt,
+      preview: summarizePreview(message.content),
+      messages: [...conversation.messages, message],
+    });
+  });
+
+  if (!found) {
+    next.unshift(
+      createConversation({
+        id: conversationId,
+        title: titleOverride || "New chat",
+        createdAt: message.createdAt,
+        updatedAt: message.createdAt,
+        preview: summarizePreview(message.content),
+        messages: [message],
+      })
+    );
+  }
+
+  return sortConversations(next);
+}
+
+function formatThreadStamp(timestamp) {
+  if (!timestamp) return "";
+
+  const value = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - value.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+  if (diffHours < 1) return "Now";
+  if (diffHours < 24) return `${diffHours}h`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d`;
+
+  return value.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatMessageTime(timestamp) {
+  if (!timestamp) return "";
+
+  return new Date(timestamp).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getGoalLabel(goal) {
+  const labels = {
+    hypertrophy: "Muscle Growth",
+    strength: "Strength",
+    athletic: "Athletic",
+    general: "General Fitness",
+  };
+
+  return labels[goal] || "Fitness";
+}
+
+function getExperienceLabel(level) {
+  const labels = {
+    beginner: "Beginner",
+    intermediate: "Intermediate",
+    advanced: "Advanced",
+  };
+
+  return labels[level] || "Intermediate";
+}
+
+function getSplitLabel(split) {
+  const labels = {
+    ppl: "Push/Pull/Legs",
+    upper_lower: "Upper/Lower",
+    full_body: "Full Body",
+    bro_split: "Bro Split",
+    arnold: "Arnold Split",
+    custom: "Custom",
+  };
+
+  return labels[split] || "Custom Split";
+}
+
+function MessageBody({ content }) {
+  const blocks = content.split(/\n{2,}/);
+
+  return blocks.map((block, index) => {
+    const lines = block.split("\n").filter((line) => line.trim().length > 0);
+    const isBulletList =
+      lines.length > 0 && lines.every((line) => /^[*-•]\s+/.test(line.trim()));
+    const isNumberedList =
+      lines.length > 0 && lines.every((line) => /^\d+\.\s+/.test(line.trim()));
+
+    if (isBulletList) {
+      return (
+        <ul key={index} className="coach-rich-list">
+          {lines.map((line, lineIndex) => (
+            <li key={lineIndex}>{line.replace(/^[*-•]\s+/, "")}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    if (isNumberedList) {
+      return (
+        <ol key={index} className="coach-rich-list coach-rich-list-numbered">
+          {lines.map((line, lineIndex) => (
+            <li key={lineIndex}>{line.replace(/^\d+\.\s+/, "")}</li>
+          ))}
+        </ol>
+      );
+    }
+
+    return (
+      <p key={index} className="coach-rich-paragraph">
+        {block}
+      </p>
+    );
+  });
+}
+
 export default function AICoach() {
   const { user, profile, isPro } = useAuth();
-  const [messages, setMessages] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState(null);
+  const [coachContext, setCoachContext] = useState(DEFAULT_COACH_CONTEXT);
   const messagesEndRef = useRef(null);
+  const composerRef = useRef(null);
+
+  const activeConversation =
+    conversations.find((conversation) => conversation.id === activeConversationId) ||
+    conversations[0] ||
+    null;
 
   useEffect(() => {
-    loadHistory();
-  }, []);
+    if (!user?.id) return;
+
+    let cancelled = false;
+
+    async function loadCoachWorkspace() {
+      setLoadingHistory(true);
+      setCoachContext(DEFAULT_COACH_CONTEXT);
+
+      const cached = readCachedWorkspace(user.id);
+      const seededConversations = cached.conversations.length
+        ? sortConversations(cached.conversations)
+        : [createConversation()];
+
+      if (!cancelled) {
+        setConversations(seededConversations);
+        setActiveConversationId(
+          cached.activeConversationId || seededConversations[0]?.id || null
+        );
+      }
+
+      try {
+        const [remoteHistory, nextCoachContext] = await Promise.all([
+          supabase
+            .from("ai_messages")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: true })
+            .limit(MAX_REMOTE_MESSAGES),
+          loadCoachContext(user.id),
+        ]);
+
+        if (cancelled) return;
+
+        const remoteConversations = hydrateRemoteConversations(
+          remoteHistory.data || []
+        );
+        const mergedConversations = mergeConversations(
+          seededConversations,
+          remoteConversations
+        );
+        const finalConversations = mergedConversations.length
+          ? mergedConversations
+          : [createConversation()];
+
+        setCoachContext(nextCoachContext);
+        setConversations(finalConversations);
+        setActiveConversationId((currentId) => {
+          const preferredId = cached.activeConversationId || currentId;
+          return finalConversations.some(
+            (conversation) => conversation.id === preferredId
+          )
+            ? preferredId
+            : finalConversations[0].id;
+        });
+      } finally {
+        if (!cancelled) {
+          setLoadingHistory(false);
+        }
+      }
+    }
+
+    loadCoachWorkspace();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || loadingHistory || conversations.length === 0) return;
+    persistWorkspace(user.id, activeConversationId, conversations);
+  }, [user?.id, loadingHistory, activeConversationId, conversations]);
+
+  useEffect(() => {
+    if (!conversations.length) return;
+
+    if (!activeConversationId) {
+      setActiveConversationId(conversations[0].id);
+      return;
+    }
+
+    if (!conversations.some((conversation) => conversation.id === activeConversationId)) {
+      setActiveConversationId(conversations[0].id);
+    }
+  }, [conversations, activeConversationId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [activeConversationId, activeConversation?.messages.length, loading]);
 
-  async function loadHistory() {
-    const { data } = await supabase
-      .from("ai_messages")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(50);
-    setMessages(data || []);
-    setLoadingHistory(false);
+  useEffect(() => {
+    const textarea = composerRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = "0px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 220)}px`;
+  }, [input]);
+
+  useEffect(() => {
+    if (!copiedMessageId) return undefined;
+
+    const timeout = setTimeout(() => setCopiedMessageId(null), 1600);
+    return () => clearTimeout(timeout);
+  }, [copiedMessageId]);
+
+  async function loadCoachContext(userId) {
+    const today = new Date().toISOString().split("T")[0];
+
+    const [programRes, workoutRes, prRes, nutritionRes, foodLogsRes, waterRes] =
+      await Promise.all([
+      supabase
+        .from("programs")
+        .select("name, current_week")
+        .eq("user_id", userId)
+        .eq("active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("workouts")
+        .select("day_name, completed_at, total_volume")
+        .eq("user_id", userId)
+        .not("completed_at", "is", null)
+        .order("completed_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("personal_records")
+        .select("exercise_name, weight, achieved_at")
+        .eq("user_id", userId)
+        .order("achieved_at", { ascending: false })
+        .limit(4),
+      supabase
+        .from("nutrition_profiles")
+        .select(
+          "diet_goal, target_calories, target_protein, target_carbs, target_fat"
+        )
+        .eq("user_id", userId)
+        .maybeSingle(),
+      supabase
+        .from("food_logs")
+        .select("calories, protein, carbs, fat")
+        .eq("user_id", userId)
+        .eq("logged_at", today),
+      supabase
+        .from("water_logs")
+        .select("glasses")
+        .eq("user_id", userId)
+        .eq("logged_at", today)
+        .maybeSingle(),
+    ]);
+
+    const todayTotals = (foodLogsRes?.data || []).reduce(
+      (totals, log) => ({
+        entryCount: totals.entryCount + 1,
+        calories: totals.calories + Number(log.calories || 0),
+        protein: totals.protein + Number(log.protein || 0),
+        carbs: totals.carbs + Number(log.carbs || 0),
+        fat: totals.fat + Number(log.fat || 0),
+      }),
+      { entryCount: 0, calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+
+    return {
+      activeProgram: programRes?.data || null,
+      recentWorkouts: workoutRes?.data || [],
+      recentPRs: prRes?.data || [],
+      nutritionProfile: nutritionRes?.data || null,
+      todayNutrition: todayTotals,
+      todayWater: waterRes?.data || null,
+    };
   }
 
-  async function sendMessage(text) {
-    if (!text?.trim() || loading) return;
-    const userMsg = {
-      role: "user",
-      content: text.trim(),
-      created_at: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
+  async function persistCoachMessage(conversationId, conversationTitle, message) {
+    if (!user?.id || !message?.content) return;
+
+    await supabase.from("ai_messages").upsert(
+      {
+        id: message.id,
+        user_id: user.id,
+        role: message.role,
+        content: packStoredMessage(
+          conversationId,
+          conversationTitle,
+          message.content
+        ),
+      },
+      { onConflict: "id" }
+    );
+  }
+
+  function openConversation(conversationId) {
+    startTransition(() => {
+      setActiveConversationId(conversationId);
+      setHistoryOpen(false);
+    });
+  }
+
+  function createFreshConversation() {
+    if (activeConversation && activeConversation.messages.length === 0) {
+      setHistoryOpen(false);
+      return;
+    }
+
+    const freshConversation = createConversation();
+    startTransition(() => {
+      setConversations((prev) => sortConversations([freshConversation, ...prev]));
+      setActiveConversationId(freshConversation.id);
+      setInput("");
+      setHistoryOpen(false);
+    });
+  }
+
+  async function copyAssistantMessage(message) {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopiedMessageId(message.id);
+    } catch {}
+  }
+
+  async function sendMessage(question) {
+    const trimmed = question?.trim();
+    if (!trimmed || loading) return;
+
+    const targetConversationId =
+      activeConversation?.id || createConversation().id;
+    const previousMessages = activeConversation?.messages || [];
+    const nextTitle =
+      previousMessages.length > 0
+        ? activeConversation?.title || "New chat"
+        : deriveConversationTitle(trimmed);
+
+    const userMessage = createMessage("user", trimmed);
+
+    setConversations((prev) =>
+      insertMessageIntoConversation(
+        prev,
+        targetConversationId,
+        userMessage,
+        nextTitle
+      )
+    );
+    setActiveConversationId(targetConversationId);
     setInput("");
     setLoading(true);
 
-    await supabase
-      .from("ai_messages")
-      .insert({ user_id: user.id, role: "user", content: text.trim() });
+    persistCoachMessage(targetConversationId, nextTitle, userMessage).catch(() => {});
 
     try {
-      const context = buildContext();
-      const history = messages
-        .slice(-10)
-        .map((m) => ({ role: m.role, content: m.content }));
-
-      const data = await callGroq({
-        messages: [
-          {
-            role: "system",
-            content: `You are REPMAX AI Coach — a friendly, knowledgeable fitness expert. You provide evidence-based advice on training, nutrition, recovery, and form.
-
-USER PROFILE:
-- Name: ${profile?.display_name || "Athlete"}
-- Experience: ${profile?.experience_level || "intermediate"}
-- Goal: ${profile?.goal || "general fitness"}
-- Training days: ${profile?.training_days?.join(", ") || "N/A"}
-- Equipment: ${profile?.equipment?.join(", ") || "full gym"}
-
-${context}
-
-RULES:
-- Be concise but thorough. Use bullet points.
-- If they describe pain, always recommend seeing a doctor/physio first.
-- Give specific, actionable advice — not generic platitudes.
-- Use their profile data to personalize responses.
-- If asked about nutrition, give examples of actual meals.
-- Keep responses under 300 words unless they ask for detail.`,
-          },
-          ...history,
-          { role: "user", content: text.trim() },
-        ],
-        model: "llama-3.3-70b-versatile",
-        temperature: 0.7,
-        max_tokens: 1000,
+      const assistantContent = await askCoach({
+        question: trimmed,
+        profile,
+        coachContext,
+        history: previousMessages.slice(-MAX_CONTEXT_MESSAGES),
       });
 
-      const assistantContent =
-        data.choices?.[0]?.message?.content ||
-        "Sorry, I couldn't generate a response. Try again.";
-      const assistantMsg = {
-        role: "assistant",
-        content: assistantContent,
-        created_at: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-      await supabase.from("ai_messages").insert({
-        user_id: user.id,
-        role: "assistant",
-        content: assistantContent,
-      });
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Connection error. Please try again.",
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      const assistantMessage = createMessage("assistant", assistantContent);
+
+      setConversations((prev) =>
+        insertMessageIntoConversation(
+          prev,
+          targetConversationId,
+          assistantMessage,
+          nextTitle
+        )
+      );
+
+      persistCoachMessage(
+        targetConversationId,
+        nextTitle,
+        assistantMessage
+      ).catch(() => {});
+    } catch {
+      const errorMessage = createMessage(
+        "assistant",
+        "I hit a connection issue. Try sending that again in a second."
+      );
+
+      setConversations((prev) =>
+        insertMessageIntoConversation(
+          prev,
+          targetConversationId,
+          errorMessage,
+          nextTitle
+        )
+      );
+
+      persistCoachMessage(targetConversationId, nextTitle, errorMessage).catch(
+        () => {}
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
-  function buildContext() {
-    const parts = [];
-    if (profile?.total_workouts)
-      parts.push(`Total workouts completed: ${profile.total_workouts}`);
-    if (profile?.current_streak)
-      parts.push(`Current training streak: ${profile.current_streak} days`);
-    return parts.length ? "RECENT ACTIVITY:\n" + parts.join("\n") : "";
+  function handleComposerKeyDown(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage(input);
+    }
   }
+
+  const coachFacts = [
+    { label: "Goal", value: getGoalLabel(profile?.goal) },
+    {
+      label: "Level",
+      value: getExperienceLabel(profile?.experience_level),
+    },
+    {
+      label: "Split",
+      value:
+        coachContext.activeProgram?.name ||
+        (profile?.preferred_split
+          ? getSplitLabel(profile.preferred_split)
+          : null) ||
+        `${profile?.training_days?.length || 3} days/week`,
+    },
+    {
+      label: "Streak",
+      value: `${profile?.current_streak || 0} days`,
+    },
+  ];
 
   const coachContent = (
     <div className="coach-page">
-      <div className="coach-header">
-        <div className="coach-avatar">
-          <RiBrainFill size={24} />
-        </div>
-        <div>
-          <h1 className="coach-title">AI Coach</h1>
-          <p className="coach-subtitle">Your personal fitness expert</p>
-        </div>
-      </div>
+      <div className={`coach-history-overlay ${historyOpen ? "visible" : ""}`} onClick={() => setHistoryOpen(false)} />
 
-      <div className="coach-messages">
-        {messages.length === 0 && !loadingHistory && (
-          <div className="coach-welcome">
-            <RiSparklingFill size={32} className="accent-icon" />
-            <h3>Ask me anything about fitness</h3>
-            <p>Training, nutrition, recovery, form tips — I'm here to help.</p>
-            <div className="coach-suggestions">
-              {SUGGESTED_PROMPTS.map((p, i) => (
+      <div className="coach-shell">
+        <aside className={`coach-sidebar ${historyOpen ? "open" : ""}`}>
+          <div className="coach-sidebar-head">
+            <div>
+              <div className="coach-sidebar-eyebrow">REPMAX Coach</div>
+              <div className="coach-sidebar-title">Chat History</div>
+            </div>
+            <button className="coach-primary-action" onClick={createFreshConversation}>
+              <RiSparklingFill size={16} /> New chat
+            </button>
+          </div>
+
+          <div className="coach-facts-grid">
+            {coachFacts.map((fact) => (
+              <div key={fact.label} className="coach-fact-card">
+                <div className="coach-fact-label">{fact.label}</div>
+                <div className="coach-fact-value">{fact.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="coach-sidebar-section">
+            <div className="coach-sidebar-section-label">Recent conversations</div>
+            <div className="coach-thread-list">
+              {conversations.map((conversation) => (
                 <button
-                  key={i}
-                  className="suggestion-chip"
-                  onClick={() => sendMessage(p.text)}
+                  key={conversation.id}
+                  className={`coach-thread-item ${
+                    conversation.id === activeConversationId ? "active" : ""
+                  }`}
+                  onClick={() => openConversation(conversation.id)}
                 >
-                  {p.icon} {p.text}
+                  <div className="coach-thread-item-top">
+                    <div className="coach-thread-item-title">{conversation.title}</div>
+                    <div className="coach-thread-item-time">
+                      {formatThreadStamp(conversation.updatedAt)}
+                    </div>
+                  </div>
+                  <div className="coach-thread-item-preview">
+                    {conversation.preview || "Fresh chat"}
+                  </div>
                 </button>
               ))}
             </div>
           </div>
-        )}
+        </aside>
 
-        {messages.map((msg, i) => (
-          <div key={i} className={`coach-msg ${msg.role}`}>
-            {msg.role === "assistant" && (
-              <div className="coach-msg-avatar">
-                <RiBrainFill size={16} />
+        <section className="coach-main">
+          <header className="coach-main-header">
+            <div className="coach-main-header-left">
+              <button className="coach-ghost-btn coach-mobile-only" onClick={() => setHistoryOpen(true)}>
+                History
+              </button>
+              <div className="coach-hero-mark">
+                <RiBrainFill size={20} />
+              </div>
+              <div>
+                <div className="coach-main-title">
+                  {activeConversation?.title || "AI Coach"}
+                </div>
+                <div className="coach-main-subtitle">
+                  Fitness guidance, nutrition help, recovery advice, and REPMAX app guidance.
+                </div>
+              </div>
+            </div>
+            <button className="coach-ghost-btn" onClick={createFreshConversation}>
+              New chat <RiArrowRightSLine size={16} />
+            </button>
+          </header>
+
+          <div className="coach-messages">
+            {loadingHistory ? (
+              <div className="coach-loading-state">
+                <RiLoader4Line size={20} className="spin" />
+                Loading your coach workspace...
+              </div>
+            ) : activeConversation?.messages.length ? (
+              activeConversation.messages.map((message) => {
+                const isUser = message.role === "user";
+
+                return (
+                  <div key={message.id} className={`coach-msg ${message.role}`}>
+                    {!isUser && (
+                      <div className="coach-msg-avatar">
+                        <RiBrainFill size={15} />
+                      </div>
+                    )}
+
+                    <div className="coach-msg-card">
+                      <div className="coach-msg-meta">
+                        <div className="coach-msg-author">
+                          {isUser ? "You" : "REPMAX Coach"}
+                        </div>
+                        <div className="coach-msg-tools">
+                          <span>{formatMessageTime(message.createdAt)}</span>
+                          {!isUser && (
+                            <button
+                              className="coach-copy-btn"
+                              onClick={() => copyAssistantMessage(message)}
+                            >
+                              {copiedMessageId === message.id ? (
+                                <>
+                                  <RiCheckLine size={14} /> Copied
+                                </>
+                              ) : (
+                                "Copy"
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={`coach-msg-bubble ${isUser ? "user" : "assistant"}`}>
+                        <MessageBody content={message.content} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="coach-welcome">
+                <div className="coach-welcome-badge">
+                  <RiSparklingFill size={16} />
+                  REPMAX Coach
+                </div>
+                <h2>Smarter answers, better training, cleaner history.</h2>
+                <p>
+                  Ask about workouts, nutrition, recovery, pain management basics,
+                  or how to use REPMAX more effectively.
+                </p>
+
+                <div className="coach-suggestions-grid">
+                  {SUGGESTED_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt.text}
+                      className="coach-suggestion-card"
+                      onClick={() => sendMessage(prompt.text)}
+                    >
+                      <div className="coach-suggestion-icon">{prompt.icon}</div>
+                      <div className="coach-suggestion-text">{prompt.text}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="coach-insights-row">
+                  {coachFacts.map((fact) => (
+                    <div key={fact.label} className="coach-insight-pill">
+                      <span>{fact.label}</span>
+                      <strong>{fact.value}</strong>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-            <div className="coach-msg-bubble">
-              {msg.content.split("\n").map((line, j) => (
-                <p key={j} style={{ marginBottom: line ? 4 : 0 }}>
-                  {line}
-                </p>
-              ))}
-            </div>
-          </div>
-        ))}
 
-        {loading && (
-          <div className="coach-msg assistant">
-            <div className="coach-msg-avatar">
-              <RiBrainFill size={16} />
-            </div>
-            <div className="coach-msg-bubble">
-              <div className="typing-indicator">
-                <span />
-                <span />
-                <span />
+            {loading && (
+              <div className="coach-msg assistant">
+                <div className="coach-msg-avatar">
+                  <RiBrainFill size={15} />
+                </div>
+                <div className="coach-msg-card">
+                  <div className="coach-msg-meta">
+                    <div className="coach-msg-author">REPMAX Coach</div>
+                    <div className="coach-msg-tools">Thinking...</div>
+                  </div>
+                  <div className="coach-msg-bubble assistant">
+                    <div className="typing-indicator">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+                </div>
               </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="coach-composer">
+            <div className="coach-composer-shell">
+              <textarea
+                ref={composerRef}
+                className="coach-composer-input"
+                placeholder="Ask about your training, recovery, nutrition, or how to use REPMAX..."
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={handleComposerKeyDown}
+                disabled={loading}
+                rows={1}
+              />
+              <button
+                className="coach-send-btn"
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim() || loading}
+              >
+                {loading ? <RiLoader4Line size={18} className="spin" /> : <RiSendPlaneFill size={18} />}
+              </button>
+            </div>
+            <div className="coach-composer-hint">
+              Enter to send. Shift + Enter for a new line.
             </div>
           </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="coach-input-bar">
-        <input
-          className="input coach-input"
-          placeholder="Ask your AI coach..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-          disabled={loading}
-        />
-        <button
-          className="btn btn-primary coach-send"
-          onClick={() => sendMessage(input)}
-          disabled={!input.trim() || loading}
-        >
-          <RiSendPlaneFill size={20} />
-        </button>
+        </section>
       </div>
     </div>
   );
 
   if (!isPro) {
     return (
-      <div className="page">
-        <PaywallGate feature="AI Coach">{coachContent}</PaywallGate>
-      </div>
+      <PaywallGate feature="AI Coach">{coachContent}</PaywallGate>
     );
   }
 
