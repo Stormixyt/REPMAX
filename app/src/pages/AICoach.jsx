@@ -116,20 +116,13 @@ function cleanGymbroChunk(chunk = "") {
     .trim();
 }
 
-function splitGymbroClause(chunk = "") {
-  return chunk
-    .split(/(?:,|;| - | — | but | so | then | because | which means | that means )/i)
-    .map((part) => cleanGymbroChunk(part))
-    .filter(Boolean);
-}
-
-function splitGymbroByLength(chunk = "") {
+function splitGymbroByLength(chunk = "", targetSize = 8) {
   const words = cleanGymbroChunk(chunk).split(" ").filter(Boolean);
-  if (words.length <= 6) return [cleanGymbroChunk(chunk)];
+  if (words.length <= 12) return [cleanGymbroChunk(chunk)];
 
   const parts = [];
-  for (let index = 0; index < words.length; index += 4) {
-    parts.push(words.slice(index, index + 4).join(" "));
+  for (let index = 0; index < words.length; index += targetSize) {
+    parts.push(words.slice(index, index + targetSize).join(" "));
   }
   return parts.filter(Boolean);
 }
@@ -159,6 +152,8 @@ function stylizeGymbroChunk(chunk = "") {
     .replace(/\b(nassim|brother|gang)\b/g, "bro")
     .replace(/\blet'?s get into it\b/g, "")
     .replace(/\blet'?s get down to business\b/g, "")
+    .replace(/\bto be honest\b/g, "")
+    .replace(/\bhonestly\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -181,6 +176,47 @@ function stylizeGymbroChunk(chunk = "") {
     .trim();
 }
 
+function mergeGymbroChunks(chunks = []) {
+  const merged = [];
+
+  for (const rawChunk of chunks) {
+    const chunk = stylizeGymbroChunk(rawChunk);
+    if (!chunk) continue;
+
+    const wordCount = chunk.split(" ").filter(Boolean).length;
+    const previous = merged[merged.length - 1];
+
+    if (wordCount <= 2 && previous) {
+      merged[merged.length - 1] = `${previous} ${chunk}`.trim();
+      continue;
+    }
+
+    if (previous) {
+      const previousWords = previous.split(" ").filter(Boolean).length;
+      if (previousWords <= 4 && wordCount <= 4) {
+        merged[merged.length - 1] = `${previous} ${chunk}`.trim();
+        continue;
+      }
+    }
+
+    merged.push(chunk);
+  }
+
+  if (merged.length <= 3) return merged;
+
+  const compact = [];
+  merged.forEach((chunk) => {
+    if (compact.length < 2) {
+      compact.push(chunk);
+      return;
+    }
+
+    compact[compact.length - 1] = `${compact[compact.length - 1]} ${chunk}`.trim();
+  });
+
+  return compact;
+}
+
 function splitGymbroResponse(content = "") {
   const explicitChunks = content
     .split("[[MSG]]")
@@ -188,12 +224,9 @@ function splitGymbroResponse(content = "") {
     .filter(Boolean);
 
   if (explicitChunks.length > 1) {
-    return explicitChunks
-      .flatMap((chunk) => splitGymbroClause(chunk))
-      .flatMap((chunk) => splitGymbroByLength(chunk))
-      .map((chunk) => stylizeGymbroChunk(chunk))
-      .filter(Boolean)
-      .slice(0, 8);
+    return mergeGymbroChunks(
+      explicitChunks.flatMap((chunk) => splitGymbroByLength(chunk))
+    ).slice(0, 3);
   }
 
   const paragraphChunks = content
@@ -202,12 +235,9 @@ function splitGymbroResponse(content = "") {
     .filter(Boolean);
 
   if (paragraphChunks.length > 1) {
-    return paragraphChunks
-      .flatMap((chunk) => splitGymbroClause(chunk))
-      .flatMap((chunk) => splitGymbroByLength(chunk))
-      .map((chunk) => stylizeGymbroChunk(chunk))
-      .filter(Boolean)
-      .slice(0, 8);
+    return mergeGymbroChunks(
+      paragraphChunks.flatMap((chunk) => splitGymbroByLength(chunk))
+    ).slice(0, 3);
   }
 
   const sentenceChunks = (content.match(/[^.!?\n]+[.!?]?/g) || [])
@@ -215,13 +245,10 @@ function splitGymbroResponse(content = "") {
     .filter(Boolean);
 
   const chunks = (sentenceChunks.length > 1 ? sentenceChunks : [content])
-    .flatMap((chunk) => splitGymbroClause(chunk))
-    .flatMap((chunk) => splitGymbroByLength(chunk))
-    .map((chunk) => stylizeGymbroChunk(chunk))
-    .filter(Boolean);
+    .flatMap((chunk) => splitGymbroByLength(chunk));
 
   if (chunks.length) {
-    return chunks.slice(0, 8);
+    return mergeGymbroChunks(chunks).slice(0, 3);
   }
 
   return [stylizeGymbroChunk(content)].filter(Boolean);
@@ -239,25 +266,20 @@ function normalizeAssistantChunks(content = "", mode = "coach") {
   if (!cleaned.length) return [content.trim()].filter(Boolean);
 
   if (mode === "gymbro" && cleaned.length === 1) {
-    return splitGymbroByLength(cleaned[0])
-      .map((chunk) => stylizeGymbroChunk(chunk))
-      .filter(Boolean)
-      .slice(0, 8);
+    return mergeGymbroChunks(splitGymbroByLength(cleaned[0])).slice(0, 3);
   }
 
   if (mode === "gymbro") {
-    return cleaned
-      .flatMap((chunk) => splitGymbroByLength(chunk))
-      .map((chunk) => stylizeGymbroChunk(chunk))
-      .filter(Boolean)
-      .slice(0, 8);
+    return mergeGymbroChunks(cleaned).slice(0, 3);
   }
 
   return cleaned;
 }
 
 function getAssistantTypingDelay(chunk = "", index = 0) {
-  return Math.min(950, 220 + chunk.length * 18 + index * 80);
+  const base = 1100 + chunk.length * 45;
+  const stagger = index * 500;
+  return Math.min(3200, base + stagger);
 }
 
 function buildConversationRecord(conversation = {}) {
@@ -983,9 +1005,7 @@ export default function AICoach() {
       );
 
       for (let index = 0; index < assistantChunks.length; index += 1) {
-        if (index > 0) {
-          await wait(getAssistantTypingDelay(assistantChunks[index], index));
-        }
+        await wait(getAssistantTypingDelay(assistantChunks[index], index));
 
         const assistantMessage = createMessage(
           "assistant",
