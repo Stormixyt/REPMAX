@@ -55,7 +55,7 @@ function createPeerConnection() {
   return pc
 }
 
-export async function startCall(chatId, userId, withVideo = false) {
+export async function startCall(chatId, userId, withVideo = false, sendOfferCallback) {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
@@ -104,11 +104,16 @@ export async function startCall(chatId, userId, withVideo = false) {
     const offer = await peerConnection.createOffer()
     await peerConnection.setLocalDescription(offer)
 
-    signalingChannel.send({
-      type: 'broadcast',
-      event: 'offer',
-      payload: { offer, callerId: userId, withVideo }
-    })
+    if (sendOfferCallback) {
+      sendOfferCallback({ offer, callerId: userId, withVideo })
+    } else {
+      // Fallback
+      signalingChannel.send({
+        type: 'broadcast',
+        event: 'offer',
+        payload: { offer, callerId: userId, withVideo }
+      })
+    }
 
     return { localStream, channelName }
   } catch (err) {

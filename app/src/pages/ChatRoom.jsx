@@ -21,7 +21,6 @@ export default function ChatRoom() {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const channelRef = useRef(null)
-  const callChannelRef = useRef(null)
   const [activeCall, setActiveCall] = useState(null) // { localStream, remoteStream, callerName, isVideo }
   const [incomingCall, setIncomingCall] = useState(null)
   const [reactionMsgId, setReactionMsgId] = useState(null)
@@ -76,6 +75,11 @@ export default function ChatRoom() {
         if (cancelled) return
         setMessages(prev => prev.filter(m => m.id !== payload.old.id))
       })
+      .on('broadcast', { event: 'offer' }, ({ payload }) => {
+        if (payload.callerId !== user.id) {
+          setIncomingCall({ offer: payload.offer, callerId: payload.callerId, withVideo: payload.withVideo })
+        }
+      })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log(`[REPMAX] Chat ${chatId} realtime connected`)
@@ -84,26 +88,11 @@ export default function ChatRoom() {
 
     channelRef.current = channel
 
-    // Listen for incoming calls
-    const callChannel = supabase.channel(`call-${chatId}`, { config: { broadcast: { self: false } } })
-      .on('broadcast', { event: 'offer' }, ({ payload }) => {
-        if (payload.callerId !== user.id) {
-          setIncomingCall({ offer: payload.offer, callerId: payload.callerId, withVideo: payload.withVideo })
-        }
-      })
-      .subscribe()
-      
-    callChannelRef.current = callChannel
-
     return () => {
       cancelled = true
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null
-      }
-      if (callChannelRef.current) {
-        supabase.removeChannel(callChannelRef.current)
-        callChannelRef.current = null
       }
     }
   }, [chatId])
@@ -135,7 +124,15 @@ export default function ChatRoom() {
 
   async function initiateCall(withVideo) {
     try {
-      const result = await startCall(chatId, user.id, withVideo)
+      const result = await startCall(chatId, user.id, withVideo, (payload) => {
+        if (channelRef.current) {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'offer',
+            payload
+          })
+        }
+      })
       setCallbacks({
         onRemote: (stream) => setActiveCall(prev => ({ ...prev, remoteStream: stream })),
         onEnded: () => setActiveCall(null),
