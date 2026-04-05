@@ -15,6 +15,7 @@ import Nutrition from './pages/Nutrition'
 import Notifications from './pages/Notifications'
 import ChatRoom from './pages/ChatRoom'
 import HomeExercises from './pages/HomeExercises'
+import Recovery from './pages/Recovery'
 import Layout from './components/Layout'
 import UsernameModal from './components/UsernameModal'
 
@@ -72,6 +73,7 @@ export default function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/chat/:chatId" element={<ChatRoom />} />
         <Route path="/exercises" element={<HomeExercises />} />
+        <Route path="/recovery" element={<Recovery />} />
 
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />

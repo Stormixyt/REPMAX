@@ -204,14 +204,6 @@ export default function RestDayHub() {
         </p>
       </div>
 
-      {/* Home exercises link */}
-      <button
-        className="btn btn-secondary btn-full"
-        onClick={() => navigate('/exercises')}
-        style={{ marginTop: 4 }}
-      >
-        🏠 Browse Home Exercises <RiArrowRightLine size={16} />
-      </button>
     </div>
   )
 }
