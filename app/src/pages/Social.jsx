@@ -9,7 +9,7 @@ import {
   RiUserAddFill, RiSearchLine, RiTeamFill, RiChat3Fill,
   RiVipCrownFill, RiFlashlightFill, RiCheckFill, RiCloseFill,
   RiMapPin2Fill, RiTimeFill, RiCalendarLine,
-  RiArrowRightSLine, RiNavigation2Fill, RiRunFill
+  RiArrowRightSLine, RiDirectionFill, RiRunFill
 } from '@remixicon/react'
 
 export default function Social() {
@@ -378,7 +378,7 @@ export default function Social() {
                     {!isPending && (
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn btn-secondary" style={{ flex: 1, padding: '10px 0', fontSize: '0.85rem', borderRadius: 12 }} onClick={() => openDirections(a.gym_name)}>
-                          <RiNavigation2Fill size={14} style={{ marginRight: 4, verticalAlign: -2 }} /> Directions
+                          <RiDirectionFill size={14} style={{ marginRight: 4, verticalAlign: -2 }} /> Directions
                         </button>
                         <button
                           className={`btn ${arrived ? 'btn-secondary' : 'btn-primary'}`}
