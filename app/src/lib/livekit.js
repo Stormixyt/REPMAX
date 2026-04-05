@@ -2,7 +2,18 @@ import { supabase } from './supabase'
 
 async function getAccessToken() {
   const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
+  const expiresAtMs = session?.expires_at ? session.expires_at * 1000 : 0
+
+  if (session?.access_token && (!expiresAtMs || expiresAtMs > Date.now() + 60_000)) {
+    return session.access_token
+  }
+
+  const { data, error } = await supabase.auth.refreshSession()
+  if (error) {
+    return session?.access_token || null
+  }
+
+  return data?.session?.access_token || session?.access_token || null
 }
 
 function normalizeServerUrl(serverUrl) {

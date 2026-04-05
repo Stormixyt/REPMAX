@@ -1,7 +1,7 @@
 const { createHmac } = require('node:crypto')
 
 const SUPABASE_URL = 'https://hqwnyzmipumhhqmvdzus.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHF3bnl6bWlwdW1oaHFtdmR6dXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3NDg3OTEyMCwiZXhwIjoyMDkwNDU1MTIwfQ.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI'
 const TOKEN_TTL_SECONDS = 60 * 60 * 2
 
 function base64UrlEncode(value) {
@@ -36,6 +36,8 @@ async function getAuthenticatedUser(accessToken) {
   })
 
   if (!response.ok) {
+    const errorText = await response.text().catch(() => '')
+    console.error('[REPMAX] LiveKit auth validation failed:', response.status, errorText.slice(0, 200))
     return null
   }
 
