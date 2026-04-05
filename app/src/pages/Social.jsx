@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -34,12 +34,6 @@ export default function Social() {
   const [toast, setToast] = useState('')
   const mounted = useRef(true)
 
-  useEffect(() => {
-    mounted.current = true
-    loadSocial()
-    return () => { mounted.current = false }
-  }, [])
-
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   function formatApptDate(dateStr) {
@@ -57,7 +51,9 @@ export default function Social() {
     return { dayLabel, timeLabel }
   }
 
-  async function loadSocial() {
+  const loadSocial = useCallback(async () => {
+    if (!user?.id) return
+
     try {
       // Fetch friends and pending in parallel; gym_appointments may not exist yet
       const [friendsRes, pendingRes] = await Promise.all([
@@ -110,7 +106,64 @@ export default function Social() {
       console.error('Social load:', err)
     }
     if (mounted.current) setLoading(false)
-  }
+  }, [user?.id])
+
+  useEffect(() => {
+    mounted.current = true
+    loadSocial()
+    return () => { mounted.current = false }
+  }, [loadSocial])
+
+  useEffect(() => {
+    if (!user?.id) return undefined
+
+    let refreshTimer = null
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        loadSocial()
+      }, 160)
+    }
+
+    const channel = supabase
+      .channel(`social-live-${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'friendships',
+        filter: `user_id=eq.${user.id}`
+      }, scheduleRefresh)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'friendships',
+        filter: `friend_id=eq.${user.id}`
+      }, scheduleRefresh)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'gym_appointments',
+        filter: `creator_id=eq.${user.id}`
+      }, scheduleRefresh)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'gym_appointments',
+        filter: `guest_id=eq.${user.id}`
+      }, scheduleRefresh)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'chat_members',
+        filter: `user_id=eq.${user.id}`
+      }, scheduleRefresh)
+      .subscribe()
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer)
+      supabase.removeChannel(channel)
+    }
+  }, [loadSocial, user?.id])
 
   async function searchFriend() {
     if (!searchCode.trim() || searchCode.trim().length < 2) return

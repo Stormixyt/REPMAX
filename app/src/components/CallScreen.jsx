@@ -6,6 +6,8 @@ import {
   VideoPresets
 } from 'livekit-client'
 import {
+  RiArrowDownSLine,
+  RiArrowUpLine,
   RiCameraFill,
   RiCameraOffFill,
   RiLoader4Line,
@@ -20,6 +22,11 @@ function getInitial(name) {
   return String(name || 'R').trim().charAt(0).toUpperCase() || 'R'
 }
 
+function isProbablyMobileDevice() {
+  if (typeof navigator === 'undefined') return false
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+}
+
 function applyMediaElementStyles(element) {
   element.autoplay = true
   element.playsInline = true
@@ -28,15 +35,27 @@ function applyMediaElementStyles(element) {
   element.style.objectFit = 'cover'
 }
 
-export default function CallScreen({ callerName, isVideo, roomName, displayName, direction, onEnd }) {
+export default function CallScreen({
+  callerName,
+  isVideo,
+  roomName,
+  displayName,
+  direction,
+  minimized = false,
+  onMinimize,
+  onExpand,
+  onEnd
+}) {
   const roomRef = useRef(null)
   const localVideoRef = useRef(null)
   const remoteVideoRef = useRef(null)
   const remoteAudioRef = useRef(null)
+  const remoteSpeakerRef = useRef(null)
   const cleanupRef = useRef(false)
   const endedRef = useRef(false)
   const hadRemoteParticipantRef = useRef(false)
   const attachedTracksRef = useRef(new Set())
+  const mobileSpeakerDefaultRef = useRef(isProbablyMobileDevice())
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -46,6 +65,7 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
   const [cameraOff, setCameraOff] = useState(!isVideo)
   const [needsAudioStart, setNeedsAudioStart] = useState(false)
   const [remoteName, setRemoteName] = useState(callerName || 'Gym Buddy')
+  const [speakerOn, setSpeakerOn] = useState(() => isProbablyMobileDevice())
 
   function registerTrack(track) {
     attachedTracksRef.current.add(track)
@@ -59,12 +79,42 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
     })
     attachedTracksRef.current.clear()
 
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null
+    }
+
     if (remoteVideoRef.current) {
       remoteVideoRef.current.replaceChildren()
     }
 
     if (remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = null
+    }
+
+    if (remoteSpeakerRef.current) {
+      remoteSpeakerRef.current.srcObject = null
+    }
+  }
+
+  function clearRemoteMedia(room = roomRef.current) {
+    room?.remoteParticipants.forEach((participant) => {
+      participant.trackPublications.forEach((publication) => {
+        try {
+          publication.track?.detach()
+        } catch {}
+      })
+    })
+
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.replaceChildren()
+    }
+
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = null
+    }
+
+    if (remoteSpeakerRef.current) {
+      remoteSpeakerRef.current.srcObject = null
     }
   }
 
@@ -74,22 +124,35 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
     onEnd?.({ notifyRemote })
   }
 
+  function getRemoteAudioElement() {
+    if (speakerOn && remoteSpeakerRef.current) {
+      return remoteSpeakerRef.current
+    }
+    return remoteAudioRef.current
+  }
+
   function attachTrack(track, participant) {
     if (participant?.name) {
       setRemoteName(participant.name)
     }
 
-    if (track.kind === Track.Kind.Video && remoteVideoRef.current) {
+    if (track.kind === Track.Kind.Video) {
+      if (minimized || !remoteVideoRef.current) return
+
       remoteVideoRef.current.replaceChildren()
       const element = track.attach()
       applyMediaElementStyles(element)
       remoteVideoRef.current.appendChild(element)
       registerTrack(track)
+      return
     }
 
-    if (track.kind === Track.Kind.Audio && remoteAudioRef.current) {
-      track.attach(remoteAudioRef.current)
-      remoteAudioRef.current.play().catch(() => {})
+    if (track.kind === Track.Kind.Audio) {
+      const mediaElement = getRemoteAudioElement()
+      if (!mediaElement) return
+
+      track.attach(mediaElement)
+      mediaElement.play().catch(() => {})
       registerTrack(track)
     }
   }
@@ -112,6 +175,18 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
         attachTrack(publication.track, firstRemote)
       }
     })
+  }
+
+  function reattachLocalPreview(room = roomRef.current) {
+    if (!isVideo || cameraOff || minimized || !room || !localVideoRef.current) return
+
+    const cameraPublication = Array.from(room.localParticipant.videoTrackPublications.values())
+      .find((publication) => publication.track)
+
+    if (!cameraPublication?.track) return
+
+    cameraPublication.track.attach(localVideoRef.current)
+    registerTrack(cameraPublication.track)
   }
 
   useEffect(() => {
@@ -144,7 +219,7 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
               const cameraPublication = await room.localParticipant.setCameraEnabled(true)
               setCameraOff(false)
 
-              if (cameraPublication?.track && localVideoRef.current) {
+              if (cameraPublication?.track && localVideoRef.current && !minimized) {
                 cameraPublication.track.attach(localVideoRef.current)
                 registerTrack(cameraPublication.track)
               }
@@ -241,6 +316,18 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
     }
   }, [callerName, displayName, isVideo, roomName])
 
+  useEffect(() => {
+    if (!joinedRoom) return
+    clearRemoteMedia()
+    hydrateRemoteParticipant(roomRef.current)
+    reattachLocalPreview()
+  }, [joinedRoom, minimized, speakerOn])
+
+  useEffect(() => {
+    if (!joinedRoom || !isVideo || cameraOff) return
+    reattachLocalPreview()
+  }, [cameraOff, isVideo, joinedRoom, minimized])
+
   async function handleMute() {
     const room = roomRef.current
     if (!room) return
@@ -272,7 +359,7 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
         return
       }
 
-      if (cameraPublication?.track && localVideoRef.current) {
+      if (cameraPublication?.track && localVideoRef.current && !minimized) {
         cameraPublication.track.attach(localVideoRef.current)
         registerTrack(cameraPublication.track)
       }
@@ -291,6 +378,11 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
     } catch (error) {
       console.error('[REPMAX] Failed to start audio playback:', error)
     }
+  }
+
+  function handleSpeakerToggle() {
+    setSpeakerOn((prev) => !prev)
+    roomRef.current?.startAudio().catch(() => {})
   }
 
   function handleHangup() {
@@ -313,6 +405,159 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
             ? 'Joining...'
             : 'Calling...'
 
+  const mediaNodes = (
+    <>
+      <audio
+        ref={remoteAudioRef}
+        autoPlay
+        playsInline
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: 'none',
+          display: speakerOn ? 'none' : 'block'
+        }}
+      />
+      <video
+        ref={remoteSpeakerRef}
+        autoPlay
+        playsInline
+        muted={false}
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: 'none',
+          display: speakerOn ? 'block' : 'none'
+        }}
+      />
+    </>
+  )
+
+  if (minimized) {
+    return (
+      <div
+        onClick={() => onExpand?.()}
+        style={{
+          position: 'fixed',
+          right: 16,
+          bottom: 92,
+          zIndex: 10000,
+          width: isVideo ? 188 : 222,
+          borderRadius: 24,
+          border: '1px solid rgba(212,255,0,0.16)',
+          background: 'rgba(12,14,18,0.94)',
+          color: '#fff',
+          padding: 14,
+          boxShadow: '0 20px 50px rgba(0,0,0,0.38)',
+          backdropFilter: 'blur(14px)',
+          cursor: 'pointer'
+        }}
+      >
+        {mediaNodes}
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', fontWeight: 700 }}>
+              {isVideo ? 'Video Call' : 'Voice Call'}
+            </div>
+            <div style={{ marginTop: 4, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {remoteName || callerName || 'Gym Buddy'}
+            </div>
+            <div style={{ marginTop: 3, fontSize: '0.82rem', color: 'rgba(255,255,255,0.68)' }}>
+              {statusText}
+            </div>
+          </div>
+
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              onExpand?.()
+            }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              border: 'none',
+              background: 'rgba(255,255,255,0.12)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            <RiArrowUpLine size={20} color="#fff" />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              handleMute()
+            }}
+            style={{
+              flex: 1,
+              height: 44,
+              borderRadius: 14,
+              border: 'none',
+              background: muted ? '#f87171' : 'rgba(255,255,255,0.12)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            {muted ? <RiMicOffFill size={20} color="#fff" /> : <RiMicFill size={20} color="#fff" />}
+          </button>
+
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              handleSpeakerToggle()
+            }}
+            style={{
+              flex: 1,
+              height: 44,
+              borderRadius: 14,
+              border: 'none',
+              background: speakerOn ? 'rgba(212,255,0,0.2)' : 'rgba(255,255,255,0.12)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            <RiVolumeUpFill size={20} color="#fff" />
+          </button>
+
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              handleHangup()
+            }}
+            style={{
+              flex: 1,
+              height: 44,
+              borderRadius: 14,
+              border: 'none',
+              background: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            <RiPhoneFill size={22} color="#fff" style={{ transform: 'rotate(135deg)' }} />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{
       position: 'fixed',
@@ -322,7 +567,7 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
       color: '#fff',
       overflow: 'hidden'
     }}>
-      <audio ref={remoteAudioRef} autoPlay playsInline />
+      {mediaNodes}
 
       {isVideo && (
         <div ref={remoteVideoRef} style={{
@@ -392,6 +637,9 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{remoteName}</div>
             <div style={{ marginTop: 8, fontSize: '0.95rem', color: 'rgba(255,255,255,0.72)' }}>{statusText}</div>
+            <div style={{ marginTop: 10, fontSize: '0.8rem', color: 'rgba(255,255,255,0.56)' }}>
+              Audio route: {speakerOn ? 'Speaker' : mobileSpeakerDefaultRef.current ? 'Phone' : 'Default'}
+            </div>
           </div>
         </div>
       )}
@@ -444,21 +692,43 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
           <div style={{ marginTop: 2, fontSize: '0.82rem', color: 'rgba(255,255,255,0.7)' }}>{statusText}</div>
         </div>
 
-        {loading && (
-          <div style={{
-            width: 46,
-            height: 46,
-            borderRadius: '50%',
-            background: 'rgba(12,14,18,0.82)',
-            border: '1px solid rgba(212,255,0,0.14)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backdropFilter: 'blur(12px)'
-          }}>
-            <RiLoader4Line size={20} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {typeof onMinimize === 'function' && (
+            <button
+              onClick={onMinimize}
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: '50%',
+                border: '1px solid rgba(212,255,0,0.14)',
+                background: 'rgba(12,14,18,0.82)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                backdropFilter: 'blur(12px)'
+              }}
+            >
+              <RiArrowDownSLine size={22} color="#fff" />
+            </button>
+          )}
+
+          {loading && (
+            <div style={{
+              width: 46,
+              height: 46,
+              borderRadius: '50%',
+              background: 'rgba(12,14,18,0.82)',
+              border: '1px solid rgba(212,255,0,0.14)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(12px)'
+            }}>
+              <RiLoader4Line size={20} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+            </div>
+          )}
+        </div>
       </div>
 
       {needsAudioStart && !loadError && (
@@ -512,6 +782,24 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
           }}
         >
           {muted ? <RiMicOffFill size={24} color="#fff" /> : <RiMicFill size={24} color="#fff" />}
+        </button>
+
+        <button
+          onClick={handleSpeakerToggle}
+          style={{
+            width: 58,
+            height: 58,
+            borderRadius: '50%',
+            border: 'none',
+            background: speakerOn ? 'rgba(212,255,0,0.2)' : 'rgba(255,255,255,0.14)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            backdropFilter: 'blur(12px)'
+          }}
+        >
+          <RiVolumeUpFill size={24} color="#fff" />
         </button>
 
         {isVideo && (

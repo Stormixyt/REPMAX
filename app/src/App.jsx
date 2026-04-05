@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './context/AuthContext'
+import { useCall } from './context/CallContext'
 import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
@@ -18,14 +19,22 @@ import ChatRoom from './pages/ChatRoom'
 import HomeExercises from './pages/HomeExercises'
 import Recovery from './pages/Recovery'
 import Layout from './components/Layout'
+import CallScreen from './components/CallScreen'
 import UsernameModal from './components/UsernameModal'
 import { syncPushSubscription } from './lib/pushNotifications'
 
 export default function App() {
   const { user, profile, loading, isOnboarded, needsUsername, fetchProfile } = useAuth()
+  const { activeCall, clearActiveCall, callMinimized, setCallMinimized, callToast, showCallToast } = useCall()
   const navigate = useNavigate()
   const location = useLocation()
   const [incomingCallPrompt, setIncomingCallPrompt] = useState(null)
+  const activeCallChannelRef = useRef(null)
+  const activeCallRef = useRef(null)
+
+  useEffect(() => {
+    activeCallRef.current = activeCall
+  }, [activeCall])
 
   useEffect(() => {
     document.body.classList.remove('theme-green', 'theme-pink', 'theme-blue', 'theme-gold')
@@ -144,6 +153,81 @@ export default function App() {
     }
   }, [incomingCallPrompt?.chatId, location.pathname])
 
+  useEffect(() => {
+    if (activeCall?.callId) {
+      setIncomingCallPrompt(null)
+    }
+  }, [activeCall?.callId])
+
+  async function clearPendingIncomingCalls(targetUserId) {
+    if (!targetUserId) return
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', targetUserId)
+      .eq('type', 'incoming_call')
+      .eq('read', false)
+  }
+
+  useEffect(() => {
+    if (!user?.id || !activeCall?.chatId || !activeCall?.callId) {
+      return undefined
+    }
+
+    const channel = supabase
+      .channel(`active-call-${activeCall.chatId}-${activeCall.callId}`, {
+        config: { broadcast: { self: false } }
+      })
+      .on('broadcast', { event: 'call-declined' }, ({ payload }) => {
+        if (payload.callId !== activeCall.callId) return
+        if (payload.callerId !== user.id) return
+
+        clearActiveCall()
+        showCallToast(payload.message || 'Call declined')
+      })
+      .on('broadcast', { event: 'end-call' }, ({ payload }) => {
+        if (payload.callId !== activeCall.callId) return
+        if (payload.callerId === user.id) return
+
+        clearActiveCall()
+        showCallToast(payload.message || `${payload.callerName || 'Caller'} ended the call`)
+      })
+      .subscribe()
+
+    activeCallChannelRef.current = channel
+
+    return () => {
+      if (activeCallChannelRef.current === channel) {
+        activeCallChannelRef.current = null
+      }
+      supabase.removeChannel(channel)
+    }
+  }, [activeCall?.callId, activeCall?.chatId, clearActiveCall, showCallToast, user?.id])
+
+  function handleGlobalCallEnd({ notifyRemote = true } = {}) {
+    const currentCall = activeCallRef.current
+    if (!currentCall) return
+
+    if (currentCall.calleeId) {
+      clearPendingIncomingCalls(currentCall.calleeId).catch(() => {})
+    }
+
+    if (notifyRemote) {
+      activeCallChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'end-call',
+        payload: {
+          callId: currentCall.callId,
+          callerId: user.id,
+          callerName: profile?.display_name || 'Gym Buddy',
+          message: `${profile?.display_name || 'Caller'} ended the call`
+        }
+      }).catch(() => {})
+    }
+
+    clearActiveCall()
+  }
+
   if (loading) {
     return (
       <div className="loading-screen">
@@ -225,6 +309,22 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {activeCall && (
+        <CallScreen
+          callerName={activeCall.callerName}
+          isVideo={activeCall.isVideo}
+          roomName={activeCall.roomName}
+          displayName={profile?.display_name || 'REPMAX User'}
+          direction={activeCall.direction}
+          minimized={callMinimized}
+          onMinimize={() => setCallMinimized(true)}
+          onExpand={() => setCallMinimized(false)}
+          onEnd={handleGlobalCallEnd}
+        />
+      )}
+
+      {callToast && <div className="toast fade-in">{callToast}</div>}
 
       {/* Username modal — blocks the app until user picks a username */}
       {needsUsername && (

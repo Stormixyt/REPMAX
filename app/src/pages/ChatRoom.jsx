@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useCall } from '../context/CallContext'
 import { supabase } from '../lib/supabase'
 import { sendNotification } from '../lib/notifications'
 import GymPicker from '../components/GymPicker'
-import CallScreen from '../components/CallScreen'
 import { startCall, answerCall } from '../lib/webrtc'
 import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill, RiPhoneFill, RiVideoOnFill, RiCloseLine } from '@remixicon/react'
 
@@ -12,6 +12,7 @@ export default function ChatRoom() {
   const { chatId } = useParams()
   const navigate = useNavigate()
   const { user, profile, isPro } = useAuth()
+  const { activeCall, setActiveCall: setGlobalActiveCall, setCallMinimized, showCallToast } = useCall()
   const [messages, setMessages] = useState([])
   const [chatMeta, setChatMeta] = useState(null)
   const [text, setText] = useState('')
@@ -22,29 +23,11 @@ export default function ChatRoom() {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const channelRef = useRef(null)
-  const activeCallRef = useRef(null)
-  const toastTimerRef = useRef(null)
-  const [activeCall, setActiveCall] = useState(null)
   const [incomingCall, setIncomingCall] = useState(null)
-  const [callToast, setCallToast] = useState('')
   const [reactionMsgId, setReactionMsgId] = useState(null)
   const [reactions, setReactions] = useState({}) // { msgId: [{emoji, user_id}...] }
   const REACTION_EMOJIS = ['💪', '🔥', '👏', '🤣', '❤️']
   const SUPER_EMOJIS = ['⚡', '🏆', '💎', '🫡', '☠️']
-
-  useEffect(() => {
-    activeCallRef.current = activeCall
-  }, [activeCall])
-
-  const showCallToast = useCallback((message) => {
-    if (!message) return
-    setCallToast(message)
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
-    toastTimerRef.current = setTimeout(() => {
-      setCallToast('')
-      toastTimerRef.current = null
-    }, 3000)
-  }, [])
 
   const upsertIncomingCall = useCallback((call) => {
     setIncomingCall(prev => {
@@ -147,40 +130,40 @@ export default function ChatRoom() {
           })
         }
       })
-      .on('broadcast', { event: 'call-declined' }, ({ payload }) => {
-        if (payload.callerId === user.id && (!activeCallRef.current || activeCallRef.current.callId === payload.callId)) {
-          setActiveCall(null)
-          showCallToast(payload.message || 'Call declined')
-        }
-      })
       .on('broadcast', { event: 'cancel-call' }, ({ payload }) => {
         if (payload.callerId !== user.id) {
           let notificationId = null
+          let dismissedPrompt = false
           setIncomingCall(prev => {
             if (!prev || prev.callId !== payload.callId) return prev
             notificationId = prev.notificationId
+            dismissedPrompt = true
             return null
           })
           if (notificationId) {
             markCallNotificationReadSafely(notificationId)
           }
-          setActiveCall(prev => prev?.callId === payload.callId ? null : prev)
-          showCallToast(`${payload.callerName || 'Caller'} ended the call`)
+          if (dismissedPrompt) {
+            showCallToast(`${payload.callerName || 'Caller'} ended the call`)
+          }
         }
       })
       .on('broadcast', { event: 'end-call' }, ({ payload }) => {
         if (payload.callerId !== user.id) {
           let notificationId = null
+          let dismissedPrompt = false
           setIncomingCall(prev => {
             if (!prev || prev.callId !== payload.callId) return prev
             notificationId = prev.notificationId
+            dismissedPrompt = true
             return null
           })
           if (notificationId) {
             markCallNotificationReadSafely(notificationId)
           }
-          setActiveCall(prev => prev?.callId === payload.callId ? null : prev)
-          showCallToast(payload.message || `${payload.callerName || 'Caller'} ended the call`)
+          if (dismissedPrompt) {
+            showCallToast(payload.message || `${payload.callerName || 'Caller'} ended the call`)
+          }
         }
       })
       .subscribe((status) => {
@@ -196,10 +179,6 @@ export default function ChatRoom() {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null
-      }
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current)
-        toastTimerRef.current = null
       }
     }
   }, [chatId, user.id, upsertIncomingCall, showCallToast])
@@ -255,7 +234,8 @@ export default function ChatRoom() {
     try {
       const result = await answerCall(chatId, incomingCall.offer, incomingCall.withVideo, incomingCall.callId)
       await markCallNotificationRead(incomingCall.notificationId)
-      setActiveCall({
+      setGlobalActiveCall({
+        chatId,
         callId: incomingCall.callId,
         roomName: result.roomName,
         callerName: incomingCall.callerName || chatMeta?.title || 'Gym Buddy',
@@ -400,7 +380,8 @@ export default function ChatRoom() {
         }
       }
 
-      setActiveCall({
+      setGlobalActiveCall({
+        chatId,
         callId: result.callId,
         roomName: result.roomName,
         callerName: chatMeta?.title || 'Gym Buddy',
@@ -414,6 +395,25 @@ export default function ChatRoom() {
       console.error('Call failed:', err)
       showCallToast(err?.message || 'Could not start the call')
     }
+  }
+
+  function handleCallButton(withVideo) {
+    if (activeCall) {
+      if (activeCall.chatId === chatId) {
+        setCallMinimized(false)
+        return
+      }
+
+      showCallToast('Finish your current call first')
+      return
+    }
+
+    if (!isPro) {
+      navigate('/subscribe')
+      return
+    }
+
+    initiateCall(withVideo)
   }
 
   async function addReaction(msgId, emoji) {
@@ -580,14 +580,14 @@ export default function ChatRoom() {
           <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
             <button
               className="icon-btn"
-              onClick={() => isPro ? initiateCall(false) : navigate('/subscribe')}
+              onClick={() => handleCallButton(false)}
               style={{ opacity: isPro ? 1 : 0.4 }}
             >
               <RiPhoneFill size={18} />
             </button>
             <button
               className="icon-btn"
-              onClick={() => isPro ? initiateCall(true) : navigate('/subscribe')}
+              onClick={() => handleCallButton(true)}
               style={{ opacity: isPro ? 1 : 0.4 }}
             >
               <RiVideoOnFill size={18} />
@@ -829,7 +829,7 @@ export default function ChatRoom() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 15 }} onClick={() => setReactionMsgId(null)} />
       )}
 
-      {incomingCall && !activeCall && (
+      {incomingCall && (!activeCall || activeCall.callId !== incomingCall.callId) && (
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -893,42 +893,6 @@ export default function ChatRoom() {
           </div>
         </div>
       )}
-
-      {/* Active call overlay */}
-      {activeCall && (
-        <CallScreen
-          callerName={activeCall.callerName}
-          isVideo={activeCall.isVideo}
-          roomName={activeCall.roomName}
-          displayName={profile?.display_name || 'REPMAX User'}
-          direction={activeCall.direction}
-          onEnd={({ notifyRemote = true } = {}) => {
-            const currentCall = activeCallRef.current
-            if (!currentCall) return
-
-            setActiveCall(null)
-
-            if (currentCall.calleeId) {
-              clearPendingIncomingCalls(currentCall.calleeId).catch(() => {})
-            }
-
-            if (notifyRemote) {
-              channelRef.current?.send({
-                type: 'broadcast',
-                event: 'end-call',
-                payload: {
-                  callId: currentCall.callId,
-                  callerId: user.id,
-                  callerName: profile?.display_name || 'Gym Buddy',
-                  message: `${profile?.display_name || 'Caller'} ended the call`
-                }
-              }).catch(() => {})
-            }
-          }}
-        />
-      )}
-
-      {callToast && <div className="toast fade-in">{callToast}</div>}
     </div>
   )
 }
