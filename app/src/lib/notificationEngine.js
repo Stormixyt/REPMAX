@@ -73,14 +73,18 @@ export function startNotificationListener(currentUserId, displayName) {
       }
 
       // Also store in notifications table for the in-app bell
-      await supabase.from('notifications').insert({
+      const { error: notificationError } = await supabase.from('notifications').insert({
         user_id: userId,
         type: msg.type === 'invite' ? 'invite' : 'message',
         title: title,
         body: body,
         data: { chat_id: msg.chat_id, message_id: msg.id },
         read: false
-      }).catch(() => {}) // Silently fail if table doesn't exist
+      })
+
+      if (notificationError) {
+        console.warn('[REPMAX] Failed to store in-app notification:', notificationError)
+      }
     })
     .on('postgres_changes', {
       event: 'INSERT',

@@ -161,7 +161,7 @@ export default function ChatRoom() {
             return null
           })
           if (notificationId) {
-            supabase.from('notifications').update({ read: true }).eq('id', notificationId).catch(() => {})
+            markCallNotificationReadSafely(notificationId)
           }
           setActiveCall(prev => prev?.callId === payload.callId ? null : prev)
           showCallToast(`${payload.callerName || 'Caller'} ended the call`)
@@ -176,7 +176,7 @@ export default function ChatRoom() {
             return null
           })
           if (notificationId) {
-            supabase.from('notifications').update({ read: true }).eq('id', notificationId).catch(() => {})
+            markCallNotificationReadSafely(notificationId)
           }
           setActiveCall(prev => prev?.callId === payload.callId ? null : prev)
           showCallToast(payload.message || `${payload.callerName || 'Caller'} ended the call`)
@@ -216,6 +216,13 @@ export default function ChatRoom() {
       .eq('user_id', targetUserId)
       .eq('type', 'incoming_call')
       .eq('read', false)
+  }
+
+  async function markCallNotificationReadSafely(notificationId) {
+    if (!notificationId) return
+    try {
+      await markCallNotificationRead(notificationId)
+    } catch {}
   }
 
   async function declineIncomingCall() {
@@ -312,7 +319,7 @@ export default function ChatRoom() {
 
       if (calleeId && offerPayload) {
         await clearPendingIncomingCalls(calleeId).catch(() => {})
-        await supabase.from('notifications').insert({
+        const { error: notificationError } = await supabase.from('notifications').insert({
           user_id: calleeId,
           type: 'incoming_call',
           title: withVideo ? 'Incoming video call' : 'Incoming call',
@@ -327,7 +334,11 @@ export default function ChatRoom() {
             offer: offerPayload.offer,
             expires_at: expiresAt
           }
-        }).catch(() => {})
+        })
+
+        if (notificationError) {
+          console.error('[REPMAX] Failed to store incoming call notification:', notificationError)
+        }
       }
 
       setActiveCall({

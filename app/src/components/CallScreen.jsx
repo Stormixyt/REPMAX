@@ -66,6 +66,7 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
 
         const api = new JitsiMeetExternalAPI('meet.jit.si', {
           roomName,
+          lang: 'en',
           parentNode: containerRef.current,
           width: '100%',
           height: '100%',
@@ -76,7 +77,11 @@ export default function CallScreen({ callerName, isVideo, roomName, displayName,
             disableDeepLinking: true,
             enableWelcomePage: false,
             prejoinPageEnabled: false,
+            prejoinConfig: {
+              enabled: false
+            },
             requireDisplayName: false,
+            disableInviteFunctions: true,
             startAudioOnly: !isVideo,
             startWithVideoMuted: !isVideo
           },
