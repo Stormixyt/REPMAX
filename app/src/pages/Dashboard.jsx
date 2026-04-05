@@ -18,6 +18,19 @@ const MOTIVATIONS = [
   "Make yourself proud today."
 ]
 
+function toWorkoutNumber(value, fallback = 0, preference = 'first') {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  const matches = String(value ?? '').match(/\d*\.?\d+/g)
+  if (!matches?.length) return fallback
+
+  const picked = preference === 'last' ? matches[matches.length - 1] : matches[0]
+  const parsed = Number(picked)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 function generateDailyChallenge(profile) {
   const day = new Date().getDate()
   const challenges = [
@@ -117,8 +130,12 @@ export default function Dashboard() {
     if (!error && workout) {
       const setInserts = []
       todayWorkout.exercises?.forEach(ex => {
-        for (let i = 1; i <= (ex.sets || 3); i++) {
-          setInserts.push({ workout_id: workout.id, exercise_name: ex.name, set_number: i, target_reps: ex.reps || 8, target_weight: ex.weight || 0, completed: false })
+        const setCount = Math.max(1, Math.round(toWorkoutNumber(ex.sets, 3)))
+        const targetReps = Math.max(1, Math.round(toWorkoutNumber(ex.reps, 8, 'last')))
+        const targetWeight = Math.max(0, toWorkoutNumber(ex.weight, 0))
+
+        for (let i = 1; i <= setCount; i++) {
+          setInserts.push({ workout_id: workout.id, exercise_name: ex.name, set_number: i, target_reps: targetReps, target_weight: targetWeight, completed: false })
         }
       })
       if (setInserts.length > 0) await supabase.from('sets').insert(setInserts)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { generateProgram } from '../lib/groq'
 import { supabase } from '../lib/supabase'
@@ -29,6 +29,7 @@ const FOCUS_MUSCLES = [
   'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 
   'Quads', 'Hamstrings', 'Calves', 'Abs', 'Glutes', 'Forearms'
 ]
+const DEFAULT_WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 const SPLITS = {
   3: [
@@ -50,8 +51,97 @@ const SPLITS = {
   ],
 }
 
+function toPositiveInteger(value, fallback = 1, preference = 'first') {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(1, Math.round(value))
+  }
+
+  const matches = String(value ?? '').match(/\d+/g)
+  if (!matches?.length) return fallback
+
+  const picked = preference === 'last' ? matches[matches.length - 1] : matches[0]
+  const parsed = Number(picked)
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : fallback
+}
+
+function toPositiveFloat(value, fallback = 0) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, value)
+  }
+
+  const match = String(value ?? '').match(/-?\d*\.?\d+/)
+  if (!match) return fallback
+
+  const parsed = Number(match[0])
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback
+}
+
+function normalizeProgramShape(program, fallbackName = 'Custom routine', fallbackSplit = 'custom') {
+  const baseWeeks = Array.isArray(program?.weeks) && program.weeks.length
+    ? program.weeks
+    : [{
+        week_number: 1,
+        is_deload: false,
+        days: Array.isArray(program?.days) ? program.days : [],
+      }]
+
+  const weeks = baseWeeks
+    .map((week, weekIndex) => {
+      const days = Array.isArray(week?.days) ? week.days : []
+
+      return {
+        week_number: toPositiveInteger(week?.week_number, weekIndex + 1),
+        is_deload: Boolean(week?.is_deload),
+        days: days
+          .map((day, dayIndex) => {
+            const exercises = Array.isArray(day?.exercises) ? day.exercises : []
+
+            return {
+              day_name: day?.day_name?.trim?.() || `Day ${dayIndex + 1}`,
+              target_muscles: Array.isArray(day?.target_muscles)
+                ? day.target_muscles.filter(Boolean)
+                : [],
+              exercises: exercises
+                .map((exercise, exerciseIndex) => ({
+                  name: exercise?.name?.trim?.() || `Exercise ${exerciseIndex + 1}`,
+                  sets: toPositiveInteger(exercise?.sets, 3),
+                  reps: toPositiveInteger(exercise?.reps, 8, 'last'),
+                  rpe: toPositiveFloat(exercise?.rpe, 8),
+                  rest_seconds: toPositiveInteger(exercise?.rest_seconds, 90),
+                  weight: toPositiveFloat(exercise?.weight, 0),
+                  notes: typeof exercise?.notes === 'string' ? exercise.notes.trim() : '',
+                }))
+                .filter((exercise) => exercise.name),
+            }
+          })
+          .filter((day) => day.exercises.length > 0),
+      }
+    })
+    .filter((week) => week.days.length > 0)
+
+  return {
+    name: program?.name?.trim?.() || fallbackName,
+    split_type: program?.split_type || fallbackSplit,
+    weeks,
+  }
+}
+
+function deriveTrainingDays(program, fallbackDays = []) {
+  if (Array.isArray(fallbackDays) && fallbackDays.length > 0) {
+    return fallbackDays
+  }
+
+  const customDayCount = Math.min(program?.weeks?.[0]?.days?.length || 0, DEFAULT_WEEKDAYS.length)
+  if (customDayCount > 0) {
+    return DEFAULT_WEEKDAYS.slice(0, customDayCount)
+  }
+
+  return ['Mon', 'Wed', 'Fri']
+}
+
 export default function Onboarding() {
   const { user, updateProfile, fetchProfile, isPro } = useAuth()
+  const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [generating, setGenerating] = useState(false)
   const [genStep, setGenStep] = useState(0)
@@ -130,6 +220,36 @@ export default function Onboarding() {
     })
   }
 
+  async function saveActiveProgram(program, splitType) {
+    const normalizedProgram = normalizeProgramShape(
+      program,
+      splitType === 'custom' ? 'Custom routine' : `${splitType?.toUpperCase?.() || 'Custom'} Program`,
+      splitType
+    )
+
+    if (!normalizedProgram.weeks.length) {
+      throw new Error('Your routine needs at least one day with at least one exercise.')
+    }
+
+    await supabase
+      .from('programs')
+      .update({ active: false })
+      .eq('user_id', user.id)
+
+    const { error } = await supabase.from('programs').insert({
+      user_id: user.id,
+      name: normalizedProgram.name,
+      split_type: normalizedProgram.split_type || splitType,
+      total_weeks: normalizedProgram.weeks.length,
+      program_data: normalizedProgram,
+      active: true
+    })
+
+    if (error) throw error
+
+    return normalizedProgram
+  }
+
   async function finishOnboarding() {
     setGenerating(true)
     setGenStep(0)
@@ -152,23 +272,18 @@ export default function Onboarding() {
     const result = await generateProgram({ ...profileData })
     setGenStep(3)
 
-    if (result.success) {
-      const { error } = await supabase.from('programs').insert({
-        user_id: user.id,
-        name: result.program.name || `${split.toUpperCase()} Program`,
-        split_type: split,
-        total_weeks: result.program.weeks?.length || 4,
-        program_data: result.program,
-        active: true
-      })
-      
-      if (!error) {
-        setGenStep(4)
-        await updateProfile({ onboarded: true })
-        await fetchProfile()
-        setGenStep(5)
-        return
-      }
+    try {
+      if (!result.success) throw new Error('Program generation failed')
+
+      await saveActiveProgram(result.program, split)
+      setGenStep(4)
+      await updateProfile({ onboarded: true })
+      await fetchProfile()
+      setGenStep(5)
+      setTimeout(() => navigate('/'), 450)
+      return
+    } catch (error) {
+      console.error('Program setup failed:', error)
     }
     
     // If we reach here, something completely failed (rare with local fallback)
@@ -191,28 +306,28 @@ export default function Onboarding() {
 
     await new Promise(r => setTimeout(r, 800))
     setGenStep(2)
-    // Needs to be imported from groq
     const { generateProgramFromImages } = await import('../lib/groq.js') 
     const result = await generateProgramFromImages(visionImages)
     setGenStep(3)
 
-    if (result.success) {
-      const { error } = await supabase.from('programs').insert({
-        user_id: user.id,
-        name: result.program.name || 'Custom routine',
-        split_type: 'custom',
-        total_weeks: result.program.weeks?.length || 4,
-        program_data: result.program,
-        active: true
+    try {
+      if (!result.success) throw new Error('Image parsing failed')
+
+      const normalizedProgram = await saveActiveProgram(result.program, 'custom')
+      const derivedDays = deriveTrainingDays(normalizedProgram)
+
+      setGenStep(4)
+      await updateProfile({
+        onboarded: true,
+        preferred_split: 'custom',
+        training_days: derivedDays,
       })
-      
-      if (!error) {
-        setGenStep(4)
-        await updateProfile({ onboarded: true })
-        await fetchProfile()
-        setGenStep(5)
-        return
-      }
+      await fetchProfile()
+      setGenStep(5)
+      setTimeout(() => navigate('/'), 450)
+      return
+    } catch (error) {
+      console.error('Custom routine save failed:', error)
     }
     
     alert("Image Parsing failed. Please try again.")
