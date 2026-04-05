@@ -1,4 +1,7 @@
+ALTER TABLE IF EXISTS messages ENABLE ROW LEVEL SECURITY;
+
 -- Fix Message Updates (for Gym Invites)
+DROP POLICY IF EXISTS "Users can update messages in their chats (for invites)" ON messages;
 CREATE POLICY "Users can update messages in their chats (for invites)"
   ON messages FOR UPDATE
   USING (
@@ -10,6 +13,7 @@ CREATE POLICY "Users can update messages in their chats (for invites)"
   );
 
 -- Fix Message Deletions
+DROP POLICY IF EXISTS "Users can delete their own messages" ON messages;
 CREATE POLICY "Users can delete their own messages"
   ON messages FOR DELETE
   USING (auth.uid() = sender_id);

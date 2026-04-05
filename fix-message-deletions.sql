@@ -1,4 +1,7 @@
+ALTER TABLE IF EXISTS messages ENABLE ROW LEVEL SECURITY;
+
 -- Deleting messages RLS
+DROP POLICY IF EXISTS "Users can delete their own messages" ON messages;
 CREATE POLICY "Users can delete their own messages"
   ON messages FOR DELETE
   USING (auth.uid() = sender_id);

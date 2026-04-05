@@ -8,6 +8,12 @@ import GymPicker from '../components/GymPicker'
 import { startCall, answerCall } from '../lib/webrtc'
 import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill, RiPhoneFill, RiVideoOnFill, RiCloseLine } from '@remixicon/react'
 
+function sortChatMessagesChronologically(items = []) {
+  return [...items].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+}
+
 export default function ChatRoom() {
   const { chatId } = useParams()
   const navigate = useNavigate()
@@ -19,15 +25,27 @@ export default function ChatRoom() {
   const [showInviteMenu, setShowInviteMenu] = useState(false)
   const [inviteForm, setInviteForm] = useState({ location: '', time: '' })
   const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState('')
   const [tappedMsgId, setTappedMsgId] = useState(null)
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const channelRef = useRef(null)
+  const toastTimerRef = useRef(null)
   const [incomingCall, setIncomingCall] = useState(null)
   const [reactionMsgId, setReactionMsgId] = useState(null)
   const [reactions, setReactions] = useState({}) // { msgId: [{emoji, user_id}...] }
   const REACTION_EMOJIS = ['💪', '🔥', '👏', '🤣', '❤️']
   const SUPER_EMOJIS = ['⚡', '🏆', '💎', '🫡', '☠️']
+
+  function showToast(message) {
+    setToast(message)
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current)
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setToast('')
+    }, 3000)
+  }
 
   const upsertIncomingCall = useCallback((call) => {
     setIncomingCall(prev => {
@@ -176,6 +194,10 @@ export default function ChatRoom() {
 
     return () => {
       cancelled = true
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current)
+        toastTimerRef.current = null
+      }
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null
@@ -324,9 +346,46 @@ export default function ChatRoom() {
   }
 
   async function deleteMessage(msgId) {
+    const messageToDelete = messages.find(m => m.id === msgId)
+    if (!messageToDelete) return
+
+    if (messageToDelete.sender_id !== user.id) {
+      showToast('You can only delete your own messages')
+      return
+    }
+
+    if (messageToDelete._pending) {
+      setMessages(prev => prev.filter(m => m.id !== msgId))
+      setTappedMsgId(null)
+      return
+    }
+
     setMessages(prev => prev.filter(m => m.id !== msgId))
     setTappedMsgId(null)
-    await supabase.from('messages').delete().eq('id', msgId)
+    const { data, error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', msgId)
+      .eq('sender_id', user.id)
+      .select('id')
+      .maybeSingle()
+
+    if (error || !data?.id) {
+      console.error('[REPMAX] Message delete failed:', error)
+      setMessages(prev => {
+        if (prev.some(m => m.id === msgId)) return prev
+        return sortChatMessagesChronologically([...prev, messageToDelete])
+      })
+      showToast(error?.message || 'Could not delete message for everyone')
+      return
+    }
+
+    setReactions(prev => {
+      if (!prev[msgId]) return prev
+      const next = { ...prev }
+      delete next[msgId]
+      return next
+    })
   }
 
   async function initiateCall(withVideo) {
@@ -556,6 +615,8 @@ export default function ChatRoom() {
 
   return (
     <div className="chat-room">
+      {toast && <div className="toast fade-in">{toast}</div>}
+
       {/* Header */}
       <div className="chat-header">
         <button className="chat-header-back" onClick={() => navigate('/social')}>
