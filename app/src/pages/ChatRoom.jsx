@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import GymPicker from '../components/GymPicker'
 import CallScreen from '../components/CallScreen'
 import { startCall, answerCall, endCall, setCallbacks } from '../lib/webrtc'
-import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill, RiPhoneFill, RiVideoOnFill } from '@remixicon/react'
+import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill, RiPhoneFill, RiVideoOnFill, RiCloseLine } from '@remixicon/react'
 
 export default function ChatRoom() {
   const { chatId } = useParams()
@@ -21,12 +21,35 @@ export default function ChatRoom() {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const channelRef = useRef(null)
+  const pendingRemoteStreamRef = useRef(null)
+  const toastTimerRef = useRef(null)
   const [activeCall, setActiveCall] = useState(null) // { localStream, remoteStream, callerName, isVideo }
   const [incomingCall, setIncomingCall] = useState(null)
+  const [callToast, setCallToast] = useState('')
   const [reactionMsgId, setReactionMsgId] = useState(null)
   const [reactions, setReactions] = useState({}) // { msgId: [{emoji, user_id}...] }
   const REACTION_EMOJIS = ['💪', '🔥', '👏', '🤣', '❤️']
   const SUPER_EMOJIS = ['⚡', '🏆', '💎', '🫡', '☠️']
+
+  const showCallToast = useCallback((message) => {
+    if (!message) return
+    setCallToast(message)
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => {
+      setCallToast('')
+      toastTimerRef.current = null
+    }, 3000)
+  }, [])
+
+  const upsertIncomingCall = useCallback((call) => {
+    setIncomingCall(prev => {
+      if (!prev) return call
+      if (prev.callerId === call.callerId && prev.chatId === call.chatId) {
+        return { ...prev, ...call }
+      }
+      return prev
+    })
+  }, [])
 
   // Use AbortController pattern to prevent stale state updates on unmount
   useEffect(() => {
@@ -49,6 +72,36 @@ export default function ChatRoom() {
         }
       }
       setMessages(msgRes.data || [])
+
+      const { data: pendingCallNotifications } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'incoming_call')
+        .eq('read', false)
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (!cancelled) {
+        const pendingCall = (pendingCallNotifications || []).find((notif) => {
+          const expiresAt = notif.data?.expires_at
+          const stillActive = !expiresAt || new Date(expiresAt).getTime() > Date.now()
+          return stillActive && notif.data?.chat_id === chatId && notif.data?.offer
+        })
+
+        if (pendingCall) {
+          upsertIncomingCall({
+            chatId,
+            notificationId: pendingCall.id,
+            offer: pendingCall.data.offer,
+            callerId: pendingCall.data.caller_id,
+            callerName: pendingCall.data.caller_name || 'Gym Buddy',
+            withVideo: pendingCall.data.with_video === true,
+            expiresAt: pendingCall.data.expires_at
+          })
+        }
+      }
+
       setLoading(false)
       requestAnimationFrame(() => scrollRef.current?.scrollIntoView())
     }
@@ -77,7 +130,35 @@ export default function ChatRoom() {
       })
       .on('broadcast', { event: 'offer' }, ({ payload }) => {
         if (payload.callerId !== user.id) {
-          setIncomingCall({ offer: payload.offer, callerId: payload.callerId, withVideo: payload.withVideo })
+          upsertIncomingCall({
+            chatId,
+            offer: payload.offer,
+            callerId: payload.callerId,
+            callerName: payload.callerName || 'Gym Buddy',
+            withVideo: payload.withVideo,
+            expiresAt: payload.expiresAt
+          })
+        }
+      })
+      .on('broadcast', { event: 'call-declined' }, ({ payload }) => {
+        if (payload.callerId === user.id) {
+          endCall()
+          setActiveCall(null)
+          showCallToast(payload.message || 'Call declined')
+        }
+      })
+      .on('broadcast', { event: 'cancel-call' }, ({ payload }) => {
+        if (payload.callerId !== user.id) {
+          let notificationId = null
+          setIncomingCall(prev => {
+            if (!prev || prev.callerId !== payload.callerId) return prev
+            notificationId = prev.notificationId
+            return null
+          })
+          if (notificationId) {
+            supabase.from('notifications').update({ read: true }).eq('id', notificationId).catch(() => {})
+          }
+          showCallToast(`${payload.callerName || 'Caller'} ended the call`)
         }
       })
       .subscribe((status) => {
@@ -94,8 +175,73 @@ export default function ChatRoom() {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null
       }
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current)
+        toastTimerRef.current = null
+      }
     }
-  }, [chatId])
+  }, [chatId, user.id, upsertIncomingCall, showCallToast])
+
+  async function markCallNotificationRead(notificationId) {
+    if (!notificationId) return
+    await supabase.from('notifications').update({ read: true }).eq('id', notificationId)
+  }
+
+  async function declineIncomingCall() {
+    if (!incomingCall) return
+    const declinedCall = incomingCall
+    setIncomingCall(null)
+    await markCallNotificationRead(declinedCall.notificationId)
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'call-declined',
+      payload: {
+        callerId: declinedCall.callerId,
+        message: `${profile?.display_name || 'Your friend'} declined the call`
+      }
+    })
+  }
+
+  async function acceptIncomingCall() {
+    if (!incomingCall) return
+
+    if (incomingCall.expiresAt && new Date(incomingCall.expiresAt).getTime() <= Date.now()) {
+      await markCallNotificationRead(incomingCall.notificationId)
+      setIncomingCall(null)
+      showCallToast('Call expired')
+      return
+    }
+
+    try {
+      pendingRemoteStreamRef.current = null
+      setCallbacks({
+        onRemote: (stream) => {
+          pendingRemoteStreamRef.current = stream
+          setActiveCall(prev => prev ? { ...prev, remoteStream: stream } : prev)
+        },
+        onEnded: () => {
+          pendingRemoteStreamRef.current = null
+          setActiveCall(null)
+          setIncomingCall(null)
+        },
+        onConnected: () => {}
+      })
+
+      const result = await answerCall(chatId, incomingCall.offer, incomingCall.withVideo)
+      await markCallNotificationRead(incomingCall.notificationId)
+      setActiveCall({
+        localStream: result.localStream,
+        remoteStream: pendingRemoteStreamRef.current,
+        callerName: incomingCall.callerName || chatMeta?.title || 'Gym Buddy',
+        isVideo: incomingCall.withVideo,
+        direction: 'incoming'
+      })
+      setIncomingCall(null)
+    } catch (err) {
+      console.error('Answer failed:', err)
+      showCallToast('Could not answer the call')
+    }
+  }
 
   async function sendMessage(e) {
     e?.preventDefault()
@@ -124,28 +270,68 @@ export default function ChatRoom() {
 
   async function initiateCall(withVideo) {
     try {
+      const calleeId = chatMeta?.members?.find(member => member.user_id !== user.id)?.user_id
+      const expiresAt = new Date(Date.now() + 60_000).toISOString()
+      let offerPayload = null
+
+      pendingRemoteStreamRef.current = null
+      setCallbacks({
+        onRemote: (stream) => {
+          pendingRemoteStreamRef.current = stream
+          setActiveCall(prev => prev ? { ...prev, remoteStream: stream } : prev)
+        },
+        onEnded: () => {
+          pendingRemoteStreamRef.current = null
+          setActiveCall(null)
+        },
+        onConnected: () => {}
+      })
+
       const result = await startCall(chatId, user.id, withVideo, (payload) => {
+        offerPayload = {
+          ...payload,
+          callerName: profile?.display_name || chatMeta?.title || 'Gym Buddy',
+          expiresAt
+        }
         if (channelRef.current) {
           channelRef.current.send({
             type: 'broadcast',
             event: 'offer',
-            payload
+            payload: offerPayload
           })
         }
       })
-      setCallbacks({
-        onRemote: (stream) => setActiveCall(prev => ({ ...prev, remoteStream: stream })),
-        onEnded: () => setActiveCall(null),
-        onConnected: () => {}
-      })
+
+      if (calleeId && offerPayload) {
+        await supabase.from('notifications').insert({
+          user_id: calleeId,
+          type: 'incoming_call',
+          title: withVideo ? 'Incoming video call' : 'Incoming call',
+          body: `${profile?.display_name || 'Someone'} is calling you`,
+          data: {
+            url: `/chat/${chatId}`,
+            chat_id: chatId,
+            caller_id: user.id,
+            caller_name: profile?.display_name || 'Gym Buddy',
+            with_video: withVideo,
+            offer: offerPayload.offer,
+            expires_at: expiresAt
+          }
+        }).catch(() => {})
+      }
+
       setActiveCall({
         localStream: result.localStream,
-        remoteStream: null,
+        remoteStream: pendingRemoteStreamRef.current,
         callerName: chatMeta?.title || 'Gym Buddy',
-        isVideo: withVideo
+        isVideo: withVideo,
+        direction: 'outgoing',
+        callerId: user.id,
+        callerNameForRemote: profile?.display_name || 'Gym Buddy'
       })
     } catch (err) {
       console.error('Call failed:', err)
+      showCallToast('Could not start the call')
     }
   }
 
@@ -550,6 +736,71 @@ export default function ChatRoom() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 15 }} onClick={() => setReactionMsgId(null)} />
       )}
 
+      {incomingCall && !activeCall && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9998,
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 20
+        }}>
+          <div style={{
+            width: '100%',
+            maxWidth: 360,
+            background: 'linear-gradient(180deg, rgba(24,26,32,0.98), rgba(14,16,20,0.98))',
+            border: '1px solid rgba(212,255,0,0.18)',
+            borderRadius: 28,
+            padding: 24,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: 88,
+              height: 88,
+              borderRadius: '50%',
+              margin: '0 auto 18px',
+              background: 'var(--accent-glow)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '2rem',
+              animation: 'pulse 1.8s ease-in-out infinite'
+            }}>
+              {incomingCall.withVideo ? '📹' : '📞'}
+            </div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8 }}>
+              Incoming {incomingCall.withVideo ? 'Video' : 'Voice'} Call
+            </div>
+            <h2 style={{ margin: '0 0 8px', fontSize: '1.4rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>
+              {incomingCall.callerName || chatMeta?.title || 'Gym Buddy'}
+            </h2>
+            <p style={{ margin: '0 0 22px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Answer now to join the call.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                className="btn btn-secondary"
+                onClick={declineIncomingCall}
+                style={{ flex: 1, justifyContent: 'center', padding: '14px 0', borderRadius: 16 }}
+              >
+                <RiCloseLine size={18} /> Decline
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={acceptIncomingCall}
+                style={{ flex: 1, justifyContent: 'center', padding: '14px 0', borderRadius: 16 }}
+              >
+                {incomingCall.withVideo ? <RiVideoOnFill size={18} /> : <RiPhoneFill size={18} />} Answer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Active call overlay */}
       {activeCall && (
         <CallScreen
@@ -557,9 +808,24 @@ export default function ChatRoom() {
           isVideo={activeCall.isVideo}
           localStream={activeCall.localStream}
           remoteStream={activeCall.remoteStream}
-          onEnd={() => setActiveCall(null)}
+          onEnd={() => {
+            if (activeCall.direction === 'outgoing' && !activeCall.remoteStream) {
+              channelRef.current?.send({
+                type: 'broadcast',
+                event: 'cancel-call',
+                payload: {
+                  callerId: user.id,
+                  callerName: profile?.display_name || 'Gym Buddy'
+                }
+              })
+            }
+            pendingRemoteStreamRef.current = null
+            setActiveCall(null)
+          }}
         />
       )}
+
+      {callToast && <div className="toast fade-in">{callToast}</div>}
     </div>
   )
 }

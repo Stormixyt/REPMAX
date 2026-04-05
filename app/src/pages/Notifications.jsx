@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { markNotificationRead, markAllRead } from '../lib/notifications'
-import { RiArrowLeftLine, RiCheckDoubleFill, RiNotification3Fill, RiUserHeartFill, RiSwordFill, RiFlashlightFill, RiCalendarCheckFill, RiMedalFill } from '@remixicon/react'
+import { RiArrowLeftLine, RiCheckDoubleFill, RiNotification3Fill, RiUserHeartFill, RiSwordFill, RiFlashlightFill, RiCalendarCheckFill, RiMedalFill, RiPhoneFill } from '@remixicon/react'
 
 const ICON_MAP = {
   friend_request: RiUserHeartFill,
@@ -12,6 +12,7 @@ const ICON_MAP = {
   invite: RiSwordFill,
   invite_accepted: RiSwordFill,
   invite_declined: RiSwordFill,
+  incoming_call: RiPhoneFill,
   daily_reminder: RiCalendarCheckFill,
   streak_warning: RiFlashlightFill,
   new_pr: RiMedalFill,
