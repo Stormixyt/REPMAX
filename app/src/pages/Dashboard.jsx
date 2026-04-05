@@ -68,7 +68,7 @@ export default function Dashboard() {
 
   async function enableNotifications() {
     setShowNotifPrompt(false)
-    const sub = await subscribeToPush()
+    const sub = await subscribeToPush(user.id)
     if (sub) showLocalNotification('REPMAX', 'Notifications enabled! 💪')
   }
 

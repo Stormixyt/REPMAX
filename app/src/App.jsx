@@ -19,6 +19,7 @@ import HomeExercises from './pages/HomeExercises'
 import Recovery from './pages/Recovery'
 import Layout from './components/Layout'
 import UsernameModal from './components/UsernameModal'
+import { syncPushSubscription } from './lib/pushNotifications'
 
 export default function App() {
   const { user, profile, loading, isOnboarded, needsUsername, fetchProfile } = useAuth()
@@ -34,6 +35,11 @@ export default function App() {
       document.body.classList.add('theme-green')
     }
   }, [profile?.theme_color])
+
+  useEffect(() => {
+    if (!user?.id) return
+    syncPushSubscription(user.id).catch(() => {})
+  }, [user?.id])
 
   useEffect(() => {
     if (!user?.id) {

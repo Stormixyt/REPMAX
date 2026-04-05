@@ -168,6 +168,12 @@ export default function Social() {
     })
 
     if (!error) {
+      const { dayLabel, timeLabel } = formatApptDate(inviteDate)
+      const inviteSummary = `${inviteGymName} - ${dayLabel} at ${timeLabel}`
+      const scheduledAt = new Date(inviteDate).toISOString()
+      let targetUrl = '/social'
+      let shouldSendPush = true
+
       // Try to send a chat message about it (find direct chat)
       try {
         const { data: myChats } = await supabase.from('chat_members').select('chat_id').eq('user_id', user.id)
@@ -181,7 +187,8 @@ export default function Social() {
             .limit(1)
 
           if (mutual?.[0]) {
-            const { dayLabel, timeLabel } = formatApptDate(inviteDate)
+            targetUrl = `/chat/${mutual[0].chat_id}`
+            shouldSendPush = false
             await supabase.from('messages').insert({
               chat_id: mutual[0].chat_id,
               sender_id: user.id,
@@ -191,6 +198,20 @@ export default function Social() {
           }
         }
       } catch {}
+
+      const tmpl = NotificationTemplates.trainingInvite(profile?.display_name || 'Someone', inviteSummary)
+      await sendNotification({
+        userId: inviteFriendId,
+        ...tmpl,
+        data: {
+          url: targetUrl,
+          sender_id: user.id,
+          gym_name: inviteGymName,
+          scheduled_at: scheduledAt
+        },
+        sendPush: shouldSendPush,
+        preferenceKey: 'notify_invites'
+      })
 
       showToast('Invite sent! ⚡')
       setInviteFriendId(null)
@@ -202,14 +223,42 @@ export default function Social() {
     }
   }
 
-  async function handleAcceptAppointment(apptId) {
-    await supabase.from('gym_appointments').update({ status: 'accepted' }).eq('id', apptId)
+  async function handleAcceptAppointment(appt) {
+    await supabase.from('gym_appointments').update({ status: 'accepted' }).eq('id', appt.id)
+    const { dayLabel, timeLabel } = formatApptDate(appt.scheduled_at)
+    const tmpl = NotificationTemplates.inviteAccepted(
+      profile?.display_name || 'Your friend',
+      `${appt.gym_name} - ${dayLabel} at ${timeLabel}`
+    )
+    await sendNotification({
+      userId: appt.creator_id,
+      ...tmpl,
+      data: {
+        url: '/social',
+        appointment_id: appt.id
+      },
+      preferenceKey: 'notify_invites'
+    })
     showToast('Accepted! See you there 💪')
     await loadSocial()
   }
 
-  async function handleDeclineAppointment(apptId) {
-    await supabase.from('gym_appointments').update({ status: 'declined' }).eq('id', apptId)
+  async function handleDeclineAppointment(appt) {
+    await supabase.from('gym_appointments').update({ status: 'declined' }).eq('id', appt.id)
+    const { dayLabel, timeLabel } = formatApptDate(appt.scheduled_at)
+    const tmpl = NotificationTemplates.inviteDeclined(
+      profile?.display_name || 'Your friend',
+      `${appt.gym_name} - ${dayLabel} at ${timeLabel}`
+    )
+    await sendNotification({
+      userId: appt.creator_id,
+      ...tmpl,
+      data: {
+        url: '/social',
+        appointment_id: appt.id
+      },
+      preferenceKey: 'notify_invites'
+    })
     showToast('Declined')
     await loadSocial()
   }
@@ -360,10 +409,10 @@ export default function Social() {
                     {/* Actions */}
                     {isPending && !isCreator && (
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-primary" style={{ flex: 1, padding: '10px 0', fontSize: '0.85rem', borderRadius: 12 }} onClick={() => handleAcceptAppointment(a.id)}>
+                        <button className="btn btn-primary" style={{ flex: 1, padding: '10px 0', fontSize: '0.85rem', borderRadius: 12 }} onClick={() => handleAcceptAppointment(a)}>
                           <RiCheckFill size={15} style={{ marginRight: 4, verticalAlign: -2 }} /> Accept
                         </button>
-                        <button className="btn btn-secondary" style={{ flex: 1, padding: '10px 0', fontSize: '0.85rem', borderRadius: 12 }} onClick={() => handleDeclineAppointment(a.id)}>
+                        <button className="btn btn-secondary" style={{ flex: 1, padding: '10px 0', fontSize: '0.85rem', borderRadius: 12 }} onClick={() => handleDeclineAppointment(a)}>
                           Decline
                         </button>
                       </div>

@@ -4,24 +4,52 @@
 // The VAPID Public Key must match your backend's VAPID keys!
 const VAPID_PUBLIC_KEY = 'BNBo_jz-q5KOGSbK1Y43HB_UoZim9DwFNVOPGmUThMBDYihvSnX2zPCpqtck6NSiUE--C7ag2p5N4vv97aXh_Hg'
 
+function canUsePushNotifications() {
+  return (
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window
+  )
+}
+
+async function persistSubscription(userId, subscription) {
+  if (!userId || !subscription) return
+
+  const { supabase } = await import('./supabase')
+  await supabase
+    .from('profiles')
+    .update({
+      push_subscription: JSON.parse(JSON.stringify(subscription))
+    })
+    .eq('id', userId)
+}
+
 export async function requestNotificationPermission() {
-  if (!('Notification' in window)) return false
-  if (!('serviceWorker' in navigator)) return false
-  
+  if (!canUsePushNotifications()) return false
+  if (Notification.permission === 'granted') return true
+  if (Notification.permission === 'denied') return false
+
   const permission = await Notification.requestPermission()
   return permission === 'granted'
 }
 
-export async function subscribeToPush(userId = null) {
+export async function subscribeToPush(userId = null, { prompt = true } = {}) {
   try {
-    const granted = await requestNotificationPermission()
+    if (!canUsePushNotifications()) return null
+
+    const granted = Notification.permission === 'granted'
+      ? true
+      : prompt
+        ? await requestNotificationPermission()
+        : false
+
     if (!granted) return null
 
     const registration = await navigator.serviceWorker.ready
-    
-    // Check for existing subscription
+
     let subscription = await registration.pushManager.getSubscription()
-    
+
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -30,10 +58,7 @@ export async function subscribeToPush(userId = null) {
     }
 
     if (subscription && userId) {
-      const { supabase } = await import('./supabase')
-      await supabase.from('profiles').update({
-        push_subscription: JSON.parse(JSON.stringify(subscription))
-      }).eq('id', userId)
+      await persistSubscription(userId, subscription)
     }
 
     return subscription
@@ -43,9 +68,18 @@ export async function subscribeToPush(userId = null) {
   }
 }
 
+export async function syncPushSubscription(userId = null) {
+  if (!userId) return null
+  if (!canUsePushNotifications()) return null
+  if (Notification.permission !== 'granted') return null
+
+  return subscribeToPush(userId, { prompt: false })
+}
+
 export function showLocalNotification(title, body, options = {}) {
+  if (!canUsePushNotifications()) return
   if (Notification.permission !== 'granted') return
-  
+
   navigator.serviceWorker.ready.then(registration => {
     registration.showNotification(title, {
       body,

@@ -1,18 +1,101 @@
 import { supabase } from './supabase'
 
+const NOTIFICATION_PREFERENCE_BY_TYPE = {
+  nudge: 'notify_nudges',
+  invite: 'notify_invites',
+  invite_accepted: 'notify_invites',
+  invite_declined: 'notify_invites',
+  daily_reminder: 'notify_reminders',
+  streak_warning: 'notify_reminders',
+  session_reminder: 'notify_reminders',
+  weekly_progress: 'notify_reminders'
+}
+
+function resolvePreferenceKey(type, preferenceKey) {
+  return preferenceKey || NOTIFICATION_PREFERENCE_BY_TYPE[type] || null
+}
+
+export async function triggerPushNotification({
+  userId,
+  userIds = [],
+  type = 'generic',
+  title,
+  body,
+  data = {},
+  tag,
+  preferenceKey,
+  requireInteraction = false,
+  renotify = false
+}) {
+  const targets = Array.from(new Set([userId, ...userIds].filter(Boolean)))
+  if (targets.length === 0) return { error: null }
+
+  const { error } = await supabase.functions.invoke('send-push', {
+    body: {
+      notification: {
+        userIds: targets,
+        type,
+        title,
+        body,
+        data,
+        tag,
+        preferenceKey: resolvePreferenceKey(type, preferenceKey),
+        requireInteraction,
+        renotify
+      }
+    }
+  })
+
+  if (error) {
+    console.warn('[REPMAX] Push dispatch failed:', error)
+  }
+
+  return { error }
+}
+
 /**
  * Send an in-app notification + optional browser push.
  * All notification types are handled here for consistency.
  */
-export async function sendNotification({ userId, type, title, body, data = {} }) {
+export async function sendNotification({
+  userId,
+  type,
+  title,
+  body,
+  data = {},
+  sendPush = true,
+  preferenceKey,
+  tag,
+  requireInteraction = false,
+  renotify = false
+}) {
   // Save to notifications table (in-app)
-  await supabase.from('notifications').insert({
+  const { data: inserted, error } = await supabase.from('notifications').insert({
     user_id: userId,
     type,
     title,
     body,
     data
-  })
+  }).select('id').single()
+
+  if (!error && sendPush) {
+    await triggerPushNotification({
+      userId,
+      type,
+      title,
+      body,
+      data: {
+        ...data,
+        notification_id: inserted?.id
+      },
+      tag: tag || (inserted?.id ? `notification-${inserted.id}` : undefined),
+      preferenceKey,
+      requireInteraction,
+      renotify
+    })
+  }
+
+  return { data: inserted, error }
 }
 
 /**

@@ -31,7 +31,18 @@ self.addEventListener('fetch', (event) => {
 // PUSH NOTIFICATIONS
 // =====================
 self.addEventListener('push', (event) => {
-  let data = { title: 'REPMAX', body: 'You have a new notification', icon: '/icons/icon-192.png' }
+  let data = {
+    title: 'REPMAX',
+    body: 'You have a new notification',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-72.png',
+    tag: 'repmax-notification',
+    data: {},
+    actions: [],
+    requireInteraction: false,
+    renotify: false,
+    silent: false
+  }
   
   try {
     if (event.data) {
@@ -43,7 +54,10 @@ self.addEventListener('push', (event) => {
         badge: '/icons/icon-72.png',
         tag: payload.tag || 'repmax-notification',
         data: payload.data || {},
-        actions: payload.actions || []
+        actions: payload.actions || [],
+        requireInteraction: payload.requireInteraction === true,
+        renotify: payload.renotify === true,
+        silent: payload.silent === true
       }
     }
   } catch {
@@ -59,8 +73,11 @@ self.addEventListener('push', (event) => {
       badge: data.badge,
       tag: data.tag,
       data: data.data,
+      actions: data.actions,
       vibrate: [200, 100, 200],
-      requireInteraction: false
+      requireInteraction: data.requireInteraction,
+      renotify: data.renotify,
+      silent: data.silent
     })
   )
 })

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { sendNotification } from '../lib/notifications'
 import GymPicker from '../components/GymPicker'
 import CallScreen from '../components/CallScreen'
 import { startCall, answerCall } from '../lib/webrtc'
@@ -319,8 +320,8 @@ export default function ChatRoom() {
 
       if (calleeId && offerPayload) {
         await clearPendingIncomingCalls(calleeId).catch(() => {})
-        const { error: notificationError } = await supabase.from('notifications').insert({
-          user_id: calleeId,
+        const { error: notificationError } = await sendNotification({
+          userId: calleeId,
           type: 'incoming_call',
           title: withVideo ? 'Incoming video call' : 'Incoming call',
           body: `${profile?.display_name || 'Someone'} is calling you`,
@@ -333,7 +334,10 @@ export default function ChatRoom() {
             with_video: withVideo,
             offer: offerPayload.offer,
             expires_at: expiresAt
-          }
+          },
+          tag: `call-${offerPayload.callId}`,
+          requireInteraction: true,
+          renotify: true
         })
 
         if (notificationError) {
