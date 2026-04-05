@@ -111,14 +111,14 @@ export default function Social() {
   }
 
   async function searchFriend() {
-    if (!searchCode.trim() || searchCode.trim().length < 4) return
+    if (!searchCode.trim() || searchCode.trim().length < 2) return
     setSearching(true)
     setSearchResult(null)
-    const code = searchCode.trim().toUpperCase()
+    const query = searchCode.trim().toLowerCase().replace(/^@/, '')
     const { data } = await supabase
       .from('profiles')
-      .select('id, display_name, total_workouts, subscription_status, friend_code, avatar_seed, image_url')
-      .eq('friend_code', code)
+      .select('id, display_name, total_workouts, subscription_status, username, avatar_seed, image_url, status_emoji')
+      .ilike('username', query)
       .neq('id', user.id)
       .limit(1)
     setSearchResult(data?.[0] || 'not_found')
@@ -272,7 +272,7 @@ export default function Social() {
     window.open(url, '_blank')
   }
 
-  const friendCode = profile?.friend_code || '...'
+  const myUsername = profile?.username || '...'
 
   if (loading) return (
     <div className="page">
@@ -510,11 +510,11 @@ export default function Social() {
           <div className="anim-slide-up">
             <div className="friend-code-card">
               <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
-                Your Friend Code
+                Your Username
               </div>
-              <div className="friend-code-display">{friendCode}</div>
-              <button className="btn btn-sm btn-secondary" onClick={() => { navigator.clipboard?.writeText(friendCode); showToast('Copied!') }}>
-                Copy Code
+              <div className="friend-code-display">@{myUsername}</div>
+              <button className="btn btn-sm btn-secondary" onClick={() => { navigator.clipboard?.writeText(myUsername); showToast('Username copied!') }}>
+                Copy Username
               </button>
             </div>
 
@@ -523,15 +523,15 @@ export default function Social() {
               <input
                 type="text"
                 className="v3-search-input"
-                placeholder="A1B2C3D4"
+                placeholder="@username"
                 value={searchCode}
-                onChange={e => setSearchCode(e.target.value.toUpperCase())}
-                maxLength={8}
+                onChange={e => setSearchCode(e.target.value.toLowerCase().replace(/[^a-z0-9_@]/g, ''))}
+                maxLength={16}
                 onKeyDown={e => e.key === 'Enter' && searchFriend()}
               />
             </div>
-            <button className="btn btn-primary btn-full" onClick={searchFriend} disabled={searching || searchCode.length < 4} style={{ marginBottom: 24 }}>
-              {searching ? 'Searching...' : 'Search Code'}
+            <button className="btn btn-primary btn-full" onClick={searchFriend} disabled={searching || searchCode.replace('@', '').length < 2} style={{ marginBottom: 24 }}>
+              {searching ? 'Searching...' : 'Find User'}
             </button>
 
             {searchResult && (

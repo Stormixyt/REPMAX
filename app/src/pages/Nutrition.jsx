@@ -179,22 +179,22 @@ async function translateQuery(query) {
   }
 }
 
-// AI nutrition lookup — always returns a result in the user's original language
+// AI nutrition lookup — returns accurate portion sizes based on what the user types
 async function aiSearchFood(query) {
   try {
     const data = await callGroq({
       messages: [
         {
           role: "system",
-          content: `You are a precise nutrition database. Given a food item (in any language), return accurate nutritional data STRICTLY PER 100 GRAMS.
+          content: `You are a precise nutrition database. Given a user's food query (e.g. "1 egg" or "200g chicken" or "1 scoop whey"), calculate the nutritional data FOR THE EXACT PORTION REQUESTED.
 Rules:
-- NO MATTER WHAT the user types, normalize the data to 100g.
-- Set serving_size to exactly "100g".
-- If the input is not in English, return food_name in the SAME language as the input.
+- Give accurate calories and macros for the ENTIRE amount they requested.
+- If no specific portion is given (e.g. "apple"), assume a standard serving (e.g. "1 medium apple").
+- Set serving_size to the exact portion calculated (e.g. "1 large egg (50g)", "2 slices (60g)", "150g").
 - Output ONLY valid JSON:
-  {"food_name":"...","brand":"","serving_size":"100g","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0}`,
+  {"food_name":"...","brand":"","serving_size":"...","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0}`,
         },
-        { role: "user", content: `Nutritional info for 100g of: ${query}` },
+        { role: "user", content: `Nutritional info for: ${query}` },
       ],
       model: "llama-3.3-70b-versatile",
       temperature: 0.2,
@@ -221,7 +221,7 @@ export default function Nutrition() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [aiResult, setAiResult] = useState(null);
-  const [aiGrams, setAiGrams] = useState(100);
+  const [aiMultiplier, setAiMultiplier] = useState(1);
   const [searching, setSearching] = useState(false);
   const [detectedLang, setDetectedLang] = useState(null);
   const [selectedMeal, setSelectedMeal] = useState("snack");
@@ -375,7 +375,7 @@ export default function Nutrition() {
     setSearching(true);
     setSearchResults([]);
     setAiResult(null);
-    setAiGrams(100);
+    setAiMultiplier(1);
     setDetectedLang(null);
 
     const query = searchQuery.trim();
@@ -430,7 +430,7 @@ export default function Nutrition() {
       setSearchQuery("");
       setSearchResults([]);
       setAiResult(null);
-      setAiGrams(100);
+      setAiMultiplier(1);
       setDetectedLang(null);
       loadNutrition();
     } else {
@@ -1043,19 +1043,27 @@ export default function Nutrition() {
 
             {/* ── AI Featured Result (always on top) ── */}
             {aiResult && !searching && (() => {
-              const mul = aiGrams / 100;
-              const calcCals = Math.round(aiResult.calories * mul);
-              const calcPro = Math.round(aiResult.protein * mul);
-              const calcCarb = Math.round(aiResult.carbs * mul);
-              const calcFat = Math.round(aiResult.fat * mul);
+              const calcCals = Math.round(aiResult.calories * aiMultiplier);
+              const calcPro = Math.round(aiResult.protein * aiMultiplier);
+              const calcCarb = Math.round(aiResult.carbs * aiMultiplier);
+              const calcFat = Math.round(aiResult.fat * aiMultiplier);
+              
+              let finalServing = aiResult.serving_size;
+              if (aiMultiplier !== 1) {
+                finalServing = `${aiMultiplier}x (${aiResult.serving_size})`;
+              }
+
               return (
               <div className="ai-food-result">
                 <div className="ai-food-badge">
-                  <RiSparkling2Fill size={13} /> AI Result
+                  <RiSparkling2Fill size={13} /> AI Precision Match
                 </div>
                 <div className="ai-food-card glass-card">
                   <div className="ai-food-header">
-                    <span className="ai-food-name">{aiResult.food_name}</span>
+                    <div>
+                      <span className="ai-food-name" style={{ display: 'block' }}>{aiResult.food_name}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>{finalServing}</span>
+                    </div>
                     <span className="ai-food-cals">
                       {calcCals} kcal
                     </span>
@@ -1078,15 +1086,16 @@ export default function Nutrition() {
                     </span>
                   </div>
                   
-                  {/* Grams Selector */}
+                  {/* Servings Selector */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16, marginBottom: 16 }}>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Amount (g):</label>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Servings:</label>
                     <input 
                       type="number" 
+                      step="0.5"
                       className="input glass-input" 
                       style={{ padding: '8px 12px', fontSize: '0.9rem', width: '100px' }}
-                      value={aiGrams}
-                      onChange={(e) => setAiGrams(Number(e.target.value) || 0)}
+                      value={aiMultiplier}
+                      onChange={(e) => setAiMultiplier(Number(e.target.value) || 0)}
                     />
                   </div>
 
@@ -1094,7 +1103,7 @@ export default function Nutrition() {
                     className="btn btn-primary btn-sm btn-full"
                     onClick={() => addFoodLog({
                       ...aiResult,
-                      serving_size: `${aiGrams}g`,
+                      serving_size: finalServing,
                       calories: calcCals,
                       protein: calcPro,
                       carbs: calcCarb,

@@ -3,12 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import GymPicker from '../components/GymPicker'
-import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill } from '@remixicon/react'
+import CallScreen from '../components/CallScreen'
+import { startCall, answerCall, endCall, setCallbacks } from '../lib/webrtc'
+import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill, RiPhoneFill, RiVideoOnFill } from '@remixicon/react'
 
 export default function ChatRoom() {
   const { chatId } = useParams()
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user, profile, isPro } = useAuth()
   const [messages, setMessages] = useState([])
   const [chatMeta, setChatMeta] = useState(null)
   const [text, setText] = useState('')
@@ -19,6 +21,12 @@ export default function ChatRoom() {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const channelRef = useRef(null)
+  const [activeCall, setActiveCall] = useState(null) // { localStream, remoteStream, callerName, isVideo }
+  const [incomingCall, setIncomingCall] = useState(null)
+  const [reactionMsgId, setReactionMsgId] = useState(null)
+  const [reactions, setReactions] = useState({}) // { msgId: [{emoji, user_id}...] }
+  const REACTION_EMOJIS = ['💪', '🔥', '👏', '🤣', '❤️']
+  const SUPER_EMOJIS = ['⚡', '🏆', '💎', '🫡', '☠️']
 
   // Use AbortController pattern to prevent stale state updates on unmount
   useEffect(() => {
@@ -107,6 +115,39 @@ export default function ChatRoom() {
     setMessages(prev => prev.filter(m => m.id !== msgId))
     setTappedMsgId(null)
     await supabase.from('messages').delete().eq('id', msgId)
+  }
+
+  async function initiateCall(withVideo) {
+    try {
+      const result = await startCall(chatId, user.id, withVideo)
+      setCallbacks({
+        onRemote: (stream) => setActiveCall(prev => ({ ...prev, remoteStream: stream })),
+        onEnded: () => setActiveCall(null),
+        onConnected: () => {}
+      })
+      setActiveCall({
+        localStream: result.localStream,
+        remoteStream: null,
+        callerName: chatMeta?.title || 'Gym Buddy',
+        isVideo: withVideo
+      })
+    } catch (err) {
+      console.error('Call failed:', err)
+    }
+  }
+
+  async function addReaction(msgId, emoji) {
+    setReactionMsgId(null)
+    const isSuper = SUPER_EMOJIS.includes(emoji)
+    // Optimistic update
+    setReactions(prev => {
+      const existing = prev[msgId] || []
+      if (existing.find(r => r.emoji === emoji && r.user_id === user.id)) return prev
+      return { ...prev, [msgId]: [...existing, { emoji, user_id: user.id, is_super: isSuper }] }
+    })
+    await supabase.from('message_reactions').upsert({
+      message_id: msgId, user_id: user.id, emoji, is_super: isSuper
+    }, { onConflict: 'message_id,user_id,emoji' })
   }
 
   function getMemberName(senderId) {
@@ -242,6 +283,25 @@ export default function ChatRoom() {
             {chatMeta?.type === 'group' ? `${chatMeta.members?.length || 0} members` : 'online'}
           </div>
         </div>
+        {/* Call buttons — Pro only, direct chats only */}
+        {chatMeta?.type === 'direct' && (
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <button
+              className="icon-btn"
+              onClick={() => isPro ? initiateCall(false) : navigate('/subscribe')}
+              style={{ opacity: isPro ? 1 : 0.4 }}
+            >
+              <RiPhoneFill size={18} />
+            </button>
+            <button
+              className="icon-btn"
+              onClick={() => isPro ? initiateCall(true) : navigate('/subscribe')}
+              style={{ opacity: isPro ? 1 : 0.4 }}
+            >
+              <RiVideoOnFill size={18} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -282,6 +342,7 @@ export default function ChatRoom() {
               <div
                 className={`msg-wrapper ${isMe ? 'sent' : 'received'} msg-enter`}
                 onClick={() => isMe && setTappedMsgId(prev => prev === msg.id ? null : msg.id)}
+                onDoubleClick={() => msg.type === 'text' && setReactionMsgId(prev => prev === msg.id ? null : msg.id)}
               >
                 {!isMe && chatMeta?.type === 'group' && (
                   <div className="msg-sender-name">{senderName}</div>
@@ -356,6 +417,71 @@ export default function ChatRoom() {
                     <RiDeleteBinLine size={14} /> Delete for everyone
                   </button>
                 )}
+
+                {/* Reaction bar — appears on double tap */}
+                {reactionMsgId === msg.id && (
+                  <div style={{
+                    display: 'flex', gap: 6, padding: '6px 10px',
+                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    borderRadius: 20, position: 'absolute',
+                    top: -44, left: isMe ? 'auto' : 0, right: isMe ? 0 : 'auto',
+                    zIndex: 20, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                    animation: 'scaleIn 0.15s ease'
+                  }}>
+                    {REACTION_EMOJIS.map(em => (
+                      <button
+                        key={em}
+                        onClick={(e) => { e.stopPropagation(); addReaction(msg.id, em) }}
+                        style={{
+                          background: 'none', border: 'none', fontSize: '1.3rem',
+                          cursor: 'pointer', padding: '2px 4px', borderRadius: 8,
+                          transition: 'transform 0.15s'
+                        }}
+                        onMouseOver={e => e.target.style.transform = 'scale(1.3)'}
+                        onMouseOut={e => e.target.style.transform = 'scale(1)'}
+                      >
+                        {em}
+                      </button>
+                    ))}
+                    {isPro && SUPER_EMOJIS.map(em => (
+                      <button
+                        key={em}
+                        onClick={(e) => { e.stopPropagation(); addReaction(msg.id, em) }}
+                        style={{
+                          background: 'none', border: 'none', fontSize: '1.3rem',
+                          cursor: 'pointer', padding: '2px 4px', borderRadius: 8,
+                          transition: 'transform 0.15s',
+                          filter: 'drop-shadow(0 0 4px rgba(212,255,0,0.5))'
+                        }}
+                        onMouseOver={e => e.target.style.transform = 'scale(1.4)'}
+                        onMouseOut={e => e.target.style.transform = 'scale(1)'}
+                      >
+                        {em}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Reaction pills */}
+                {reactions[msg.id]?.length > 0 && (
+                  <div style={{
+                    display: 'flex', flexWrap: 'wrap', gap: 4,
+                    marginTop: 4, justifyContent: isMe ? 'flex-end' : 'flex-start'
+                  }}>
+                    {Object.entries(
+                      reactions[msg.id].reduce((acc, r) => { acc[r.emoji] = (acc[r.emoji] || 0) + 1; return acc }, {})
+                    ).map(([emoji, count]) => (
+                      <span key={emoji} style={{
+                        fontSize: '0.75rem', padding: '2px 6px',
+                        background: 'var(--bg-elevated)', borderRadius: 10,
+                        border: '1px solid var(--border)',
+                        animation: reactions[msg.id].find(r => r.emoji === emoji)?.is_super ? 'pulse 1s ease infinite' : 'none'
+                      }}>
+                        {emoji} {count > 1 && count}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )
@@ -405,6 +531,21 @@ export default function ChatRoom() {
 
       {tappedMsgId && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 5 }} onClick={() => setTappedMsgId(null)} />
+      )}
+
+      {reactionMsgId && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 15 }} onClick={() => setReactionMsgId(null)} />
+      )}
+
+      {/* Active call overlay */}
+      {activeCall && (
+        <CallScreen
+          callerName={activeCall.callerName}
+          isVideo={activeCall.isVideo}
+          localStream={activeCall.localStream}
+          remoteStream={activeCall.remoteStream}
+          onEnd={() => setActiveCall(null)}
+        />
       )}
     </div>
   )

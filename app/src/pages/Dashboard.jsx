@@ -6,6 +6,7 @@ import { shareDNACard } from '../lib/shareDNA'
 import { subscribeToPush, showLocalNotification } from '../lib/pushNotifications'
 import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill, RiFireFill, RiWaterFlashFill, RiRunFill, RiScalesFill, RiShareLine, RiSparklingFill, RiStarFill } from '@remixicon/react'
 import ProBadge from '../components/ProBadge'
+import RestDayHub from '../components/RestDayHub'
 
 function generateDailyChallenge(profile) {
   const day = new Date().getDate()
@@ -244,10 +245,8 @@ export default function Dashboard() {
           </button>
         </div>
       ) : (
-        <div className="card" style={{ marginBottom: 16, textAlign: 'center', padding: 32, marginTop: !isPro ? 12 : 0 }}>
-          <RiMoonClearFill size={36} className="empty-icon" style={{ marginBottom: 12 }} />
-          <div className="card-title">Rest Day</div>
-          <div className="card-subtitle">Recovery is where the gains happen.</div>
+        <div style={{ marginTop: !isPro ? 12 : 0 }}>
+          <RestDayHub />
         </div>
       )}
 

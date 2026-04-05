@@ -14,10 +14,12 @@ import Settings from './pages/Settings'
 import Nutrition from './pages/Nutrition'
 import Notifications from './pages/Notifications'
 import ChatRoom from './pages/ChatRoom'
+import HomeExercises from './pages/HomeExercises'
 import Layout from './components/Layout'
+import UsernameModal from './components/UsernameModal'
 
 export default function App() {
-  const { user, profile, loading, isOnboarded } = useAuth()
+  const { user, profile, loading, isOnboarded, needsUsername, fetchProfile } = useAuth()
 
   useEffect(() => {
     document.body.classList.remove('theme-green', 'theme-pink', 'theme-blue', 'theme-gold')
@@ -28,8 +30,6 @@ export default function App() {
     }
   }, [profile?.theme_color])
 
-  // Single loading gate — AuthContext handles everything
-  // loading=true until: (a) profile loads OR (b) safety timer fires OR (c) no user
   if (loading) {
     return (
       <div className="loading-screen">
@@ -41,7 +41,6 @@ export default function App() {
     )
   }
 
-  // Not logged in
   if (!user) {
     return (
       <Routes>
@@ -50,9 +49,6 @@ export default function App() {
     )
   }
 
-  // User exists but profile failed to load — show app anyway
-  // (Dashboard will handle null profile gracefully with defaults)
-  // Only redirect to Onboarding if we POSITIVELY know profile.onboarded === false
   if (profile && profile.onboarded !== true) {
     return (
       <Routes>
@@ -61,26 +57,33 @@ export default function App() {
     )
   }
 
-  // Fully authenticated (profile might be null if fetch failed — app handles it)
   return (
-    <Routes>
-      <Route path="/setup" element={<Onboarding />} />
-      <Route path="/workout/:workoutId" element={<Workout />} />
-      <Route path="/subscribe" element={<Subscription />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/notifications" element={<Notifications />} />
-      <Route path="/chat/:chatId" element={<ChatRoom />} />
+    <>
+      {/* Username modal — blocks the app until user picks a username */}
+      {needsUsername && (
+        <UsernameModal onComplete={() => fetchProfile()} />
+      )}
 
-      <Route element={<Layout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/progress" element={<Progress />} />
-        <Route path="/nutrition" element={<Nutrition />} />
-        <Route path="/social" element={<Social />} />
-        <Route path="/coach" element={<AICoach />} />
-        <Route path="/profile" element={<Profile />} />
-      </Route>
+      <Routes>
+        <Route path="/setup" element={<Onboarding />} />
+        <Route path="/workout/:workoutId" element={<Workout />} />
+        <Route path="/subscribe" element={<Subscription />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/chat/:chatId" element={<ChatRoom />} />
+        <Route path="/exercises" element={<HomeExercises />} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/progress" element={<Progress />} />
+          <Route path="/nutrition" element={<Nutrition />} />
+          <Route path="/social" element={<Social />} />
+          <Route path="/coach" element={<AICoach />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   )
 }
