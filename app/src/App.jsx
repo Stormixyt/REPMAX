@@ -64,6 +64,20 @@ export default function App() {
           expiresAt
         })
       })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`
+      }, ({ new: notification }) => {
+        if (notification.type !== 'incoming_call') return
+        if (!notification.read) return
+
+        setIncomingCallPrompt(prev => {
+          if (!prev || prev.id !== notification.id) return prev
+          return null
+        })
+      })
       .subscribe()
 
     async function loadPendingIncomingCall() {

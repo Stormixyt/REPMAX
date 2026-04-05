@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import GymPicker from '../components/GymPicker'
 import CallScreen from '../components/CallScreen'
-import { startCall, answerCall, endCall, setCallbacks } from '../lib/webrtc'
+import { startCall, answerCall } from '../lib/webrtc'
 import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill, RiPhoneFill, RiVideoOnFill, RiCloseLine } from '@remixicon/react'
 
 export default function ChatRoom() {
@@ -22,9 +22,8 @@ export default function ChatRoom() {
   const inputRef = useRef(null)
   const channelRef = useRef(null)
   const activeCallRef = useRef(null)
-  const pendingRemoteStreamRef = useRef(null)
   const toastTimerRef = useRef(null)
-  const [activeCall, setActiveCall] = useState(null) // { localStream, remoteStream, callerName, isVideo }
+  const [activeCall, setActiveCall] = useState(null)
   const [incomingCall, setIncomingCall] = useState(null)
   const [callToast, setCallToast] = useState('')
   const [reactionMsgId, setReactionMsgId] = useState(null)
@@ -149,7 +148,6 @@ export default function ChatRoom() {
       })
       .on('broadcast', { event: 'call-declined' }, ({ payload }) => {
         if (payload.callerId === user.id && (!activeCallRef.current || activeCallRef.current.callId === payload.callId)) {
-          endCall({ notifyRemote: false })
           setActiveCall(null)
           showCallToast(payload.message || 'Call declined')
         }
@@ -165,7 +163,23 @@ export default function ChatRoom() {
           if (notificationId) {
             supabase.from('notifications').update({ read: true }).eq('id', notificationId).catch(() => {})
           }
+          setActiveCall(prev => prev?.callId === payload.callId ? null : prev)
           showCallToast(`${payload.callerName || 'Caller'} ended the call`)
+        }
+      })
+      .on('broadcast', { event: 'end-call' }, ({ payload }) => {
+        if (payload.callerId !== user.id) {
+          let notificationId = null
+          setIncomingCall(prev => {
+            if (!prev || prev.callId !== payload.callId) return prev
+            notificationId = prev.notificationId
+            return null
+          })
+          if (notificationId) {
+            supabase.from('notifications').update({ read: true }).eq('id', notificationId).catch(() => {})
+          }
+          setActiveCall(prev => prev?.callId === payload.callId ? null : prev)
+          showCallToast(payload.message || `${payload.callerName || 'Caller'} ended the call`)
         }
       })
       .subscribe((status) => {
@@ -192,6 +206,16 @@ export default function ChatRoom() {
   async function markCallNotificationRead(notificationId) {
     if (!notificationId) return
     await supabase.from('notifications').update({ read: true }).eq('id', notificationId)
+  }
+
+  async function clearPendingIncomingCalls(targetUserId) {
+    if (!targetUserId) return
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', targetUserId)
+      .eq('type', 'incoming_call')
+      .eq('read', false)
   }
 
   async function declineIncomingCall() {
@@ -221,26 +245,11 @@ export default function ChatRoom() {
     }
 
     try {
-      pendingRemoteStreamRef.current = null
-      setCallbacks({
-        onRemote: (stream) => {
-          pendingRemoteStreamRef.current = stream
-          setActiveCall(prev => prev ? { ...prev, remoteStream: stream } : prev)
-        },
-        onEnded: () => {
-          pendingRemoteStreamRef.current = null
-          setActiveCall(null)
-          setIncomingCall(null)
-        },
-        onConnected: () => {}
-      })
-
       const result = await answerCall(chatId, incomingCall.offer, incomingCall.withVideo, incomingCall.callId)
       await markCallNotificationRead(incomingCall.notificationId)
       setActiveCall({
         callId: incomingCall.callId,
-        localStream: result.localStream,
-        remoteStream: pendingRemoteStreamRef.current,
+        roomName: result.roomName,
         callerName: incomingCall.callerName || chatMeta?.title || 'Gym Buddy',
         isVideo: incomingCall.withVideo,
         direction: 'incoming'
@@ -283,19 +292,6 @@ export default function ChatRoom() {
       const expiresAt = new Date(Date.now() + 60_000).toISOString()
       let offerPayload = null
 
-      pendingRemoteStreamRef.current = null
-      setCallbacks({
-        onRemote: (stream) => {
-          pendingRemoteStreamRef.current = stream
-          setActiveCall(prev => prev ? { ...prev, remoteStream: stream } : prev)
-        },
-        onEnded: () => {
-          pendingRemoteStreamRef.current = null
-          setActiveCall(null)
-        },
-        onConnected: () => {}
-      })
-
       const result = await startCall(chatId, user.id, withVideo, (payload) => {
         offerPayload = {
           ...payload,
@@ -315,6 +311,7 @@ export default function ChatRoom() {
       })
 
       if (calleeId && offerPayload) {
+        await clearPendingIncomingCalls(calleeId).catch(() => {})
         await supabase.from('notifications').insert({
           user_id: calleeId,
           type: 'incoming_call',
@@ -335,12 +332,12 @@ export default function ChatRoom() {
 
       setActiveCall({
         callId: result.callId,
-        localStream: result.localStream,
-        remoteStream: pendingRemoteStreamRef.current,
+        roomName: result.roomName,
         callerName: chatMeta?.title || 'Gym Buddy',
         isVideo: withVideo,
         direction: 'outgoing',
         callerId: user.id,
+        calleeId,
         callerNameForRemote: profile?.display_name || 'Gym Buddy'
       })
     } catch (err) {
@@ -820,22 +817,30 @@ export default function ChatRoom() {
         <CallScreen
           callerName={activeCall.callerName}
           isVideo={activeCall.isVideo}
-          localStream={activeCall.localStream}
-          remoteStream={activeCall.remoteStream}
-          onEnd={() => {
-            if (activeCall.direction === 'outgoing' && !activeCall.remoteStream) {
+          roomName={activeCall.roomName}
+          displayName={profile?.display_name || 'REPMAX User'}
+          onEnd={({ notifyRemote = true } = {}) => {
+            const currentCall = activeCallRef.current
+            if (!currentCall) return
+
+            setActiveCall(null)
+
+            if (currentCall.calleeId) {
+              clearPendingIncomingCalls(currentCall.calleeId).catch(() => {})
+            }
+
+            if (notifyRemote) {
               channelRef.current?.send({
                 type: 'broadcast',
-                event: 'cancel-call',
+                event: 'end-call',
                 payload: {
-                  callId: activeCall.callId,
+                  callId: currentCall.callId,
                   callerId: user.id,
-                  callerName: profile?.display_name || 'Gym Buddy'
+                  callerName: profile?.display_name || 'Gym Buddy',
+                  message: `${profile?.display_name || 'Caller'} ended the call`
                 }
-              })
+              }).catch(() => {})
             }
-            pendingRemoteStreamRef.current = null
-            setActiveCall(null)
           }}
         />
       )}
