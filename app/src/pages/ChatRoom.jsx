@@ -21,6 +21,7 @@ export default function ChatRoom() {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const channelRef = useRef(null)
+  const callChannelRef = useRef(null)
   const [activeCall, setActiveCall] = useState(null) // { localStream, remoteStream, callerName, isVideo }
   const [incomingCall, setIncomingCall] = useState(null)
   const [reactionMsgId, setReactionMsgId] = useState(null)
@@ -83,11 +84,26 @@ export default function ChatRoom() {
 
     channelRef.current = channel
 
+    // Listen for incoming calls
+    const callChannel = supabase.channel(`call-${chatId}`, { config: { broadcast: { self: false } } })
+      .on('broadcast', { event: 'offer' }, ({ payload }) => {
+        if (payload.callerId !== user.id) {
+          setIncomingCall({ offer: payload.offer, callerId: payload.callerId, withVideo: payload.withVideo })
+        }
+      })
+      .subscribe()
+      
+    callChannelRef.current = callChannel
+
     return () => {
       cancelled = true
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null
+      }
+      if (callChannelRef.current) {
+        supabase.removeChannel(callChannelRef.current)
+        callChannelRef.current = null
       }
     }
   }, [chatId])

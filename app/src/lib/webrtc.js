@@ -14,6 +14,7 @@ let peerConnection = null
 let localStream = null
 let remoteStream = null
 let signalingChannel = null
+let pendingCandidates = []
 let onRemoteStream = null
 let onCallEnded = null
 let onCallConnected = null
@@ -67,22 +68,37 @@ export async function startCall(chatId, userId, withVideo = false) {
     // Set up signaling channel
     const channelName = `call-${chatId}`
     signalingChannel = supabase.channel(channelName)
+    pendingCandidates = []
 
-    signalingChannel
-      .on('broadcast', { event: 'answer' }, async ({ payload }) => {
-        if (peerConnection && payload.answer) {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer))
-        }
-      })
-      .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
-        if (peerConnection && payload.candidate) {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate))
-        }
-      })
-      .on('broadcast', { event: 'end-call' }, () => {
-        endCall()
-      })
-      .subscribe()
+    await new Promise((resolve) => {
+      signalingChannel
+        .on('broadcast', { event: 'answer' }, async ({ payload }) => {
+          if (peerConnection && payload.answer) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer))
+            for (const c of pendingCandidates) {
+              try { await peerConnection.addIceCandidate(new RTCIceCandidate(c)) } catch (e) {}
+            }
+            pendingCandidates = []
+          }
+        })
+        .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+          if (peerConnection && payload.candidate) {
+            try {
+              if (peerConnection.remoteDescription) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate))
+              } else {
+                pendingCandidates.push(payload.candidate)
+              }
+            } catch (e) {}
+          }
+        })
+        .on('broadcast', { event: 'end-call' }, () => {
+          endCall()
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') resolve()
+        })
+    })
 
     // Create and send offer
     const offer = await peerConnection.createOffer()
@@ -114,19 +130,35 @@ export async function answerCall(chatId, offer, withVideo = false) {
 
     const channelName = `call-${chatId}`
     signalingChannel = supabase.channel(channelName)
+    pendingCandidates = []
 
-    signalingChannel
-      .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
-        if (peerConnection && payload.candidate) {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate))
-        }
-      })
-      .on('broadcast', { event: 'end-call' }, () => {
-        endCall()
-      })
-      .subscribe()
+    await new Promise((resolve) => {
+      signalingChannel
+        .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+          if (peerConnection && payload.candidate) {
+            try {
+              if (peerConnection.remoteDescription) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate))
+              } else {
+                pendingCandidates.push(payload.candidate)
+              }
+            } catch (e) {}
+          }
+        })
+        .on('broadcast', { event: 'end-call' }, () => {
+          endCall()
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') resolve()
+        })
+    })
 
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+    for (const c of pendingCandidates) {
+      try { await peerConnection.addIceCandidate(new RTCIceCandidate(c)) } catch (e) {}
+    }
+    pendingCandidates = []
+
     const answer = await peerConnection.createAnswer()
     await peerConnection.setLocalDescription(answer)
 
