@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import ProBadge from '../components/ProBadge'
-import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine, RiImageFill } from '@remixicon/react'
+import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine, RiImageFill, RiTranslate2 } from '@remixicon/react'
 import { requestNotificationPermission, subscribeToPush } from '../lib/pushNotifications'
 
 export default function Settings() {
@@ -109,6 +109,28 @@ export default function Settings() {
           </div>
         </div>
         <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      {/* App Settings */}
+      <div className="settings-section-title">App Settings</div>
+
+      <div className="settings-item" onClick={() => {
+        const langs = ['English', 'Arabic', 'Dutch', 'Yes Bruh!!']
+        const currentLang = profile?.language || 'English'
+        const nextIdx = (langs.indexOf(currentLang) + 1) % langs.length
+        updateProfile({ language: langs[nextIdx] })
+        showToast(`Language set to ${langs[nextIdx]}`)
+      }}>
+        <div className="settings-item-left">
+          <div className="settings-icon"><RiTranslate2 size={18} /></div>
+          <div>
+            <div className="settings-label">Language</div>
+            <div className="settings-value">{profile?.language || 'English'}</div>
+          </div>
+        </div>
+        <div className="settings-toggle" style={{ border: 'none', background: 'transparent' }}>
+          <RiArrowRightSLine size={20} className="settings-chevron" />
+        </div>
       </div>
 
       {/* Training */}

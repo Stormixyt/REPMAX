@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { sendNotification, NotificationTemplates } from '../lib/notifications'
 import GymPicker from '../components/GymPicker'
+import UserProfileModal from '../components/UserProfileModal'
 import {
   RiUserAddFill, RiSearchLine, RiTeamFill, RiChat3Fill,
   RiVipCrownFill, RiFlashlightFill, RiCheckFill, RiCloseFill,
   RiMapPin2Fill, RiTimeFill, RiCalendarLine,
-  RiArrowRightSLine
+  RiArrowRightSLine, RiNavigation2Fill, RiRunFill
 } from '@remixicon/react'
 
 export default function Social() {
@@ -24,6 +25,7 @@ export default function Social() {
   const [searching, setSearching] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showGroupForm, setShowGroupForm] = useState(false)
+  const [viewProfileId, setViewProfileId] = useState(null)
   const [inviteFriendId, setInviteFriendId] = useState(null)
   const [inviteGymName, setInviteGymName] = useState('')
   const [inviteDate, setInviteDate] = useState('')
@@ -479,8 +481,8 @@ export default function Social() {
             ) : (
               <div className="stagger-children" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {friends.map(f => (
-                  <div key={f.id} className="v3-friend-card" onClick={() => openDirectChat(f.id)}>
-                    <div className={`v3-friend-avatar ${f.subscription_status === 'pro' ? 'pro' : ''}`}>
+                  <div key={f.id} className="v3-friend-card" onClick={() => setViewProfileId(f.id)}>
+                    <div className={`v3-friend-avatar ${f.subscription_status === 'pro' ? 'pro' : ''}`} style={{ position: 'relative' }}>
                       <img src={f.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${f.avatar_seed || f.id}&backgroundColor=transparent`} alt="" />
                     </div>
                     <div className="v3-friend-info">
@@ -687,6 +689,14 @@ export default function Social() {
             </button>
           </div>
         </div>
+      )}
+
+      {viewProfileId && (
+        <UserProfileModal 
+          userId={viewProfileId} 
+          onClose={() => setViewProfileId(null)} 
+          onMessage={(id) => { setViewProfileId(null); openDirectChat(id); setTab('messages') }} 
+        />
       )}
 
       {toast && <div className="toast fade-in">{toast}</div>}

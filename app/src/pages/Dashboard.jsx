@@ -7,6 +7,17 @@ import { subscribeToPush, showLocalNotification } from '../lib/pushNotifications
 import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill, RiFireFill, RiWaterFlashFill, RiRunFill, RiScalesFill, RiShareLine, RiSparklingFill, RiStarFill } from '@remixicon/react'
 import ProBadge from '../components/ProBadge'
 
+const MOTIVATIONS = [
+  "No excuses, just execution.",
+  "Your only limit is you.",
+  "Pain is weakness leaving the body.",
+  "Sweat is just fat crying.",
+  "One day, or day one. You decide.",
+  "Discipline outlasts motivation.",
+  "Light weight, baby!",
+  "Make yourself proud today."
+]
+
 function generateDailyChallenge(profile) {
   const day = new Date().getDate()
   const challenges = [
@@ -39,6 +50,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [sharing, setSharing] = useState(false)
   const [showNotifPrompt, setShowNotifPrompt] = useState(false)
+  const [motivation] = useState(() => MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)])
   const mounted = useRef(true)
 
   useEffect(() => {
@@ -169,7 +181,7 @@ export default function Dashboard() {
       )}
 
       {/* Header with Aura Avatar */}
-      <div className="page-header">
+      <div className="page-header" style={{ paddingBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div className={`aura-ring ${auraLevel}`} style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
@@ -189,6 +201,9 @@ export default function Dashboard() {
             <RiNotification3Fill size={20} />
             {unreadNotifs > 0 && <span className="notif-count">{unreadNotifs}</span>}
           </button>
+        </div>
+        <div style={{ marginTop: 8, fontStyle: 'italic', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          "{motivation}"
         </div>
       </div>
 
@@ -244,15 +259,15 @@ export default function Dashboard() {
           </button>
         </div>
       ) : (
-        <div className="card card-accent" style={{ marginTop: !isPro ? 12 : 0, cursor: 'pointer' }} onClick={() => navigate('/recovery')}>
+        <div className="card" style={{ marginTop: !isPro ? 12 : 0, marginBottom: 16, cursor: 'pointer', background: 'var(--bg-elevated)', border: '1px solid var(--border)' }} onClick={() => navigate('/recovery')}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div className="card-label" style={{ margin: 0, color: 'var(--text-on-accent)', opacity: 0.8 }}>Rest Day</div>
-              <h3 style={{ margin: '4px 0 0', fontSize: '1.2rem', fontFamily: 'var(--font-display)', fontWeight: 800, color: 'var(--text-on-accent)' }}>Recovery Hub</h3>
-              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-on-accent)', opacity: 0.8 }}>Stretches, hydration & sleep</p>
+              <div className="card-label" style={{ margin: 0, color: 'var(--text-tertiary)' }}>Rest Day</div>
+              <h3 style={{ margin: '4px 0 0', fontSize: '1.2rem', fontFamily: 'var(--font-display)', fontWeight: 800, color: 'var(--text-primary)' }}>Recovery Hub</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Stretches, hydration & sleep</p>
             </div>
-            <div style={{ background: 'rgba(0,0,0,0.1)', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <RiArrowRightLine size={20} style={{ color: 'var(--text-on-accent)' }} />
+            <div style={{ background: 'var(--accent-glow)', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <RiArrowRightLine size={20} style={{ color: 'var(--accent)' }} />
             </div>
           </div>
         </div>
