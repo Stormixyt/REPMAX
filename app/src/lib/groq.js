@@ -182,9 +182,20 @@ function buildCoachModePrompt(toneMode = "coach") {
       "STYLE MODE: gymbro",
       "- sound like a real training partner, not a corporate assistant",
       "- default to lower-case unless emphasis matters",
-      "- keep it human, sharp, and realistic",
-      "- slang is okay when it feels natural: lock tf in, dial it in, stop sandbagging, etc.",
+      "- keep it human, sharp, realistic, and text-message-like",
+      "- reply like you're sending multiple quick messages, not one polished paragraph",
+      "- output 2 to 5 short message chunks separated by [[MSG]]",
+      "- most chunks should be 2 to 6 words",
+      "- if you need to give steps, send each step as its own short chunk",
+      "- avoid commas and long clauses",
+      "- keep each chunk punchy and casual",
+      "- avoid bullet lists unless the user explicitly asks for a list",
+      "- slang is okay when it feels natural: sybau, lock tf in, dial it in, stop sandbagging, etc.",
+      "- do not flirt",
+      "- do not use pet names like babe, baby, princess, pookie, shawty",
+      "- do not say you're a girl, girlfriend, woman, or pretend to have a fake identity",
       "- use tough-love energy sometimes, but still be useful and not cringe",
+      "- do not sound like an AI assistant or motivational speaker",
       "- do not become abusive, hateful, or threatening",
     ].join("\n");
   }
@@ -381,8 +392,8 @@ export async function askCoach({
       { role: "user", content: trimmedQuestion },
     ],
     model: COACH_MODEL,
-    temperature: 0.55,
-    max_tokens: 1200,
+    temperature: toneMode === "gymbro" ? 0.7 : 0.55,
+    max_tokens: toneMode === "gymbro" ? 260 : 1200,
   });
 
   const content = data?.choices?.[0]?.message?.content?.trim();

@@ -103,6 +103,163 @@ function createMessage(role, content, overrides = {}) {
   };
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function cleanGymbroChunk(chunk = "") {
+  return chunk
+    .replace(/\[\[MSG\]\]/g, " ")
+    .replace(/^[*-•]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function splitGymbroClause(chunk = "") {
+  return chunk
+    .split(/(?:,|;| - | — | but | so | then | because | which means | that means )/i)
+    .map((part) => cleanGymbroChunk(part))
+    .filter(Boolean);
+}
+
+function splitGymbroByLength(chunk = "") {
+  const words = cleanGymbroChunk(chunk).split(" ").filter(Boolean);
+  if (words.length <= 6) return [cleanGymbroChunk(chunk)];
+
+  const parts = [];
+  for (let index = 0; index < words.length; index += 4) {
+    parts.push(words.slice(index, index + 4).join(" "));
+  }
+  return parts.filter(Boolean);
+}
+
+function stylizeGymbroChunk(chunk = "") {
+  const normalized = cleanGymbroChunk(chunk)
+    .replace(/[,:;]+/g, "")
+    .replace(/\s+([!?])/g, "$1")
+    .trim();
+
+  if (!normalized) return "";
+
+  const lower = normalized
+    .toLowerCase()
+    .replace(/\bas your girl\b/g, "")
+    .replace(/\bi'm your girl\b/g, "")
+    .replace(/\bi am your girl\b/g, "")
+    .replace(/\bi'm a girl\b/g, "")
+    .replace(/\bi am a girl\b/g, "")
+    .replace(/\bgirlfriend\b/g, "")
+    .replace(/\bbabe\b/g, "")
+    .replace(/\bbaby\b/g, "")
+    .replace(/\bpookie\b/g, "")
+    .replace(/\bprincess\b/g, "")
+    .replace(/\bshawty\b/g, "")
+    .replace(/\b(alright|ok|okay|yo|listen)\b/g, "")
+    .replace(/\b(nassim|brother|gang)\b/g, "bro")
+    .replace(/\blet'?s get into it\b/g, "")
+    .replace(/\blet'?s get down to business\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (lower === "you need to lock in") return "lock tf in";
+  if (lower === "lock in") return "lock tf in";
+  if (lower === "you need to get more consistent") return "get consistent bro";
+  if (lower === "you need more intensity") return "push harder bro";
+  if (lower === "check your dashboard") return "check ur dashboard";
+  if (lower === "you ready to crush it bro?") return "u ready or what";
+
+  return lower
+    .replace(/\byou\b/g, "u")
+    .replace(/\byour\b/g, "ur")
+    .replace(/\bgoing to\b/g, "gonna")
+    .replace(/\bwant to\b/g, "wanna")
+    .replace(/\btrying to\b/g, "tryna")
+    .replace(/\bkinds? of\b/g, "kinda")
+    .replace(/\s+/g, " ")
+    .replace(/\.+$/g, "")
+    .trim();
+}
+
+function splitGymbroResponse(content = "") {
+  const explicitChunks = content
+    .split("[[MSG]]")
+    .map((chunk) => cleanGymbroChunk(chunk))
+    .filter(Boolean);
+
+  if (explicitChunks.length > 1) {
+    return explicitChunks
+      .flatMap((chunk) => splitGymbroClause(chunk))
+      .flatMap((chunk) => splitGymbroByLength(chunk))
+      .map((chunk) => stylizeGymbroChunk(chunk))
+      .filter(Boolean)
+      .slice(0, 8);
+  }
+
+  const paragraphChunks = content
+    .split(/\n{2,}/)
+    .map((chunk) => cleanGymbroChunk(chunk))
+    .filter(Boolean);
+
+  if (paragraphChunks.length > 1) {
+    return paragraphChunks
+      .flatMap((chunk) => splitGymbroClause(chunk))
+      .flatMap((chunk) => splitGymbroByLength(chunk))
+      .map((chunk) => stylizeGymbroChunk(chunk))
+      .filter(Boolean)
+      .slice(0, 8);
+  }
+
+  const sentenceChunks = (content.match(/[^.!?\n]+[.!?]?/g) || [])
+    .map((chunk) => cleanGymbroChunk(chunk))
+    .filter(Boolean);
+
+  const chunks = (sentenceChunks.length > 1 ? sentenceChunks : [content])
+    .flatMap((chunk) => splitGymbroClause(chunk))
+    .flatMap((chunk) => splitGymbroByLength(chunk))
+    .map((chunk) => stylizeGymbroChunk(chunk))
+    .filter(Boolean);
+
+  if (chunks.length) {
+    return chunks.slice(0, 8);
+  }
+
+  return [stylizeGymbroChunk(content)].filter(Boolean);
+}
+
+function normalizeAssistantChunks(content = "", mode = "coach") {
+  const baseChunks =
+    mode === "gymbro" ? splitGymbroResponse(content) : [content.trim()];
+
+  const cleaned = baseChunks
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+
+  if (!cleaned.length) return [content.trim()].filter(Boolean);
+
+  if (mode === "gymbro" && cleaned.length === 1) {
+    return splitGymbroByLength(cleaned[0])
+      .map((chunk) => stylizeGymbroChunk(chunk))
+      .filter(Boolean)
+      .slice(0, 8);
+  }
+
+  if (mode === "gymbro") {
+    return cleaned
+      .flatMap((chunk) => splitGymbroByLength(chunk))
+      .map((chunk) => stylizeGymbroChunk(chunk))
+      .filter(Boolean)
+      .slice(0, 8);
+  }
+
+  return cleaned;
+}
+
+function getAssistantTypingDelay(chunk = "", index = 0) {
+  return Math.min(950, 220 + chunk.length * 18 + index * 80);
+}
+
 function buildConversationRecord(conversation = {}) {
   const messages = [...(conversation.messages || [])].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -820,22 +977,36 @@ export default function AICoach() {
         toneMode: coachMode,
       });
 
-      const assistantMessage = createMessage("assistant", assistantContent);
-
-      setConversations((prev) =>
-        insertMessageIntoConversation(
-          prev,
-          targetConversationId,
-          assistantMessage,
-          nextTitle
-        )
+      const assistantChunks = normalizeAssistantChunks(
+        assistantContent,
+        coachMode
       );
 
-      persistCoachMessage(
-        targetConversationId,
-        nextTitle,
-        assistantMessage
-      ).catch(() => {});
+      for (let index = 0; index < assistantChunks.length; index += 1) {
+        if (index > 0) {
+          await wait(getAssistantTypingDelay(assistantChunks[index], index));
+        }
+
+        const assistantMessage = createMessage(
+          "assistant",
+          assistantChunks[index]
+        );
+
+        setConversations((prev) =>
+          insertMessageIntoConversation(
+            prev,
+            targetConversationId,
+            assistantMessage,
+            nextTitle
+          )
+        );
+
+        persistCoachMessage(
+          targetConversationId,
+          nextTitle,
+          assistantMessage
+        ).catch(() => {});
+      }
     } catch {
       const errorMessage = createMessage(
         "assistant",
