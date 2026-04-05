@@ -170,6 +170,32 @@ function getCoachGoalLabel(goal) {
   return labels[goal] || goal || "General fitness";
 }
 
+function truncateCoachText(text = "", max = 220) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= max) return normalized;
+  return `${normalized.slice(0, max - 3)}...`;
+}
+
+function buildCoachModePrompt(toneMode = "coach") {
+  if (toneMode === "gymbro") {
+    return [
+      "STYLE MODE: gymbro",
+      "- sound like a real training partner, not a corporate assistant",
+      "- default to lower-case unless emphasis matters",
+      "- keep it human, sharp, and realistic",
+      "- slang is okay when it feels natural: lock tf in, dial it in, stop sandbagging, etc.",
+      "- use tough-love energy sometimes, but still be useful and not cringe",
+      "- do not become abusive, hateful, or threatening",
+    ].join("\n");
+  }
+
+  return [
+    "STYLE MODE: coach",
+    "- sound direct, calm, evidence-based, and supportive",
+    "- write clearly and naturally without forced slang",
+  ].join("\n");
+}
+
 function getCoachExperienceLabel(level) {
   const labels = {
     beginner: "Beginner",
@@ -263,6 +289,45 @@ function buildCoachContextPrompt(profile = {}, coachContext = {}) {
   return lines.join("\n");
 }
 
+function buildCoachMemoryPrompt(memory = []) {
+  if (!Array.isArray(memory) || memory.length === 0) return "";
+
+  const sections = memory
+    .slice(0, 4)
+    .map((conversation, index) => {
+      const messageLines = (conversation?.messages || [])
+        .slice(-4)
+        .map(
+          (message) =>
+            `- ${message.role === "assistant" ? "Coach" : "User"}: ${truncateCoachText(
+              message.content || "",
+              180
+            )}`
+        )
+        .join("\n");
+
+      return [
+        `Memory ${index + 1}: ${conversation?.title || "Past chat"}`,
+        conversation?.updatedAt
+          ? `- Last active: ${formatCoachDate(conversation.updatedAt)}`
+          : null,
+        conversation?.preview
+          ? `- Preview: ${truncateCoachText(conversation.preview, 120)}`
+          : null,
+        messageLines,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n\n");
+
+  return [
+    "PRIVATE COACH MEMORY",
+    "Use these past coach chats as memory and continuity when they help. Prefer the most relevant details, and do not act overconfident if older info may be outdated.",
+    sections,
+  ].join("\n");
+}
+
 function sanitizeCoachHistory(history = []) {
   if (!Array.isArray(history)) return [];
 
@@ -275,22 +340,43 @@ function sanitizeCoachHistory(history = []) {
     .slice(-14);
 }
 
+function getCoachSpecialResponse(trimmedQuestion) {
+  if (trimmedQuestion === "67") {
+    return "sybau and lock tf in bruh";
+  }
+
+  if (/\b67\b/.test(trimmedQuestion)) {
+    return "DID YOU JUST SAY 67? SIX SEVEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN.";
+  }
+
+  return null;
+}
+
 export async function askCoach({
   question,
   profile = {},
   coachContext = {},
   history = [],
+  memory = [],
+  toneMode = "coach",
 }) {
   const trimmedQuestion = question?.trim();
   if (!trimmedQuestion) throw new Error("Question is required");
 
+  const specialResponse = getCoachSpecialResponse(trimmedQuestion);
+  if (specialResponse) return specialResponse;
+
+  const memoryPrompt = buildCoachMemoryPrompt(memory);
+
   const data = await callGroq({
     messages: [
       { role: "system", content: COACH_SYSTEM_PROMPT },
+      { role: "system", content: buildCoachModePrompt(toneMode) },
       {
         role: "system",
         content: buildCoachContextPrompt(profile, coachContext),
       },
+      ...(memoryPrompt ? [{ role: "system", content: memoryPrompt }] : []),
       ...sanitizeCoachHistory(history),
       { role: "user", content: trimmedQuestion },
     ],

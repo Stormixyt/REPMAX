@@ -16,10 +16,13 @@ import {
 } from "@remixicon/react";
 
 const STORAGE_NAMESPACE = "repmax-ai-coach-v3";
+const COACH_MODE_NAMESPACE = "repmax-ai-coach-mode-v1";
 const META_PREFIX = "[[REPMAX_COACH_META:";
 const META_SUFFIX = "]]";
 const MAX_REMOTE_MESSAGES = 200;
 const MAX_CONTEXT_MESSAGES = 14;
+const MAX_MEMORY_CONVERSATIONS = 4;
+const MAX_MEMORY_MESSAGES = 4;
 const DEFAULT_COACH_CONTEXT = {
   activeProgram: null,
   recentWorkouts: [],
@@ -28,6 +31,28 @@ const DEFAULT_COACH_CONTEXT = {
   todayNutrition: null,
   todayWater: null,
 };
+const MEMORY_STOPWORDS = new Set([
+  "about",
+  "after",
+  "again",
+  "been",
+  "between",
+  "from",
+  "have",
+  "just",
+  "like",
+  "need",
+  "show",
+  "that",
+  "them",
+  "they",
+  "this",
+  "what",
+  "when",
+  "with",
+  "would",
+  "your",
+]);
 
 const SUGGESTED_PROMPTS = [
   {
@@ -50,6 +75,10 @@ const SUGGESTED_PROMPTS = [
 
 function getStorageKey(userId) {
   return `${STORAGE_NAMESPACE}:${userId}`;
+}
+
+function getCoachModeKey(userId) {
+  return `${COACH_MODE_NAMESPACE}:${userId}`;
 }
 
 function summarizePreview(content = "") {
@@ -148,6 +177,26 @@ function persistWorkspace(userId, activeConversationId, conversations) {
       activeConversationId,
       conversations: conversations.map(buildConversationRecord),
     })
+  );
+}
+
+function readCoachMode(userId) {
+  if (!userId || typeof window === "undefined") return "coach";
+
+  try {
+    const mode = window.localStorage.getItem(getCoachModeKey(userId));
+    return mode === "gymbro" ? "gymbro" : "coach";
+  } catch {
+    return "coach";
+  }
+}
+
+function persistCoachMode(userId, mode) {
+  if (!userId || typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    getCoachModeKey(userId),
+    mode === "gymbro" ? "gymbro" : "coach"
   );
 }
 
@@ -279,6 +328,68 @@ function mergeConversations(primary = [], secondary = []) {
   });
 
   return sortConversations(Array.from(merged.values()));
+}
+
+function extractMemoryKeywords(question = "") {
+  return Array.from(
+    new Set(
+      (question.toLowerCase().match(/[a-z0-9]+/g) || []).filter(
+        (word) => word.length > 2 && !MEMORY_STOPWORDS.has(word)
+      )
+    )
+  ).slice(0, 8);
+}
+
+function countKeywordHits(text, keywords) {
+  if (!keywords.length || !text) return 0;
+
+  return keywords.reduce((total, keyword) => {
+    if (!text.includes(keyword)) return total;
+    return total + 1;
+  }, 0);
+}
+
+function buildCoachMemory(conversations = [], activeId, question = "") {
+  const keywords = extractMemoryKeywords(question);
+
+  return conversations
+    .filter(
+      (conversation) =>
+        conversation.id !== activeId && conversation.messages?.length > 0
+    )
+    .map((conversation) => {
+      const messages = conversation.messages
+        .filter((message) => message?.content && message?.role)
+        .slice(-MAX_MEMORY_MESSAGES);
+      const searchText = [
+        conversation.title,
+        conversation.preview,
+        ...messages.map((message) => message.content),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return {
+        id: conversation.id,
+        title: conversation.title || "Past chat",
+        updatedAt: conversation.updatedAt,
+        preview: conversation.preview || "",
+        messages,
+        keywordScore: countKeywordHits(searchText, keywords),
+      };
+    })
+    .sort((a, b) => {
+      if (b.keywordScore !== a.keywordScore) {
+        return b.keywordScore - a.keywordScore;
+      }
+
+      return (
+        new Date(b.updatedAt || 0).getTime() -
+        new Date(a.updatedAt || 0).getTime()
+      );
+    })
+    .slice(0, MAX_MEMORY_CONVERSATIONS)
+    .map(({ keywordScore, ...conversation }) => conversation);
 }
 
 function insertMessageIntoConversation(
@@ -424,6 +535,8 @@ export default function AICoach() {
   const { user, profile, isPro } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
+  const [coachMode, setCoachMode] = useState("coach");
+  const [coachModeReady, setCoachModeReady] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -439,9 +552,14 @@ export default function AICoach() {
     null;
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setCoachModeReady(false);
+      return;
+    }
 
     let cancelled = false;
+    setCoachMode(readCoachMode(user.id));
+    setCoachModeReady(true);
 
     async function loadCoachWorkspace() {
       setLoadingHistory(true);
@@ -511,6 +629,11 @@ export default function AICoach() {
     if (!user?.id || loadingHistory || conversations.length === 0) return;
     persistWorkspace(user.id, activeConversationId, conversations);
   }, [user?.id, loadingHistory, activeConversationId, conversations]);
+
+  useEffect(() => {
+    if (!user?.id || !coachModeReady) return;
+    persistCoachMode(user.id, coachMode);
+  }, [user?.id, coachMode, coachModeReady]);
 
   useEffect(() => {
     if (!conversations.length) return;
@@ -665,6 +788,7 @@ export default function AICoach() {
     const targetConversationId =
       activeConversation?.id || createConversation().id;
     const previousMessages = activeConversation?.messages || [];
+    const memory = buildCoachMemory(conversations, targetConversationId, trimmed);
     const nextTitle =
       previousMessages.length > 0
         ? activeConversation?.title || "New chat"
@@ -692,6 +816,8 @@ export default function AICoach() {
         profile,
         coachContext,
         history: previousMessages.slice(-MAX_CONTEXT_MESSAGES),
+        memory,
+        toneMode: coachMode,
       });
 
       const assistantMessage = createMessage("assistant", assistantContent);
@@ -826,7 +952,25 @@ export default function AICoach() {
                   {activeConversation?.title || "AI Coach"}
                 </div>
                 <div className="coach-main-subtitle">
-                  Fitness guidance, nutrition help, recovery advice, and REPMAX app guidance.
+                  Fitness guidance, nutrition help, recovery advice, REPMAX app guidance, and memory from your earlier coach chats.
+                </div>
+                <div className="coach-mode-toggle" role="tablist" aria-label="Coach tone">
+                  <button
+                    className={`coach-mode-chip ${coachMode === "coach" ? "active" : ""}`}
+                    onClick={() => setCoachMode("coach")}
+                    type="button"
+                    aria-pressed={coachMode === "coach"}
+                  >
+                    coach mode
+                  </button>
+                  <button
+                    className={`coach-mode-chip ${coachMode === "gymbro" ? "active" : ""}`}
+                    onClick={() => setCoachMode("gymbro")}
+                    type="button"
+                    aria-pressed={coachMode === "gymbro"}
+                  >
+                    gymbro mode
+                  </button>
                 </div>
               </div>
             </div>
@@ -893,7 +1037,8 @@ export default function AICoach() {
                 <h2>Smarter answers, better training, cleaner history.</h2>
                 <p>
                   Ask about workouts, nutrition, recovery, pain management basics,
-                  or how to use REPMAX more effectively.
+                  or how to use REPMAX more effectively. Your coach can now pull
+                  useful context from older coach chats too.
                 </p>
 
                 <div className="coach-suggestions-grid">
@@ -965,7 +1110,7 @@ export default function AICoach() {
               </button>
             </div>
             <div className="coach-composer-hint">
-              Enter to send. Shift + Enter for a new line.
+              Enter to send. Shift + Enter for a new line. {coachMode === "gymbro" ? "gymbro mode is on." : "coach mode is on."}
             </div>
           </div>
         </section>

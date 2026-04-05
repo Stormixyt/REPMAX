@@ -80,6 +80,12 @@ export default function AvatarBuilder({ onClose }) {
   async function handleFileUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
+    e.target.value = ''
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file')
+      return
+    }
     
     setUploading(true)
 
@@ -115,23 +121,23 @@ export default function AvatarBuilder({ onClose }) {
             return
           }
 
-          const fileExt = 'jpeg'
-          const fileName = `${user.id}-${Math.random()}.${fileExt}`
+          const filePath = `${user.id}/avatar.jpeg`
           
           try {
             const { error: uploadError } = await supabase.storage
               .from('avatars')
-              .upload(fileName, blob, { upsert: true, contentType: 'image/jpeg' })
+              .upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' })
               
             if (uploadError) throw uploadError
             
-            const { data } = supabase.storage.from('avatars').getPublicUrl(fileName)
+            const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+            const versionedUrl = `${data.publicUrl}?v=${Date.now()}`
             
-            setConfig(prev => ({ ...prev, imageUrl: data.publicUrl }))
+            setConfig(prev => ({ ...prev, imageUrl: versionedUrl }))
             setCurrentPose('flex')
           } catch (err) {
             console.error('Upload failed:', err)
-            alert('Failed to upload image. Did you run setup-avatars.sql in Supabase?')
+            alert('Failed to upload image. Make sure setup-avatars.sql ran and the avatars bucket policies are active.')
           } finally {
             setUploading(false)
           }
@@ -379,4 +385,3 @@ export default function AvatarBuilder({ onClose }) {
     </div>
   )
 }
-

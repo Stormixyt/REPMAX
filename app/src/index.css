@@ -2337,6 +2337,41 @@ select {
     font-size: 0.82rem;
     color: var(--text-secondary);
 }
+.coach-mode-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+}
+.coach-mode-chip {
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition:
+        background var(--transition-fast),
+        color var(--transition-fast),
+        transform var(--transition-fast);
+}
+.coach-mode-chip:hover {
+    transform: translateY(-1px);
+}
+.coach-mode-chip.active {
+    background: linear-gradient(135deg, rgba(204, 255, 0, 0.18), rgba(204, 255, 0, 0.08));
+    color: var(--text-primary);
+    box-shadow: inset 0 0 0 1px rgba(204, 255, 0, 0.16);
+}
 .coach-messages {
     flex: 1;
     min-height: 0;
@@ -2992,6 +3027,9 @@ select {
     .coach-main-subtitle {
         max-width: 23rem;
     }
+    .coach-mode-toggle {
+        flex-wrap: wrap;
+    }
     .coach-ghost-btn:not(.coach-mobile-only) {
         display: none;
     }
@@ -3030,6 +3068,10 @@ select {
     }
     .coach-main-subtitle {
         font-size: 0.76rem;
+    }
+    .coach-mode-chip {
+        font-size: 0.7rem;
+        padding: 7px 10px;
     }
     .coach-facts-grid {
         gap: 8px;

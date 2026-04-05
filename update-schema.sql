@@ -19,6 +19,11 @@ insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
+DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload their own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own avatars" ON storage.objects;
+
 CREATE POLICY "Avatar images are publicly accessible"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'avatars');
@@ -37,6 +42,8 @@ CREATE POLICY "Users can delete their own avatars"
 
 -- We also need to add 'image_url' and 'push_subscription' to profiles
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_config jsonb;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_seed text;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_subscription jsonb;
 
 -- Database Webhook for Push Notifications
