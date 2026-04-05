@@ -9,6 +9,7 @@ export default function CallScreen({ callerName, isVideo, localStream, remoteStr
   const [connected, setConnected] = useState(false)
   const localVideoRef = useRef(null)
   const remoteVideoRef = useRef(null)
+  const remoteAudioRef = useRef(null)
 
   // Timer
   useEffect(() => {
@@ -33,6 +34,13 @@ export default function CallScreen({ callerName, isVideo, localStream, remoteStr
       remoteVideoRef.current.srcObject = remoteStream
     }
   }, [remoteStream])
+
+  useEffect(() => {
+    if (remoteAudioRef.current && remoteStream && !isVideo) {
+      remoteAudioRef.current.srcObject = remoteStream
+      remoteAudioRef.current.play().catch(() => {})
+    }
+  }, [remoteStream, isVideo])
 
   function formatTime(sec) {
     const m = Math.floor(sec / 60)
@@ -63,6 +71,8 @@ export default function CallScreen({ callerName, isVideo, localStream, remoteStr
       alignItems: 'center', justifyContent: 'center',
       animation: 'fadeIn 0.3s ease'
     }}>
+      {!isVideo && <audio ref={remoteAudioRef} autoPlay playsInline />}
+
       {/* Remote video (fullscreen) */}
       {isVideo && remoteStream && (
         <video

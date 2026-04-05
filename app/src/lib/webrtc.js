@@ -14,7 +14,9 @@ let peerConnection = null
 let localStream = null
 let remoteStream = null
 let signalingChannel = null
+let currentCallId = null
 let pendingCandidates = []
+let cleanupPromise = null
 let onRemoteStream = null
 let onCallEnded = null
 let onCallConnected = null
@@ -25,7 +27,65 @@ export function setCallbacks({ onRemote, onEnded, onConnected }) {
   onCallConnected = onConnected
 }
 
-function createPeerConnection() {
+function normalizeCandidate(candidate) {
+  if (!candidate) return null
+  return typeof candidate.toJSON === 'function' ? candidate.toJSON() : candidate
+}
+
+async function cleanupCall({ notifyRemote = false } = {}) {
+  if (cleanupPromise) return cleanupPromise
+
+  const channel = signalingChannel
+  const stream = localStream
+  const pc = peerConnection
+  const callId = currentCallId
+  const hadActiveCall = Boolean(channel || stream || pc || remoteStream || callId)
+
+  signalingChannel = null
+  localStream = null
+  remoteStream = null
+  peerConnection = null
+  currentCallId = null
+  pendingCandidates = []
+
+  cleanupPromise = (async () => {
+    if (pc) {
+      pc.ontrack = null
+      pc.onicecandidate = null
+      pc.oniceconnectionstatechange = null
+      pc.onconnectionstatechange = null
+      try { pc.close() } catch {}
+    }
+
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try { track.stop() } catch {}
+      })
+    }
+
+    if (notifyRemote && channel && callId) {
+      try {
+        await channel.send({
+          type: 'broadcast',
+          event: 'end-call',
+          payload: { callId }
+        })
+      } catch {}
+    }
+
+    if (channel) {
+      try { await supabase.removeChannel(channel) } catch {}
+    }
+  })()
+    .finally(() => {
+      cleanupPromise = null
+      if (hadActiveCall) onCallEnded?.()
+    })
+
+  return cleanupPromise
+}
+
+function createPeerConnection(callId) {
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
 
   pc.ontrack = (event) => {
@@ -34,172 +94,173 @@ function createPeerConnection() {
   }
 
   pc.onicecandidate = (event) => {
-    if (event.candidate && signalingChannel) {
-      signalingChannel.send({
-        type: 'broadcast',
-        event: 'ice-candidate',
-        payload: { candidate: event.candidate }
-      })
+    if (!event.candidate || !signalingChannel || currentCallId !== callId) return
+
+    signalingChannel.send({
+      type: 'broadcast',
+      event: 'ice-candidate',
+      payload: {
+        callId,
+        candidate: normalizeCandidate(event.candidate)
+      }
+    }).catch(() => {})
+  }
+
+  pc.onconnectionstatechange = () => {
+    if (currentCallId !== callId) return
+
+    if (pc.connectionState === 'connected') {
+      onCallConnected?.()
+    }
+
+    if (pc.connectionState === 'failed') {
+      cleanupCall({ notifyRemote: true })
     }
   }
 
   pc.oniceconnectionstatechange = () => {
+    if (currentCallId !== callId) return
+
     if (pc.iceConnectionState === 'connected') {
       onCallConnected?.()
     }
-    if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-      endCall()
+
+    if (pc.iceConnectionState === 'failed') {
+      cleanupCall({ notifyRemote: true })
     }
   }
 
   return pc
 }
 
+async function subscribeToCallChannel(channel, callId, { listenForAnswer }) {
+  await new Promise((resolve, reject) => {
+    channel
+      .on('broadcast', { event: 'answer' }, async ({ payload }) => {
+        if (!listenForAnswer || currentCallId !== callId || payload.callId !== callId || !peerConnection || !payload.answer) return
+
+        try {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer))
+          for (const candidate of pendingCandidates) {
+            try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)) } catch {}
+          }
+          pendingCandidates = []
+        } catch (error) {
+          console.error('[REPMAX] Failed to apply answer:', error)
+        }
+      })
+      .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+        if (currentCallId !== callId || payload.callId !== callId || !peerConnection || !payload.candidate) return
+
+        try {
+          if (peerConnection.remoteDescription) {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate))
+          } else {
+            pendingCandidates.push(payload.candidate)
+          }
+        } catch (error) {
+          console.error('[REPMAX] Failed to apply ICE candidate:', error)
+        }
+      })
+      .on('broadcast', { event: 'end-call' }, ({ payload }) => {
+        if (currentCallId === callId && payload.callId === callId) {
+          cleanupCall({ notifyRemote: false })
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') resolve()
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          reject(new Error(`Call channel subscription failed: ${status}`))
+        }
+      })
+  })
+}
+
 export async function startCall(chatId, userId, withVideo = false, sendOfferCallback) {
+  const callId = crypto.randomUUID()
+
   try {
+    await cleanupCall({ notifyRemote: false })
+
+    currentCallId = callId
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
       video: withVideo ? { facingMode: 'user', width: 640, height: 480 } : false
     })
 
-    peerConnection = createPeerConnection()
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream))
+    peerConnection = createPeerConnection(callId)
+    localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream))
 
-    // Set up signaling channel
-    const channelName = `call-${chatId}`
-    signalingChannel = supabase.channel(channelName)
+    signalingChannel = supabase.channel(`call-${chatId}-${callId}`)
     pendingCandidates = []
 
-    await new Promise((resolve) => {
-      signalingChannel
-        .on('broadcast', { event: 'answer' }, async ({ payload }) => {
-          if (peerConnection && payload.answer) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer))
-            for (const c of pendingCandidates) {
-              try { await peerConnection.addIceCandidate(new RTCIceCandidate(c)) } catch (e) {}
-            }
-            pendingCandidates = []
-          }
-        })
-        .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
-          if (peerConnection && payload.candidate) {
-            try {
-              if (peerConnection.remoteDescription) {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate))
-              } else {
-                pendingCandidates.push(payload.candidate)
-              }
-            } catch (e) {}
-          }
-        })
-        .on('broadcast', { event: 'end-call' }, () => {
-          endCall()
-        })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') resolve()
-        })
-    })
+    await subscribeToCallChannel(signalingChannel, callId, { listenForAnswer: true })
 
-    // Create and send offer
     const offer = await peerConnection.createOffer()
     await peerConnection.setLocalDescription(offer)
 
+    const payload = { offer, callerId: userId, withVideo, callId }
     if (sendOfferCallback) {
-      sendOfferCallback({ offer, callerId: userId, withVideo })
+      await sendOfferCallback(payload)
     } else {
-      // Fallback
-      signalingChannel.send({
+      await signalingChannel.send({
         type: 'broadcast',
         event: 'offer',
-        payload: { offer, callerId: userId, withVideo }
+        payload
       })
     }
 
-    return { localStream, channelName }
+    return { localStream, callId, channelName: `call-${chatId}-${callId}` }
   } catch (err) {
     console.error('[REPMAX] Failed to start call:', err)
-    endCall()
+    await cleanupCall({ notifyRemote: false })
     throw err
   }
 }
 
-export async function answerCall(chatId, offer, withVideo = false) {
+export async function answerCall(chatId, offer, withVideo = false, callId) {
   try {
+    await cleanupCall({ notifyRemote: false })
+
+    currentCallId = callId
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
       video: withVideo ? { facingMode: 'user', width: 640, height: 480 } : false
     })
 
-    peerConnection = createPeerConnection()
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream))
+    peerConnection = createPeerConnection(callId)
+    localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream))
 
-    const channelName = `call-${chatId}`
-    signalingChannel = supabase.channel(channelName)
+    signalingChannel = supabase.channel(`call-${chatId}-${callId}`)
     pendingCandidates = []
 
-    await new Promise((resolve) => {
-      signalingChannel
-        .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
-          if (peerConnection && payload.candidate) {
-            try {
-              if (peerConnection.remoteDescription) {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate))
-              } else {
-                pendingCandidates.push(payload.candidate)
-              }
-            } catch (e) {}
-          }
-        })
-        .on('broadcast', { event: 'end-call' }, () => {
-          endCall()
-        })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') resolve()
-        })
-    })
+    await subscribeToCallChannel(signalingChannel, callId, { listenForAnswer: false })
 
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
-    for (const c of pendingCandidates) {
-      try { await peerConnection.addIceCandidate(new RTCIceCandidate(c)) } catch (e) {}
+    for (const candidate of pendingCandidates) {
+      try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)) } catch {}
     }
     pendingCandidates = []
 
     const answer = await peerConnection.createAnswer()
     await peerConnection.setLocalDescription(answer)
 
-    signalingChannel.send({
+    await signalingChannel.send({
       type: 'broadcast',
       event: 'answer',
-      payload: { answer }
+      payload: { answer, callId }
     })
 
-    return { localStream }
+    return { localStream, callId }
   } catch (err) {
     console.error('[REPMAX] Failed to answer call:', err)
-    endCall()
+    await cleanupCall({ notifyRemote: false })
     throw err
   }
 }
 
-export function endCall() {
-  if (signalingChannel) {
-    signalingChannel.send({ type: 'broadcast', event: 'end-call', payload: {} })
-    supabase.removeChannel(signalingChannel)
-    signalingChannel = null
-  }
-
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop())
-    localStream = null
-  }
-
-  if (peerConnection) {
-    peerConnection.close()
-    peerConnection = null
-  }
-
-  remoteStream = null
-  onCallEnded?.()
+export async function endCall(options = {}) {
+  await cleanupCall({ notifyRemote: options.notifyRemote !== false })
 }
 
 export function toggleMute() {
@@ -207,7 +268,7 @@ export function toggleMute() {
   const audioTrack = localStream.getAudioTracks()[0]
   if (audioTrack) {
     audioTrack.enabled = !audioTrack.enabled
-    return !audioTrack.enabled // returns true if muted
+    return !audioTrack.enabled
   }
   return false
 }
@@ -217,7 +278,7 @@ export function toggleCamera() {
   const videoTrack = localStream.getVideoTracks()[0]
   if (videoTrack) {
     videoTrack.enabled = !videoTrack.enabled
-    return !videoTrack.enabled // returns true if camera off
+    return !videoTrack.enabled
   }
   return false
 }

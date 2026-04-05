@@ -21,6 +21,7 @@ export default function ChatRoom() {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const channelRef = useRef(null)
+  const activeCallRef = useRef(null)
   const pendingRemoteStreamRef = useRef(null)
   const toastTimerRef = useRef(null)
   const [activeCall, setActiveCall] = useState(null) // { localStream, remoteStream, callerName, isVideo }
@@ -30,6 +31,10 @@ export default function ChatRoom() {
   const [reactions, setReactions] = useState({}) // { msgId: [{emoji, user_id}...] }
   const REACTION_EMOJIS = ['💪', '🔥', '👏', '🤣', '❤️']
   const SUPER_EMOJIS = ['⚡', '🏆', '💎', '🫡', '☠️']
+
+  useEffect(() => {
+    activeCallRef.current = activeCall
+  }, [activeCall])
 
   const showCallToast = useCallback((message) => {
     if (!message) return
@@ -44,10 +49,10 @@ export default function ChatRoom() {
   const upsertIncomingCall = useCallback((call) => {
     setIncomingCall(prev => {
       if (!prev) return call
-      if (prev.callerId === call.callerId && prev.chatId === call.chatId) {
+      if (prev.callId === call.callId) {
         return { ...prev, ...call }
       }
-      return prev
+      return call
     })
   }, [])
 
@@ -92,6 +97,7 @@ export default function ChatRoom() {
         if (pendingCall) {
           upsertIncomingCall({
             chatId,
+            callId: pendingCall.data.call_id,
             notificationId: pendingCall.id,
             offer: pendingCall.data.offer,
             callerId: pendingCall.data.caller_id,
@@ -132,6 +138,7 @@ export default function ChatRoom() {
         if (payload.callerId !== user.id) {
           upsertIncomingCall({
             chatId,
+            callId: payload.callId,
             offer: payload.offer,
             callerId: payload.callerId,
             callerName: payload.callerName || 'Gym Buddy',
@@ -141,8 +148,8 @@ export default function ChatRoom() {
         }
       })
       .on('broadcast', { event: 'call-declined' }, ({ payload }) => {
-        if (payload.callerId === user.id) {
-          endCall()
+        if (payload.callerId === user.id && (!activeCallRef.current || activeCallRef.current.callId === payload.callId)) {
+          endCall({ notifyRemote: false })
           setActiveCall(null)
           showCallToast(payload.message || 'Call declined')
         }
@@ -151,7 +158,7 @@ export default function ChatRoom() {
         if (payload.callerId !== user.id) {
           let notificationId = null
           setIncomingCall(prev => {
-            if (!prev || prev.callerId !== payload.callerId) return prev
+            if (!prev || prev.callId !== payload.callId) return prev
             notificationId = prev.notificationId
             return null
           })
@@ -196,6 +203,7 @@ export default function ChatRoom() {
       type: 'broadcast',
       event: 'call-declined',
       payload: {
+        callId: declinedCall.callId,
         callerId: declinedCall.callerId,
         message: `${profile?.display_name || 'Your friend'} declined the call`
       }
@@ -227,9 +235,10 @@ export default function ChatRoom() {
         onConnected: () => {}
       })
 
-      const result = await answerCall(chatId, incomingCall.offer, incomingCall.withVideo)
+      const result = await answerCall(chatId, incomingCall.offer, incomingCall.withVideo, incomingCall.callId)
       await markCallNotificationRead(incomingCall.notificationId)
       setActiveCall({
+        callId: incomingCall.callId,
         localStream: result.localStream,
         remoteStream: pendingRemoteStreamRef.current,
         callerName: incomingCall.callerName || chatMeta?.title || 'Gym Buddy',
@@ -294,12 +303,13 @@ export default function ChatRoom() {
           expiresAt
         }
         if (channelRef.current) {
-          channelRef.current.send({
+          return channelRef.current.send({
             type: 'broadcast',
             event: 'offer',
             payload: offerPayload
           })
         }
+        return Promise.reject(new Error('Chat channel unavailable'))
       })
 
       if (calleeId && offerPayload) {
@@ -311,6 +321,7 @@ export default function ChatRoom() {
           data: {
             url: `/chat/${chatId}`,
             chat_id: chatId,
+            call_id: offerPayload.callId,
             caller_id: user.id,
             caller_name: profile?.display_name || 'Gym Buddy',
             with_video: withVideo,
@@ -321,6 +332,7 @@ export default function ChatRoom() {
       }
 
       setActiveCall({
+        callId: result.callId,
         localStream: result.localStream,
         remoteStream: pendingRemoteStreamRef.current,
         callerName: chatMeta?.title || 'Gym Buddy',
@@ -814,6 +826,7 @@ export default function ChatRoom() {
                 type: 'broadcast',
                 event: 'cancel-call',
                 payload: {
+                  callId: activeCall.callId,
                   callerId: user.id,
                   callerName: profile?.display_name || 'Gym Buddy'
                 }
