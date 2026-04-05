@@ -2,11 +2,12 @@
    REPMAX — Interactions & Animations
    ============================================ */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initScrollReveal();
   initNavScroll();
   initMobileMenu();
   initWaitlistForm();
+  await hydrateLandingStats();
   initCounterAnimation();
   initDynamicTitle();
   initNotifications();
@@ -86,6 +87,7 @@ function initMobileMenu() {
 /* --- Waitlist Form (submits to Supabase) --- */
 const SUPABASE_URL = 'https://hqwnyzmipumhhqmvdzus.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI';
+const LANDING_STATS_ENDPOINT = '/api/landing-stats';
 
 function initWaitlistForm() {
   const forms = document.querySelectorAll('.waitlist-form');
@@ -209,6 +211,38 @@ shakeStyle.textContent = `
   }
 `;
 document.head.appendChild(shakeStyle);
+
+/* --- Live Landing Stats --- */
+async function hydrateLandingStats() {
+  try {
+    const res = await fetch(LANDING_STATS_ENDPOINT, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!res.ok) throw new Error(`Stats request failed with ${res.status}`);
+
+    const stats = await res.json();
+    setLiveStat('waitlist', stats.waitlist);
+    setLiveStat('trainingSplits', stats.trainingSplits);
+    setLiveStat('exercises', stats.exercises);
+    setLiveStat('aiPersonalized', stats.aiPersonalized);
+  } catch (error) {
+    console.warn('[REPMAX] Failed to load live landing stats:', error);
+  }
+}
+
+function setLiveStat(key, rawValue) {
+  const value = Number(rawValue);
+  if (!Number.isFinite(value) || value < 0) return;
+
+  document.querySelectorAll(`[data-stat-key="${key}"]`).forEach((el) => {
+    const prefix = el.getAttribute('data-prefix') || '';
+    const suffix = el.getAttribute('data-suffix') || '';
+
+    el.setAttribute('data-count', String(Math.round(value)));
+    el.textContent = `${prefix}0${suffix}`;
+  });
+}
 
 /* --- Counter Animation --- */
 function initCounterAnimation() {
@@ -367,18 +401,15 @@ function showToast(title, message) {
 
 /* --- Increment Waitlist Counter --- */
 function incrementWaitlistCount() {
-  const countEl = document.querySelector('.waitlist-count');
-  if (countEl) {
-    const current = parseInt(countEl.textContent.replace(/,/g, ''));
-    const newCount = current + 1;
-    countEl.textContent = newCount.toLocaleString();
-  }
+  document.querySelectorAll('[data-stat-key="waitlist"]').forEach((el) => {
+    const prefix = el.getAttribute('data-prefix') || '';
+    const suffix = el.getAttribute('data-suffix') || '';
+    const current = parseInt(el.getAttribute('data-count') || el.textContent.replace(/[^0-9]/g, ''), 10) || 0;
+    const nextValue = current + 1;
 
-  const socialCount = document.querySelector('.hero-social-proof strong');
-  if (socialCount) {
-    const current = parseInt(socialCount.textContent.replace(/[^0-9]/g, ''));
-    socialCount.textContent = (current + 1).toLocaleString() + '+';
-  }
+    el.setAttribute('data-count', String(nextValue));
+    el.textContent = `${prefix}${nextValue.toLocaleString()}${suffix}`;
+  });
 }
 
 /* --- Smooth scroll for anchor links --- */

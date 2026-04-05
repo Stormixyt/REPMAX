@@ -1,23 +1,44 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiLeafFill, RiLeafLine, RiChat3Fill, RiChat3Line, RiBrainFill, RiBrainLine, RiUser3Fill, RiUser3Line } from '@remixicon/react'
-import { onForegroundMessage } from '../lib/firebase'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const path = location.pathname
   const [toast, setToast] = useState(null)
+  const { user } = useAuth()
 
-  // Listen for foreground FCM notifications
+  // Foreground notification toasts now come from the same Supabase notification
+  // stream that powers the in-app bell and browser push flows.
   useEffect(() => {
-    const unsub = onForegroundMessage((payload) => {
-      const { title, body } = payload.notification || {}
-      setToast({ title, body })
-      setTimeout(() => setToast(null), 5000)
-    })
-    return unsub
-  }, [])
+    if (!user?.id) return undefined
+
+    const channel = supabase
+      .channel(`layout-toast-${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`
+      }, ({ new: notification }) => {
+        if (!notification?.title) return
+        if (notification.type === 'incoming_call') return
+
+        const targetChatId = notification.data?.chat_id
+        if (targetChatId && path === `/chat/${targetChatId}`) return
+
+        setToast({ title: notification.title, body: notification.body || '' })
+        setTimeout(() => setToast(null), 5000)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id, path])
 
   const navItems = [
     { path: '/', label: 'Home', ActiveIcon: RiHomeFill, Icon: RiHomeLine },

@@ -269,6 +269,56 @@ export default function ChatRoom() {
     }
   }
 
+  function getChatRecipientIds() {
+    return (chatMeta?.members || [])
+      .map((member) => member.user_id)
+      .filter((memberId) => memberId && memberId !== user.id)
+  }
+
+  function buildChatNotificationPayload(messageType, content) {
+    const senderName = profile?.display_name || 'Someone'
+
+    if (messageType === 'invite') {
+      return {
+        type: 'invite',
+        title: `${senderName} - Gym Invite`,
+        body: 'Tap to check the workout invite.'
+      }
+    }
+
+    if (messageType === 'status') {
+      return {
+        type: 'message',
+        title: 'REPMAX',
+        body: typeof content === 'string' ? content : 'New update'
+      }
+    }
+
+    return {
+      type: 'message',
+      title: senderName,
+      body: typeof content === 'string' ? content : 'New message'
+    }
+  }
+
+  async function notifyChatRecipients(messageId, messageType, content) {
+    const recipientIds = getChatRecipientIds()
+    if (recipientIds.length === 0) return
+
+    const payload = buildChatNotificationPayload(messageType, content)
+
+    await sendNotification({
+      userIds: recipientIds,
+      ...payload,
+      data: {
+        url: `/chat/${chatId}`,
+        chat_id: chatId,
+        message_id: messageId
+      },
+      tag: `chat-${chatId}`
+    })
+  }
+
   async function sendMessage(e) {
     e?.preventDefault()
     if (!text.trim()) return
@@ -285,7 +335,12 @@ export default function ChatRoom() {
     if (error) {
       // Mark as failed
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _failed: true } : m))
+      return
     }
+
+    notifyChatRecipients(tempId, 'text', content).catch((notifyError) => {
+      console.warn('[REPMAX] Failed to notify chat recipients:', notifyError)
+    })
   }
 
   async function deleteMessage(msgId) {
@@ -427,7 +482,12 @@ export default function ChatRoom() {
     setMessages(prev => [...prev, { id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite', created_at: new Date().toISOString() }])
     requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }))
 
-    await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite' })
+    const { error } = await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content: contentStr, type: 'invite' })
+    if (!error) {
+      notifyChatRecipients(tempId, 'invite', contentStr).catch((notifyError) => {
+        console.warn('[REPMAX] Failed to notify invite recipients:', notifyError)
+      })
+    }
     setInviteForm({ location: '', time: '' })
   }
 
@@ -456,10 +516,17 @@ export default function ChatRoom() {
     await supabase.from('messages').update({ content: updated }).eq('id', msg.id)
 
     // Status message visible to ALL
-    await supabase.from('messages').insert({
+    const statusMessageId = crypto.randomUUID()
+    const { error: statusError } = await supabase.from('messages').insert({
+      id: statusMessageId,
       chat_id: chatId, sender_id: user.id,
       content: `${myName} is in! ⚡`, type: 'status'
     })
+    if (!statusError) {
+      notifyChatRecipients(statusMessageId, 'status', `${myName} is in! ⚡`).catch((notifyError) => {
+        console.warn('[REPMAX] Failed to notify status recipients:', notifyError)
+      })
+    }
   }
 
   function getDateLabel(dateStr) {

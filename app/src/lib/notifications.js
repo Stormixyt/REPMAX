@@ -15,6 +15,10 @@ function resolvePreferenceKey(type, preferenceKey) {
   return preferenceKey || NOTIFICATION_PREFERENCE_BY_TYPE[type] || null
 }
 
+function resolveTargets(userId, userIds = []) {
+  return Array.from(new Set([userId, ...userIds].filter(Boolean)))
+}
+
 export async function triggerPushNotification({
   userId,
   userIds = [],
@@ -59,6 +63,7 @@ export async function triggerPushNotification({
  */
 export async function sendNotification({
   userId,
+  userIds = [],
   type,
   title,
   body,
@@ -69,33 +74,47 @@ export async function sendNotification({
   requireInteraction = false,
   renotify = false
 }) {
-  // Save to notifications table (in-app)
-  const { data: inserted, error } = await supabase.from('notifications').insert({
-    user_id: userId,
+  const targets = resolveTargets(userId, userIds)
+  if (targets.length === 0) {
+    return { data: null, error: null }
+  }
+
+  const rows = targets.map((targetUserId) => ({
+    id: crypto.randomUUID(),
+    user_id: targetUserId,
     type,
     title,
     body,
     data
-  }).select('id').single()
+  }))
+
+  // Save to notifications table (in-app)
+  const { error } = await supabase
+    .from('notifications')
+    .insert(rows)
 
   if (!error && sendPush) {
     await triggerPushNotification({
-      userId,
+      userIds: targets,
       type,
       title,
       body,
       data: {
         ...data,
-        notification_id: inserted?.id
+        notification_id: rows[0]?.id || null,
+        notification_ids: rows.map((row) => row.id)
       },
-      tag: tag || (inserted?.id ? `notification-${inserted.id}` : undefined),
+      tag: tag || (rows[0]?.id ? `notification-${rows[0].id}` : undefined),
       preferenceKey,
       requireInteraction,
       renotify
     })
   }
 
-  return { data: inserted, error }
+  return {
+    data: targets.length === 1 ? rows[0] || null : rows,
+    error
+  }
 }
 
 /**
