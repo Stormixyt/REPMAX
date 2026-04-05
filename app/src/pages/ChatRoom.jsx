@@ -830,6 +830,7 @@ export default function ChatRoom() {
           isVideo={activeCall.isVideo}
           roomName={activeCall.roomName}
           displayName={profile?.display_name || 'REPMAX User'}
+          direction={activeCall.direction}
           onEnd={({ notifyRemote = true } = {}) => {
             const currentCall = activeCallRef.current
             if (!currentCall) return

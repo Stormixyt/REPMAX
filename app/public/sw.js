@@ -1,5 +1,5 @@
-// REPMAX PWA Service Worker v4 — Network-first + Push Notifications
-const CACHE_NAME = 'repmax-v4'
+// REPMAX PWA Service Worker v5 — Network-first + Push Notifications
+const CACHE_NAME = 'repmax-v5'
 const STATIC_ASSETS = ['/', '/app.html']
 
 self.addEventListener('install', (event) => {
