@@ -85,7 +85,7 @@ self.addEventListener('push', (event) => {
 // Handle notification click — open the app
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = event.notification.data?.url || '/'
+  const url = event.notification.data?.url || '/app'
   
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {

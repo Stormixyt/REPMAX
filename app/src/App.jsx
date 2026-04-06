@@ -342,7 +342,7 @@ export default function App() {
         <Route path="/recovery" element={<Recovery />} />
 
         <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/app" element={<Dashboard />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/social" element={<Social />} />
@@ -350,7 +350,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/app" replace />} />
       </Routes>
     </>
   )

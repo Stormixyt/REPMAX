@@ -22,7 +22,7 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icon-192.png',
     vibrate: [100, 50, 100],
     tag: payload.data?.type || 'default',
-    data: { url: '/', ...payload.data },
+    data: { url: '/app', ...payload.data },
     actions: [
       { action: 'open', title: 'Open' }
     ]
@@ -32,7 +32,7 @@ messaging.onBackgroundMessage((payload) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = event.notification.data?.url || '/'
+  const url = event.notification.data?.url || '/app'
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {

@@ -41,7 +41,7 @@ export default function Layout() {
   }, [user?.id, path])
 
   const navItems = [
-    { path: '/', label: 'Home', ActiveIcon: RiHomeFill, Icon: RiHomeLine },
+    { path: '/app', label: 'Home', ActiveIcon: RiHomeFill, Icon: RiHomeLine },
     { path: '/progress', label: 'Progress', ActiveIcon: RiBarChart2Fill, Icon: RiBarChart2Line },
     { path: '/nutrition', label: 'Diet', ActiveIcon: RiLeafFill, Icon: RiLeafLine },
     { path: '/social', label: 'Chat', ActiveIcon: RiChat3Fill, Icon: RiChat3Line },

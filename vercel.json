@@ -2,7 +2,9 @@
   "buildCommand": "cd app && npm install && npm run build",
   "outputDirectory": "app/dist",
   "rewrites": [
+    { "source": "/", "destination": "/info.html" },
     { "source": "/info", "destination": "/info.html" },
+    { "source": "/app", "destination": "/app.html" },
     { "source": "/auth", "destination": "/app.html" },
     { "source": "/onboarding", "destination": "/app.html" },
     { "source": "/social", "destination": "/app.html" },
@@ -15,7 +17,7 @@
     { "source": "/progress", "destination": "/app.html" },
     { "source": "/workout/:path*", "destination": "/app.html" },
     { "source": "/chat/:path*", "destination": "/app.html" },
-    { "source": "/", "destination": "/app.html" }
+    { "source": "/app/:path*", "destination": "/app.html" }
   ],
   "headers": [
     {

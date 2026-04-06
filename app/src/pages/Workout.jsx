@@ -243,7 +243,7 @@ export default function Workout() {
           )}
 
           {/* CTA */}
-          <button className={`btn btn-primary btn-full btn-lg victory-btn ${summaryStep >= 4 ? 'visible' : ''}`} onClick={() => navigate('/')}>
+          <button className={`btn btn-primary btn-full btn-lg victory-btn ${summaryStep >= 4 ? 'visible' : ''}`} onClick={() => navigate('/app')}>
             Back to Dashboard
           </button>
         </div>

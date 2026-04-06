@@ -280,7 +280,7 @@ export default function Onboarding() {
       await updateProfile({ onboarded: true })
       await fetchProfile()
       setGenStep(5)
-      setTimeout(() => navigate('/'), 450)
+      setTimeout(() => navigate('/app'), 450)
       return
     } catch (error) {
       console.error('Program setup failed:', error)
@@ -324,7 +324,7 @@ export default function Onboarding() {
       })
       await fetchProfile()
       setGenStep(5)
-      setTimeout(() => navigate('/'), 450)
+      setTimeout(() => navigate('/app'), 450)
       return
     } catch (error) {
       console.error('Custom routine save failed:', error)
