@@ -749,6 +749,7 @@ export async function generateProgramFromImages(base64Images) {
   const VISION_PROMPT = `You are REPMAX Vision, an expert fitness AI. Your task is to extract the training routine shown in the provided images and output it EXACTLY matching the strict JSON format below.
 
 IF any vital data (like RPE or Rest time) is missing from the images, you MUST invent sensible defaults (e.g. RPE 8, 120s rest).
+IF the image is a calendar or plan that only shows workout themes like "Upper Body", "Core", "Cardio + Core", or "Rest", you MUST still turn every non-rest day into a usable workout by inventing sensible bodyweight exercises that match that theme.
 Assume 4 weeks of training (just duplicate week 1 into week 2, 3, and 4 if only 1 week is shown).
 
 OUTPUT FORMAT: You MUST respond with ONLY valid JSON matching this structure exactly (do not wrap in markdown blocks, just raw JSON):

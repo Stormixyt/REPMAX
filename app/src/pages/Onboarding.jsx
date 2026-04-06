@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { generateProgram } from '../lib/groq'
 import { supabase } from '../lib/supabase'
+import { EXERCISES } from '../data/homeExercises'
 import { RiBoxingFill, RiFlashlightFill, RiSpeedFill, RiBodyScanFill, RiFireFill, RiSeedlingFill, RiLineChartFill, RiTrophyFill, RiCalendarCheckFill, RiImageFill, RiUploadCloud2Fill, RiStore2Fill, RiHandHeartFill, RiCrosshair2Fill, RiBrainFill, RiCheckFill, RiArrowRightLine, RiRocketFill } from '@remixicon/react'
 
 const GOALS = [
@@ -30,6 +31,31 @@ const FOCUS_MUSCLES = [
   'Quads', 'Hamstrings', 'Calves', 'Abs', 'Glutes', 'Forearms'
 ]
 const DEFAULT_WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const EXERCISE_BY_ID = Object.fromEntries(EXERCISES.map((exercise) => [exercise.id, exercise]))
+
+const ROUTINE_FALLBACKS = {
+  upper_body: ['pushup', 'inverted_row', 'pike_pushup', 'tricep_dip'],
+  lower_body: ['bodyweight_squat', 'lunge', 'bulgarian', 'calf_raise'],
+  core: ['plank', 'bicycle_crunch', 'leg_raise', 'mountain_climber'],
+  cardio: ['jumping_jack', 'mountain_climber', 'burpee', 'bear_crawl'],
+  fullbody: ['bodyweight_squat', 'pushup', 'inverted_row', 'mountain_climber'],
+  push: ['pushup', 'diamond_pushup', 'pike_pushup', 'tricep_dip'],
+  pull: ['inverted_row', 'doorframe_row', 'superman', 'towel_curl'],
+  legs: ['bodyweight_squat', 'lunge', 'bulgarian', 'calf_raise'],
+  stretch: ['cat_cow', 'world_greatest', 'pigeon', 'child_pose'],
+}
+
+const TEMPLATE_TARGETS = {
+  upper_body: ['Chest', 'Back', 'Shoulders', 'Arms'],
+  lower_body: ['Quads', 'Glutes', 'Hamstrings', 'Calves'],
+  core: ['Abs', 'Obliques', 'Lower Back'],
+  cardio: ['Cardio', 'Core'],
+  fullbody: ['Full Body'],
+  push: ['Chest', 'Shoulders', 'Triceps'],
+  pull: ['Back', 'Biceps', 'Rear Delts'],
+  legs: ['Quads', 'Glutes', 'Hamstrings'],
+  stretch: ['Mobility', 'Recovery'],
+}
 
 const SPLITS = {
   3: [
@@ -76,6 +102,123 @@ function toPositiveFloat(value, fallback = 0) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback
 }
 
+function normalizeDescriptor(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^\w+\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function parseExerciseRepString(repString, fallbackSets = 3, fallbackReps = 10) {
+  const numbers = String(repString || '').match(/\d+/g)?.map(Number) || []
+  if (!numbers.length) {
+    return { sets: fallbackSets, reps: fallbackReps }
+  }
+
+  if (numbers.length === 1) {
+    return { sets: fallbackSets, reps: numbers[0] }
+  }
+
+  return { sets: numbers[0], reps: numbers[numbers.length - 1] }
+}
+
+function getTemplateKeysForDay(day) {
+  const descriptor = normalizeDescriptor([
+    day?.day_name,
+    day?.notes,
+    ...(Array.isArray(day?.target_muscles) ? day.target_muscles : []),
+  ].join(' '))
+
+  if (!descriptor) return ['fullbody']
+  if (/\brest\b|\brecovery\b|\boff\b/.test(descriptor)) return []
+  if (/stretch|mobility|yoga/.test(descriptor)) return ['stretch']
+  if (/full body|fullbody|total body/.test(descriptor)) return ['fullbody']
+  if (/push/.test(descriptor)) return ['push']
+  if (/pull/.test(descriptor)) return ['pull']
+  if (/\blegs?\b/.test(descriptor)) return ['legs']
+
+  const hasUpper = /upper body|upper\b|chest|back|shoulder|bicep|tricep|arm/.test(descriptor)
+  const hasLower = /lower body|lower\b|quad|hamstring|glute|calf|leg/.test(descriptor)
+  const hasCore = /core|abs|abdom|oblique/.test(descriptor)
+  const hasCardio = /cardio|conditioning|hiit|run|jog|walk/.test(descriptor)
+
+  if (hasUpper && hasLower) return ['fullbody']
+
+  const keys = []
+  if (hasUpper) keys.push('upper_body')
+  if (hasLower) keys.push('lower_body')
+  if (hasCore) keys.push('core')
+  if (hasCardio) keys.push('cardio')
+
+  return keys.length ? keys : ['fullbody']
+}
+
+function buildFallbackExercises(day) {
+  const templateKeys = getTemplateKeysForDay(day)
+  if (!templateKeys.length) return []
+
+  const chosenIds = []
+  for (const key of templateKeys) {
+    for (const id of ROUTINE_FALLBACKS[key] || []) {
+      if (!chosenIds.includes(id)) {
+        chosenIds.push(id)
+      }
+      if (chosenIds.length >= 5) break
+    }
+    if (chosenIds.length >= 5) break
+  }
+
+  return chosenIds
+    .map((id) => EXERCISE_BY_ID[id])
+    .filter(Boolean)
+    .map((exercise, index) => {
+      const { sets, reps } = parseExerciseRepString(exercise.reps, index < 2 ? 3 : 2, 10)
+      const descriptor = normalizeDescriptor(day?.day_name)
+      const restSeconds = /cardio|conditioning|run|jog|walk/.test(descriptor) ? 45 : 75
+
+      return {
+        name: exercise.name,
+        sets,
+        reps,
+        rpe: /stretch|mobility/.test(descriptor) ? 6 : 8,
+        rest_seconds: restSeconds,
+        weight: 0,
+        notes: `Auto-filled from "${day?.day_name || 'imported routine'}" using REPMAX bodyweight defaults.`,
+      }
+    })
+}
+
+function inferTargetMuscles(day) {
+  const templateKeys = getTemplateKeysForDay(day)
+  if (!templateKeys.length) return []
+
+  return [...new Set(templateKeys.flatMap((key) => TEMPLATE_TARGETS[key] || []))]
+}
+
+function normalizeExerciseList(exercises = [], day) {
+  const normalized = (Array.isArray(exercises) ? exercises : [])
+    .map((exercise, exerciseIndex) => {
+      const rawName = exercise?.name?.trim?.()
+      if (!rawName) return null
+
+      return {
+        name: rawName,
+        sets: toPositiveInteger(exercise?.sets, 3),
+        reps: toPositiveInteger(exercise?.reps, 8, 'last'),
+        rpe: toPositiveFloat(exercise?.rpe, 8),
+        rest_seconds: toPositiveInteger(exercise?.rest_seconds, 90),
+        weight: toPositiveFloat(exercise?.weight, 0),
+        notes: typeof exercise?.notes === 'string' ? exercise.notes.trim() : '',
+        sort_index: exerciseIndex,
+      }
+    })
+    .filter(Boolean)
+    .filter((exercise) => !/^exercise\s+\d+$/i.test(exercise.name))
+
+  return normalized.length ? normalized : buildFallbackExercises(day)
+}
+
 function normalizeProgramShape(program, fallbackName = 'Custom routine', fallbackSplit = 'custom') {
   const baseWeeks = Array.isArray(program?.weeks) && program.weeks.length
     ? program.weeks
@@ -94,24 +237,14 @@ function normalizeProgramShape(program, fallbackName = 'Custom routine', fallbac
         is_deload: Boolean(week?.is_deload),
         days: days
           .map((day, dayIndex) => {
-            const exercises = Array.isArray(day?.exercises) ? day.exercises : []
+            const exercises = normalizeExerciseList(day?.exercises, day)
 
             return {
               day_name: day?.day_name?.trim?.() || `Day ${dayIndex + 1}`,
               target_muscles: Array.isArray(day?.target_muscles)
                 ? day.target_muscles.filter(Boolean)
-                : [],
-              exercises: exercises
-                .map((exercise, exerciseIndex) => ({
-                  name: exercise?.name?.trim?.() || `Exercise ${exerciseIndex + 1}`,
-                  sets: toPositiveInteger(exercise?.sets, 3),
-                  reps: toPositiveInteger(exercise?.reps, 8, 'last'),
-                  rpe: toPositiveFloat(exercise?.rpe, 8),
-                  rest_seconds: toPositiveInteger(exercise?.rest_seconds, 90),
-                  weight: toPositiveFloat(exercise?.weight, 0),
-                  notes: typeof exercise?.notes === 'string' ? exercise.notes.trim() : '',
-                }))
-                .filter((exercise) => exercise.name),
+                : inferTargetMuscles(day),
+              exercises,
             }
           })
           .filter((day) => day.exercises.length > 0),
