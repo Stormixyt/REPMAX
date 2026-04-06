@@ -7,6 +7,7 @@ export default function GymPicker({ value, onChange }) {
   const [gyms, setGyms] = useState([])
   const [search, setSearch] = useState('')
   const [userLocation, setUserLocation] = useState(null)
+  const [loadingLabel, setLoadingLabel] = useState('Finding gyms near you...')
   const loadedRef = useRef(false)
 
   useEffect(() => {
@@ -20,9 +21,22 @@ export default function GymPicker({ value, onChange }) {
     try {
       const loc = await getUserLocation()
       setUserLocation(loc)
-      const results = await findNearbyGyms(loc.lat, loc.lon)
+      setLoadingLabel('Scanning gyms near you...')
+      let results = await findNearbyGyms(loc.lat, loc.lon, 12000)
+      if (results.length < 4) {
+        setLoadingLabel('Checking a wider area too...')
+        const widerResults = await findNearbyGyms(loc.lat, loc.lon, 25000)
+        const merged = new Map()
+        for (const gym of [...results, ...widerResults]) {
+          if (!merged.has(gym.id)) {
+            merged.set(gym.id, gym)
+          }
+        }
+        results = [...merged.values()].sort((a, b) => a.distance - b.distance)
+      }
+
       if (results.length > 0) {
-        setGyms(results)
+        setGyms(results.slice(0, 16))
         setMode('list')
       } else {
         setMode('manual')
@@ -41,7 +55,7 @@ export default function GymPicker({ value, onChange }) {
       <div style={{ padding: '24px 0', textAlign: 'center' }}>
         <div className="loading-dots"><span /><span /><span /></div>
         <p style={{ color: 'var(--text-tertiary)', fontSize: '0.82rem', marginTop: 12 }}>
-          Finding gyms near you...
+          {loadingLabel}
         </p>
       </div>
     )
@@ -60,7 +74,7 @@ export default function GymPicker({ value, onChange }) {
         />
         {gyms.length === 0 && userLocation && (
           <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 6 }}>
-            No gyms found nearby. Type your gym name manually.
+            No gyms found nearby. Type your gym name manually or try again from a spot with better location accuracy.
           </p>
         )}
       </div>

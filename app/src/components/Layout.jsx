@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiLeafFill, RiLeafLine, RiChat3Fill, RiChat3Line, RiBrainFill, RiBrainLine, RiUser3Fill, RiUser3Line } from '@remixicon/react'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { supabase } from '../lib/supabase'
 
 export default function Layout() {
@@ -10,11 +11,35 @@ export default function Layout() {
   const path = location.pathname
   const [toast, setToast] = useState(null)
   const { user } = useAuth()
+  const { t } = useLanguage()
+
+  async function syncUnreadBadge() {
+    if (!user?.id) return
+
+    const supportsBadging = 'setAppBadge' in navigator || 'clearAppBadge' in navigator
+    if (!supportsBadging) return
+
+    const { count } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('read', false)
+
+    try {
+      if (count > 0 && 'setAppBadge' in navigator) {
+        await navigator.setAppBadge(count)
+      } else if (count === 0 && 'clearAppBadge' in navigator) {
+        await navigator.clearAppBadge()
+      }
+    } catch {}
+  }
 
   // Foreground notification toasts now come from the same Supabase notification
   // stream that powers the in-app bell and browser push flows.
   useEffect(() => {
     if (!user?.id) return undefined
+
+    syncUnreadBadge()
 
     const channel = supabase
       .channel(`layout-toast-${user.id}`)
@@ -32,6 +57,15 @@ export default function Layout() {
 
         setToast({ title: notification.title, body: notification.body || '' })
         setTimeout(() => setToast(null), 5000)
+        syncUnreadBadge()
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        syncUnreadBadge()
       })
       .subscribe()
 
@@ -41,12 +75,12 @@ export default function Layout() {
   }, [user?.id, path])
 
   const navItems = [
-    { path: '/app', label: 'Home', ActiveIcon: RiHomeFill, Icon: RiHomeLine },
-    { path: '/progress', label: 'Progress', ActiveIcon: RiBarChart2Fill, Icon: RiBarChart2Line },
-    { path: '/nutrition', label: 'Diet', ActiveIcon: RiLeafFill, Icon: RiLeafLine },
-    { path: '/social', label: 'Chat', ActiveIcon: RiChat3Fill, Icon: RiChat3Line },
-    { path: '/coach', label: 'Coach', ActiveIcon: RiBrainFill, Icon: RiBrainLine },
-    { path: '/profile', label: 'Profile', ActiveIcon: RiUser3Fill, Icon: RiUser3Line },
+    { path: '/app', label: t('nav_home'), ActiveIcon: RiHomeFill, Icon: RiHomeLine },
+    { path: '/progress', label: t('nav_progress'), ActiveIcon: RiBarChart2Fill, Icon: RiBarChart2Line },
+    { path: '/nutrition', label: t('nav_diet'), ActiveIcon: RiLeafFill, Icon: RiLeafLine },
+    { path: '/social', label: t('nav_chat'), ActiveIcon: RiChat3Fill, Icon: RiChat3Line },
+    { path: '/coach', label: t('nav_coach'), ActiveIcon: RiBrainFill, Icon: RiBrainLine },
+    { path: '/profile', label: t('nav_profile'), ActiveIcon: RiUser3Fill, Icon: RiUser3Line },
   ]
 
   // Global Swipe Navigation Logic

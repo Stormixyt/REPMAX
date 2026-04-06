@@ -3,6 +3,7 @@
 
 // The VAPID Public Key must match your backend's VAPID keys!
 const VAPID_PUBLIC_KEY = 'BNBo_jz-q5KOGSbK1Y43HB_UoZim9DwFNVOPGmUThMBDYihvSnX2zPCpqtck6NSiUE--C7ag2p5N4vv97aXh_Hg'
+const PUSH_SYNC_KEY = 'repmax-push-last-sync'
 
 function canUsePushNotifications() {
   return (
@@ -13,16 +14,55 @@ function canUsePushNotifications() {
   )
 }
 
+function isStandaloneDisplayMode() {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator?.standalone === true
+}
+
+export function getPushSupportState() {
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const isiPhone = /iPad|iPhone|iPod/.test(userAgent)
+
+  return {
+    supported: canUsePushNotifications(),
+    isiPhone,
+    standalone: isStandaloneDisplayMode(),
+    requiresInstalledApp: isiPhone && !isStandaloneDisplayMode()
+  }
+}
+
+async function getServiceWorkerRegistration() {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
+
+  let registration = await navigator.serviceWorker.getRegistration('/')
+
+  if (!registration) {
+    registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+  }
+
+  await registration.update().catch(() => {})
+  await navigator.serviceWorker.ready
+  return registration
+}
+
 async function persistSubscription(userId, subscription) {
   if (!userId || !subscription) return
 
   const { supabase } = await import('./supabase')
-  await supabase
+  const { error } = await supabase
     .from('profiles')
     .update({
       push_subscription: JSON.parse(JSON.stringify(subscription))
     })
     .eq('id', userId)
+
+  if (!error) {
+    try {
+      localStorage.setItem(PUSH_SYNC_KEY, new Date().toISOString())
+    } catch {}
+  } else {
+    console.warn('[REPMAX] Failed to persist push subscription:', error)
+  }
 }
 
 export async function requestNotificationPermission() {
@@ -46,7 +86,8 @@ export async function subscribeToPush(userId = null, { prompt = true } = {}) {
 
     if (!granted) return null
 
-    const registration = await navigator.serviceWorker.ready
+    const registration = await getServiceWorkerRegistration()
+    if (!registration) return null
 
     let subscription = await registration.pushManager.getSubscription()
 
@@ -80,11 +121,12 @@ export function showLocalNotification(title, body, options = {}) {
   if (!canUsePushNotifications()) return
   if (Notification.permission !== 'granted') return
 
-  navigator.serviceWorker.ready.then(registration => {
+  getServiceWorkerRegistration().then(registration => {
+    if (!registration) return
     registration.showNotification(title, {
       body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-72.png',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
       tag: options.tag || 'repmax-' + Date.now(),
       vibrate: [200, 100, 200],
       data: options.data || {},

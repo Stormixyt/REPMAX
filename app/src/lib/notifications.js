@@ -93,8 +93,13 @@ export async function sendNotification({
     .from('notifications')
     .insert(rows)
 
-  if (!error && sendPush) {
-    await triggerPushNotification({
+  if (error) {
+    console.warn('[REPMAX] Failed to insert notification row:', error)
+  }
+
+  let pushError = null
+  if (sendPush) {
+    const pushResult = await triggerPushNotification({
       userIds: targets,
       type,
       title,
@@ -109,11 +114,12 @@ export async function sendNotification({
       requireInteraction,
       renotify
     })
+    pushError = pushResult.error || null
   }
 
   return {
     data: targets.length === 1 ? rows[0] || null : rows,
-    error
+    error: error || pushError
   }
 }
 

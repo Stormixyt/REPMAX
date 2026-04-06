@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { supabase } from '../lib/supabase'
+import { sendNotification } from '../lib/notifications'
 import ProBadge from '../components/ProBadge'
 import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine, RiImageFill, RiTranslate2 } from '@remixicon/react'
-import { requestNotificationPermission, subscribeToPush } from '../lib/pushNotifications'
+import { getPushSupportState, requestNotificationPermission, subscribeToPush } from '../lib/pushNotifications'
 
 export default function Settings() {
   const { user, profile, signOut, updateProfile, isPro } = useAuth()
+  const { language, setLanguage, t, languageOptions } = useLanguage()
   const navigate = useNavigate()
   const [editName, setEditName] = useState(false)
   const [nameValue, setNameValue] = useState(profile?.display_name || '')
@@ -15,6 +18,9 @@ export default function Settings() {
   const [toast, setToast] = useState('')
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
+
+  const pushSupport = getPushSupportState()
+  const currentLanguage = languageOptions.find((option) => option.value === language) || languageOptions[0]
 
   async function saveName() {
     await updateProfile({ display_name: nameValue })
@@ -46,6 +52,35 @@ export default function Settings() {
     showToast(`Privacy: ${next}`)
   }
 
+  async function cycleLanguage() {
+    const currentIndex = languageOptions.findIndex((option) => option.value === language)
+    const nextOption = languageOptions[(currentIndex + 1) % languageOptions.length]
+    const normalized = setLanguage(nextOption.value)
+    const { error } = await updateProfile({ language: normalized })
+    showToast(error ? t('settings_language_local_only') : t('settings_language_saved', { language: nextOption.nativeLabel }))
+  }
+
+  async function sendTestNotification() {
+    const granted = await requestNotificationPermission()
+    if (!granted) {
+      showToast('Notification permission is off')
+      return
+    }
+
+    await subscribeToPush(user.id)
+    const { error } = await sendNotification({
+      userId: user.id,
+      type: 'session_reminder',
+      title: 'REPMAX Test',
+      body: 'This phone is locked in for chats, calls, and invites.',
+      data: { url: '/app' },
+      tag: `test-${Date.now()}`,
+      preferenceKey: 'notify_reminders'
+    })
+
+    showToast(error ? 'Could not send test notification' : t('settings_push_sent'))
+  }
+
   async function exportData() {
     const { data: workouts } = await supabase.from('workouts').select('*').eq('user_id', user.id).not('completed_at', 'is', null).order('completed_at', { ascending: false })
     if (!workouts?.length) { showToast('No workout data to export'); return }
@@ -71,7 +106,7 @@ export default function Settings() {
       </button>
 
       <div className="page-header">
-        <h1 className="page-title">Settings</h1>
+        <h1 className="page-title">{t('settings_title')}</h1>
       </div>
 
       {/* Profile Section */}
@@ -114,18 +149,12 @@ export default function Settings() {
       {/* App Settings */}
       <div className="settings-section-title">App Settings</div>
 
-      <div className="settings-item" onClick={() => {
-        const langs = ['English', 'Arabic', 'Dutch', 'Yes Bruh!!']
-        const currentLang = profile?.language || 'English'
-        const nextIdx = (langs.indexOf(currentLang) + 1) % langs.length
-        updateProfile({ language: langs[nextIdx] })
-        showToast(`Language set to ${langs[nextIdx]}`)
-      }}>
+      <div className="settings-item" onClick={cycleLanguage}>
         <div className="settings-item-left">
           <div className="settings-icon"><RiTranslate2 size={18} /></div>
           <div>
-            <div className="settings-label">Language</div>
-            <div className="settings-value">{profile?.language || 'English'}</div>
+            <div className="settings-label">{t('settings_language')}</div>
+            <div className="settings-value">{currentLanguage.nativeLabel}</div>
           </div>
         </div>
         <div className="settings-toggle" style={{ border: 'none', background: 'transparent' }}>
@@ -196,6 +225,26 @@ export default function Settings() {
           </div>
         </div>
       ))}
+
+      <div className="settings-item" onClick={sendTestNotification}>
+        <div className="settings-item-left">
+          <div className="settings-icon"><RiInformationFill size={18} /></div>
+          <div>
+            <div className="settings-label">{t('settings_push_test')}</div>
+            <div className="settings-value">{t('settings_push_test_desc')}</div>
+          </div>
+        </div>
+        <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      {pushSupport.requiresInstalledApp && (
+        <div className="card" style={{ marginTop: 12, marginBottom: 4, padding: 16, background: 'rgba(204,255,0,0.05)', borderColor: 'rgba(204,255,0,0.16)' }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>iPhone note</div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', lineHeight: 1.6 }}>
+            Install REPMAX to your home screen first if you want phone notifications on iPhone.
+          </div>
+        </div>
+      )}
 
       {/* Privacy */}
       <div className="settings-section-title">Privacy</div>

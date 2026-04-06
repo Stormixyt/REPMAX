@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { supabase } from '../lib/supabase'
 import { shareDNACard } from '../lib/shareDNA'
 import { subscribeToPush, showLocalNotification } from '../lib/pushNotifications'
-import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill, RiFireFill, RiWaterFlashFill, RiRunFill, RiScalesFill, RiShareLine, RiSparklingFill, RiStarFill } from '@remixicon/react'
+import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill, RiFireFill, RiWaterFlashFill, RiRunFill, RiScalesFill, RiShareLine, RiSparklingFill, RiStarFill, RiTeamFill } from '@remixicon/react'
 import ProBadge from '../components/ProBadge'
 
 const MOTIVATIONS = [
@@ -54,6 +55,7 @@ function getAuraLevel(streak) {
 
 export default function Dashboard() {
   const { user, profile, isPro } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [program, setProgram] = useState(null)
   const [todayWorkout, setTodayWorkout] = useState(null)
@@ -83,6 +85,10 @@ export default function Dashboard() {
     setShowNotifPrompt(false)
     const sub = await subscribeToPush(user.id)
     if (sub) showLocalNotification('REPMAX', 'Notifications enabled! 💪')
+  }
+
+  function openDiscord() {
+    window.open('https://discord.gg/repmax', '_blank', 'noopener,noreferrer')
   }
 
   async function loadDashboard() {
@@ -186,8 +192,8 @@ export default function Dashboard() {
               <RiNotification3Fill size={20} color="var(--text-on-accent)" />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>Enable Notifications</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Get notified when friends message you</div>
+              <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{t('dashboard_notif_title')}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{t('dashboard_notif_body')}</div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -251,10 +257,32 @@ export default function Dashboard() {
         </div>
       )}
 
+      <div className="dashboard-boost-grid">
+        <button type="button" className="dashboard-boost-card dashboard-boost-card-discord" onClick={openDiscord}>
+          <div className="dashboard-boost-kicker">COMMUNITY</div>
+          <div className="dashboard-boost-title">{t('dashboard_discord_title')}</div>
+          <div className="dashboard-boost-body">{t('dashboard_discord_body')}</div>
+          <div className="dashboard-boost-footer">
+            <span className="dashboard-boost-chip"><RiTeamFill size={15} /> Discord</span>
+            <span className="dashboard-boost-link">{t('dashboard_discord_cta')} <RiArrowRightLine size={16} /></span>
+          </div>
+        </button>
+
+        <button type="button" className="dashboard-boost-card dashboard-boost-card-run" onClick={() => navigate('/run')}>
+          <div className="dashboard-boost-kicker">OUTDOOR</div>
+          <div className="dashboard-boost-title">{t('dashboard_run_beta')}</div>
+          <div className="dashboard-boost-body">{t('dashboard_run_beta_desc')}</div>
+          <div className="dashboard-boost-footer">
+            <span className="dashboard-boost-chip"><RiRunFill size={15} /> Beta</span>
+            <span className="dashboard-boost-link">{t('dashboard_run_cta')} <RiArrowRightLine size={16} /></span>
+          </div>
+        </button>
+      </div>
+
       {/* Today's Workout */}
       {todayWorkout ? (
         <div className="card card-accent" style={{ marginBottom: 16, marginTop: !isPro ? 12 : 0 }}>
-          <div className="card-label">Today's Workout</div>
+          <div className="card-label">{t('dashboard_today_workout')}</div>
           <div className="card-title">{todayWorkout.day_name}</div>
           <div className="card-subtitle" style={{ marginBottom: 16 }}>
             {todayWorkout.exercises?.length || 0} exercises · Week {todayWorkout.weekNumber}
@@ -272,15 +300,15 @@ export default function Dashboard() {
             )}
           </div>
           <button className="btn btn-primary btn-full" onClick={startWorkout}>
-            <RiFlashlightFill size={18} /> Start Workout
+            <RiFlashlightFill size={18} /> {t('dashboard_start_workout')}
           </button>
         </div>
       ) : (
         <div className="card" style={{ marginTop: !isPro ? 12 : 0, marginBottom: 16, cursor: 'pointer', background: 'var(--bg-elevated)', border: '1px solid var(--border)' }} onClick={() => navigate('/recovery')}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div className="card-label" style={{ margin: 0, color: 'var(--text-tertiary)' }}>Rest Day</div>
-              <h3 style={{ margin: '4px 0 0', fontSize: '1.2rem', fontFamily: 'var(--font-display)', fontWeight: 800, color: 'var(--text-primary)' }}>Recovery Hub</h3>
+              <div className="card-label" style={{ margin: 0, color: 'var(--text-tertiary)' }}>{t('dashboard_rest_day')}</div>
+              <h3 style={{ margin: '4px 0 0', fontSize: '1.2rem', fontFamily: 'var(--font-display)', fontWeight: 800, color: 'var(--text-primary)' }}>{t('dashboard_recovery_hub')}</h3>
               <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Stretches, hydration & sleep</p>
             </div>
             <div style={{ background: 'var(--accent-glow)', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -294,11 +322,11 @@ export default function Dashboard() {
       <div className="stat-row">
         <div className="stat-box">
           <div className="stat-value">{stats.total}</div>
-          <div className="stat-desc">Workouts</div>
+          <div className="stat-desc">{t('dashboard_workouts')}</div>
         </div>
         <div className="stat-box">
           <div className="stat-value">{stats.streak}</div>
-          <div className="stat-desc">Day Streak</div>
+          <div className="stat-desc">{t('dashboard_day_streak')}</div>
         </div>
         <div className="stat-box">
           <div className="stat-value">{stats.volume > 1000 ? `${(stats.volume / 1000).toFixed(1)}k` : stats.volume}</div>
@@ -344,7 +372,7 @@ export default function Dashboard() {
       {/* Current Program */}
       {program && (
         <div className="card" style={{ marginTop: 16 }}>
-          <div className="card-label">Current Program</div>
+          <div className="card-label">{t('dashboard_current_program')}</div>
           <div className="card-title">{program.name}</div>
           <div className="card-subtitle">Week {program.current_week || 1} of {program.total_weeks || 4} · {program.split_type?.replace('_', '/').toUpperCase()}</div>
           <div style={{ marginTop: 12, background: 'var(--bg-elevated)', borderRadius: 'var(--radius-full)', height: 6, overflow: 'hidden' }}>
@@ -356,7 +384,7 @@ export default function Dashboard() {
       {/* Recent PRs */}
       {recentPRs.length > 0 && (
         <div style={{ marginTop: 20 }}>
-          <h3 className="section-title"><RiTrophyFill size={16} /> Recent PRs</h3>
+          <h3 className="section-title"><RiTrophyFill size={16} /> {t('dashboard_recent_prs')}</h3>
           {recentPRs.map(pr => (
             <div key={pr.id} className="pr-item">
               <div className="pr-badge"><RiMedalFill size={18} /></div>

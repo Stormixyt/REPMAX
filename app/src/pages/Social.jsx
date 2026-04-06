@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { supabase } from '../lib/supabase'
 import { sendNotification, NotificationTemplates } from '../lib/notifications'
 import GymPicker from '../components/GymPicker'
@@ -14,6 +15,7 @@ import {
 
 export default function Social() {
   const { user, profile, isPro } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [tab, setTab] = useState('messages')
   const [friends, setFriends] = useState([])
@@ -29,12 +31,17 @@ export default function Social() {
   const [inviteFriendId, setInviteFriendId] = useState(null)
   const [inviteGymName, setInviteGymName] = useState('')
   const [inviteDate, setInviteDate] = useState('')
+  const [inviteSeriesCount, setInviteSeriesCount] = useState(1)
   const [groupName, setGroupName] = useState('')
   const [selectedFriends, setSelectedFriends] = useState([])
   const [toast, setToast] = useState('')
   const mounted = useRef(true)
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
+
+  function openDiscord() {
+    window.open('https://discord.gg/repmax', '_blank', 'noopener,noreferrer')
+  }
 
   function formatApptDate(dateStr) {
     const d = new Date(dateStr)
@@ -212,20 +219,31 @@ export default function Social() {
   async function sendInvite() {
     if (!inviteGymName || !inviteDate || !inviteFriendId) return
 
-    const { error } = await supabase.from('gym_appointments').insert({
+    const baseDate = new Date(inviteDate)
+    const seriesCount = isPro ? inviteSeriesCount : 1
+    const appointmentRows = Array.from({ length: seriesCount }, (_, index) => ({
       creator_id: user.id,
       guest_id: inviteFriendId,
       gym_name: inviteGymName,
-      scheduled_at: new Date(inviteDate).toISOString(),
+      scheduled_at: new Date(baseDate.getTime() + index * 7 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'pending'
-    })
+    }))
+
+    const { error } = await supabase.from('gym_appointments').insert(appointmentRows)
 
     if (!error) {
       const { dayLabel, timeLabel } = formatApptDate(inviteDate)
-      const inviteSummary = `${inviteGymName} - ${dayLabel} at ${timeLabel}`
+      const inviteSummary = seriesCount > 1
+        ? `${inviteGymName} - ${seriesCount}-week lock-in series starting ${dayLabel} at ${timeLabel}`
+        : `${inviteGymName} - ${dayLabel} at ${timeLabel}`
       const scheduledAt = new Date(inviteDate).toISOString()
       let targetUrl = '/social'
-      let shouldSendPush = true
+      const invitePayload = {
+        location: inviteGymName,
+        time: seriesCount > 1 ? `${dayLabel} at ${timeLabel} · ${seriesCount}-week series` : `${dayLabel} at ${timeLabel}`,
+        acceptedBy: [],
+        seriesCount
+      }
 
       // Try to send a chat message about it (find direct chat)
       try {
@@ -241,11 +259,10 @@ export default function Social() {
 
           if (mutual?.[0]) {
             targetUrl = `/chat/${mutual[0].chat_id}`
-            shouldSendPush = false
             await supabase.from('messages').insert({
               chat_id: mutual[0].chat_id,
               sender_id: user.id,
-              content: JSON.stringify({ location: inviteGymName, time: `${dayLabel} at ${timeLabel}`, acceptedBy: [] }),
+              content: JSON.stringify(invitePayload),
               type: 'invite'
             })
           }
@@ -260,9 +277,10 @@ export default function Social() {
           url: targetUrl,
           sender_id: user.id,
           gym_name: inviteGymName,
-          scheduled_at: scheduledAt
+          scheduled_at: scheduledAt,
+          series_count: seriesCount
         },
-        sendPush: shouldSendPush,
+        sendPush: true,
         preferenceKey: 'notify_invites'
       })
 
@@ -270,6 +288,7 @@ export default function Social() {
       setInviteFriendId(null)
       setInviteGymName('')
       setInviteDate('')
+      setInviteSeriesCount(1)
       await loadSocial()
     } else {
       showToast('Failed to send invite')
@@ -388,7 +407,21 @@ export default function Social() {
   return (
     <div className="page">
       <div className="page-header" style={{ paddingBottom: 0 }}>
-        <h1 className="page-title">Social</h1>
+        <h1 className="page-title">{t('social_title')}</h1>
+
+        <div className="social-crew-panel">
+          <div>
+            <div className="social-crew-kicker">{t('social_crew_title')}</div>
+            <div className="social-crew-title">{t('social_crew_body')}</div>
+            {isPro && (
+              <div className="social-crew-pro">{t('social_series_label')} · {t('social_series_desc')}</div>
+            )}
+          </div>
+          <div className="social-crew-actions">
+            <button className="social-crew-btn primary" onClick={openDiscord}>{t('social_crew_primary')}</button>
+            <button className="social-crew-btn" onClick={() => navigate('/run')}>{t('social_crew_secondary')}</button>
+          </div>
+        </div>
 
         {/* ═══ UPCOMING SESSIONS ═══ */}
         {appointments.length > 0 && (
@@ -396,9 +429,9 @@ export default function Social() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <h3 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 <RiCalendarLine size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
-                Upcoming Sessions
+                {t('social_upcoming_sessions')}
               </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{appointments.length} planned</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{t('social_planned', { count: appointments.length })}</span>
             </div>
             <div style={{ display: 'flex', overflowX: 'auto', gap: 12, paddingBottom: 8, margin: '0 -20px', padding: '0 20px', scrollSnapType: 'x mandatory' }}>
               {appointments.map(a => {
@@ -513,9 +546,9 @@ export default function Social() {
         {/* Tab bar */}
         <div className="v3-tabs" style={{ marginTop: appointments.length > 0 ? 8 : 16 }}>
           {[
-            { id: 'messages', label: 'Chats', icon: <RiChat3Fill size={15} /> },
-            { id: 'friends', label: 'Friends', icon: <RiTeamFill size={15} /> },
-            { id: 'search', label: 'Add', icon: <RiSearchLine size={15} /> },
+            { id: 'messages', label: t('social_tab_chats'), icon: <RiChat3Fill size={15} /> },
+            { id: 'friends', label: t('social_tab_friends'), icon: <RiTeamFill size={15} /> },
+            { id: 'search', label: t('social_tab_add'), icon: <RiSearchLine size={15} /> },
           ].map(t => (
             <button key={t.id} className={`v3-tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
               {t.icon} {t.label}
@@ -532,14 +565,14 @@ export default function Social() {
           <div className="anim-slide-up">
             <button className="fab-create" onClick={() => setShowGroupForm(true)}>
               <div className="fab-create-icon"><RiUserAddFill size={20} /></div>
-              Create New Group Chat
+              {t('social_create_group')}
             </button>
 
             {chats.length === 0 ? (
               <div className="v3-empty">
                 <RiChat3Fill size={48} className="v3-empty-icon" />
-                <h3 className="v3-empty-title">No Messages Yet</h3>
-                <p className="v3-empty-desc">Start a chat from your Friends tab!</p>
+                <h3 className="v3-empty-title">{t('social_no_messages')}</h3>
+                <p className="v3-empty-desc">{t('social_no_messages_desc')}</p>
               </div>
             ) : (
               <div className="chat-list stagger-children">
@@ -577,8 +610,8 @@ export default function Social() {
             {friends.length === 0 ? (
               <div className="v3-empty">
                 <RiTeamFill size={48} className="v3-empty-icon" />
-                <h3 className="v3-empty-title">No Friends Yet</h3>
-                <p className="v3-empty-desc">Go to the Add tab to connect with friends using their code.</p>
+                <h3 className="v3-empty-title">{t('social_no_friends')}</h3>
+                <p className="v3-empty-desc">{t('social_no_friends_desc')}</p>
               </div>
             ) : (
               <div className="stagger-children" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -598,7 +631,7 @@ export default function Social() {
                       <button className="v3-action-btn accent" onClick={e => { e.stopPropagation(); openDirectChat(f.id) }} title="Message">
                         <RiChat3Fill size={18} />
                       </button>
-                      <button className="v3-action-btn" onClick={e => { e.stopPropagation(); setInviteFriendId(f.id); setInviteGymName(''); setInviteDate('') }} title="Plan Workout" style={{ color: 'var(--accent)' }}>
+                      <button className="v3-action-btn" onClick={e => { e.stopPropagation(); setInviteFriendId(f.id); setInviteGymName(''); setInviteDate(''); setInviteSeriesCount(1) }} title={t('social_plan_workout')} style={{ color: 'var(--accent)' }}>
                         <RiFlashlightFill size={18} />
                       </button>
                     </div>
@@ -614,7 +647,7 @@ export default function Social() {
           <div className="anim-slide-up">
             <div className="friend-code-card">
               <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
-                Your Username
+                {t('social_your_username')}
               </div>
               <div className="friend-code-display">@{myUsername}</div>
               <button className="btn btn-sm btn-secondary" onClick={() => { navigator.clipboard?.writeText(myUsername); showToast('Username copied!') }}>
@@ -635,7 +668,7 @@ export default function Social() {
               />
             </div>
             <button className="btn btn-primary btn-full" onClick={searchFriend} disabled={searching || searchCode.replace('@', '').length < 2} style={{ marginBottom: 24 }}>
-              {searching ? 'Searching...' : 'Find User'}
+              {searching ? 'Searching...' : t('social_find_user')}
             </button>
 
             {searchResult && (
@@ -667,7 +700,7 @@ export default function Social() {
             {pending.length > 0 && (
               <div>
                 <h3 className="section-title" style={{ marginBottom: 12 }}>
-                  <RiFlashlightFill size={16} style={{ color: 'var(--accent)' }} /> Pending ({pending.length})
+                  <RiFlashlightFill size={16} style={{ color: 'var(--accent)' }} /> {t('social_pending')} ({pending.length})
                 </h3>
                 {pending.map(p => (
                   <div key={p.id} className="pending-card">
@@ -759,7 +792,7 @@ export default function Social() {
       {/* ═══ PLAN WORKOUT MODAL ═══ */}
       {inviteFriendId && (
         <div className="modal-slide">
-          <div className="modal-slide-backdrop" onClick={() => setInviteFriendId(null)} />
+          <div className="modal-slide-backdrop" onClick={() => { setInviteFriendId(null); setInviteSeriesCount(1) }} />
           <div className="modal-slide-content">
             <div className="modal-slide-handle" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -767,7 +800,7 @@ export default function Social() {
                 <RiFlashlightFill size={24} color="var(--text-on-accent)" />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Plan a Workout</h3>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>{t('social_plan_workout')}</h3>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
                   Invite {friends.find(f => f.id === inviteFriendId)?.display_name || 'your friend'} to the gym
                 </p>
@@ -775,6 +808,34 @@ export default function Social() {
             </div>
 
             <GymPicker value={inviteGymName} onChange={setInviteGymName} />
+
+            {isPro && (
+              <div className="social-series-card">
+                <div className="social-series-header">
+                  <div>
+                    <div className="social-series-title">{t('social_series_label')}</div>
+                    <div className="social-series-copy">{t('social_series_desc')}</div>
+                  </div>
+                  <RiVipCrownFill size={18} style={{ color: 'var(--accent)' }} />
+                </div>
+                <div className="social-series-toggle">
+                  <button
+                    type="button"
+                    className={`social-series-option ${inviteSeriesCount === 1 ? 'active' : ''}`}
+                    onClick={() => setInviteSeriesCount(1)}
+                  >
+                    {t('social_single_session')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`social-series-option ${inviteSeriesCount === 4 ? 'active' : ''}`}
+                    onClick={() => setInviteSeriesCount(4)}
+                  >
+                    {t('social_lockin_series')}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="input-group">
               <label className="input-label">Date & Time</label>
@@ -787,7 +848,7 @@ export default function Social() {
               disabled={!inviteDate || !inviteGymName}
               style={{ marginTop: 12 }}
             >
-              <RiFlashlightFill size={18} style={{ marginRight: 6 }} /> Send Invite
+              <RiFlashlightFill size={18} style={{ marginRight: 6 }} /> {t('social_send_invite')}
             </button>
           </div>
         </div>

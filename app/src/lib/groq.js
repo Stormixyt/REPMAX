@@ -652,6 +652,99 @@ Create the program now.`;
 // Exported for use in Nutrition.jsx and other pages
 export { callGroq, VISION_MODEL, MODEL };
 
+function stripMarkdownFences(text = "") {
+  return text
+    .replace(/```json/gi, "```")
+    .replace(/```/g, "")
+    .trim();
+}
+
+function extractJsonCandidate(text = "") {
+  const stripped = stripMarkdownFences(text);
+  const start = stripped.indexOf("{");
+  const end = stripped.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    return stripped.slice(start, end + 1);
+  }
+  return stripped;
+}
+
+function repairLikelyJson(text = "") {
+  return extractJsonCandidate(text)
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/,\s*([}\]])/g, "$1")
+    .trim();
+}
+
+function cloneVisionDays(days = []) {
+  return (Array.isArray(days) ? days : []).map((day) => ({
+    ...day,
+    target_muscles: Array.isArray(day?.target_muscles) ? day.target_muscles : [],
+    exercises: Array.isArray(day?.exercises)
+      ? day.exercises.map((exercise) => ({
+          ...exercise,
+          rpe: exercise?.rpe ?? 8,
+          rest_seconds: exercise?.rest_seconds ?? 120,
+          notes: exercise?.notes || "",
+        }))
+      : [],
+  }));
+}
+
+function normalizeVisionProgramPayload(program = {}) {
+  const sourceWeeks = Array.isArray(program?.weeks) && program.weeks.length
+    ? program.weeks
+    : [{
+        week_number: 1,
+        is_deload: false,
+        days: Array.isArray(program?.days) ? program.days : [],
+      }];
+
+  const baseWeek = sourceWeeks[0] || { days: [] };
+  const weeks = Array.from({ length: Math.max(4, sourceWeeks.length) }, (_, index) => {
+    const sourceWeek = sourceWeeks[index] || baseWeek;
+    return {
+      week_number: index + 1,
+      is_deload: index === 3 ? Boolean(sourceWeek?.is_deload || true) : Boolean(sourceWeek?.is_deload),
+      days: cloneVisionDays(sourceWeek?.days || baseWeek?.days || []),
+    };
+  }).slice(0, 4);
+
+  return {
+    name: program?.name?.trim?.() || "Custom Routine",
+    split_type: "custom",
+    weeks,
+  };
+}
+
+async function repairVisionProgramJson(rawOutput) {
+  const repaired = await callGroq({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You repair malformed JSON for workout programs. Return ONLY valid JSON with keys name, split_type, weeks[]. Never include markdown.",
+      },
+      {
+        role: "user",
+        content: `Fix this into valid JSON only:\n\n${extractJsonCandidate(rawOutput)}`,
+      },
+    ],
+    model: MODEL,
+    temperature: 0.1,
+    max_tokens: 4000,
+    response_format: { type: "json_object" },
+  });
+
+  const repairedContent = repaired?.choices?.[0]?.message?.content?.trim();
+  if (!repairedContent) {
+    throw new Error("Vision JSON repair returned empty output");
+  }
+
+  return JSON.parse(repairedContent);
+}
+
 export async function generateProgramFromImages(base64Images) {
   const VISION_PROMPT = `You are REPMAX Vision, an expert fitness AI. Your task is to extract the training routine shown in the provided images and output it EXACTLY matching the strict JSON format below.
 
@@ -705,22 +798,21 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
         { role: "system", content: VISION_PROMPT },
         { role: "user", content: userMessageContent },
       ],
-      model: "llama-3.2-90b-vision-preview",
+      model: VISION_MODEL,
       temperature: 0.2, // Low temp for extraction tasks
       max_tokens: 6000,
     });
 
-    let rawOutput = data.choices[0].message.content;
-    
-    // Strip markdown JSON wrapping if present
-    if (rawOutput.includes('\`\`\`json')) {
-      rawOutput = rawOutput.split('\`\`\`json')[1].split('\`\`\`')[0];
-    } else if (rawOutput.includes('\`\`\`')) {
-      rawOutput = rawOutput.split('\`\`\`')[1].split('\`\`\`')[0];
+    const rawOutput = data?.choices?.[0]?.message?.content || "";
+    let parsedProgram = null;
+
+    try {
+      parsedProgram = JSON.parse(repairLikelyJson(rawOutput));
+    } catch {
+      parsedProgram = await repairVisionProgramJson(rawOutput);
     }
 
-    const programJson = JSON.parse(rawOutput.trim());
-    return { success: true, program: programJson };
+    return { success: true, program: normalizeVisionProgramPayload(parsedProgram) };
   } catch(err) {
     console.error("Vision AI failed:", err);
     return { success: false, error: err };

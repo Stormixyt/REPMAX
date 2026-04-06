@@ -18,6 +18,7 @@ import Notifications from './pages/Notifications'
 import ChatRoom from './pages/ChatRoom'
 import HomeExercises from './pages/HomeExercises'
 import Recovery from './pages/Recovery'
+import RunTracker from './pages/RunTracker'
 import Layout from './components/Layout'
 import CallScreen from './components/CallScreen'
 import UsernameModal from './components/UsernameModal'
@@ -48,6 +49,23 @@ export default function App() {
   useEffect(() => {
     if (!user?.id) return
     syncPushSubscription(user.id).catch(() => {})
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return undefined
+
+    const resyncPush = () => {
+      if (document.visibilityState === 'hidden') return
+      syncPushSubscription(user.id).catch(() => {})
+    }
+
+    window.addEventListener('focus', resyncPush)
+    document.addEventListener('visibilitychange', resyncPush)
+
+    return () => {
+      window.removeEventListener('focus', resyncPush)
+      document.removeEventListener('visibilitychange', resyncPush)
+    }
   }, [user?.id])
 
   useEffect(() => {
@@ -348,6 +366,7 @@ export default function App() {
           <Route path="/social" element={<Social />} />
           <Route path="/coach" element={<AICoach />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/run" element={<RunTracker />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/app" replace />} />

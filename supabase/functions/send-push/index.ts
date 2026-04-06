@@ -9,8 +9,8 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 const VAPID_PUBLIC_KEY = 'BNBo_jz-q5KOGSbK1Y43HB_UoZim9DwFNVOPGmUThMBDYihvSnX2zPCpqtck6NSiUE--C7ag2p5N4vv97aXh_Hg'
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') || 'onCjTbHt0Zzz041u7Tu7cg9uw5Mj8DRJey3UzLP5rvQ'
-const DEFAULT_ICON = '/icons/icon-192.png'
-const DEFAULT_BADGE = '/icons/icon-72.png'
+const DEFAULT_ICON = '/icon-192.png'
+const DEFAULT_BADGE = '/icon-192.png'
 
 const ENGAGEMENT_LINES = [
   { title: 'REPMAX Check-In', body: 'Open the app and get one solid session in today.' },
@@ -214,7 +214,10 @@ async function handleDirectNotification(notification: Record<string, unknown>) {
       tag: String(notification.tag || `notification-${Date.now()}`),
       requireInteraction: notification.requireInteraction === true,
       renotify: notification.renotify === true,
-      data: notification.data || {},
+      data: {
+        url: '/app',
+        ...(notification.data || {}),
+      },
       actions: Array.isArray(notification.actions) ? notification.actions : [],
     },
     preferenceKey,
@@ -233,7 +236,7 @@ function buildEngagementNotification(profile: Record<string, unknown>, batchId: 
       title: 'Keep The Streak Alive',
       body: `You're on a ${streak}-day streak. Open REPMAX and protect it today.`,
       tag: `engagement-${batchId}`,
-      data: { url: '/' },
+      data: { url: '/app' },
     }
   }
 
@@ -241,7 +244,7 @@ function buildEngagementNotification(profile: Record<string, unknown>, batchId: 
     title: line.title,
     body: line.body,
     tag: `engagement-${batchId}`,
-    data: { url: '/' },
+    data: { url: '/app' },
   }
 }
 

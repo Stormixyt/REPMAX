@@ -259,6 +259,36 @@ img {
   display: none !important;
 }
 
+.discord-float-cta {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1002;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(204, 255, 0, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(204,255,0,0.18), transparent 42%),
+    rgba(7, 7, 7, 0.92);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.discord-float-kicker {
+  color: var(--accent);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.discord-float-cta strong {
+  font-size: 0.85rem;
+}
+
 /* Mobile menu */
 .nav-hamburger {
   display: none;

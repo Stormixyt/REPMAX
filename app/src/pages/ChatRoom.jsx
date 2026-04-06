@@ -726,16 +726,24 @@ export default function ChatRoom() {
                           <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{inviteData.location}</div>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <RiTimeFill size={18} color="var(--accent)" />
-                        <div>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>TIME</div>
-                          <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{inviteData.time}</div>
-                        </div>
-                      </div>
-                    </div>
+	                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+	                        <RiTimeFill size={18} color="var(--accent)" />
+	                        <div>
+	                          <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>TIME</div>
+	                          <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{inviteData.time}</div>
+	                        </div>
+	                      </div>
+	                    </div>
 
-                    {/* Accepted chips — VISIBLE TO EVERYONE */}
+	                    {inviteData.seriesCount > 1 && (
+	                      <div style={{ marginBottom: 12 }}>
+	                        <div className="invite-accepted-chip">
+	                          <RiFlashlightFill size={12} /> {inviteData.seriesCount}-week lock-in series
+	                        </div>
+	                      </div>
+	                    )}
+
+	                    {/* Accepted chips — VISIBLE TO EVERYONE */}
                     {inviteData.acceptedBy?.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                         {inviteData.acceptedBy.map((name, i) => (
