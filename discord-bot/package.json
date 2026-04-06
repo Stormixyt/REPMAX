@@ -1,0 +1,15 @@
+{
+  "name": "repmax-discord-builder",
+  "version": "4.0.0",
+  "description": "REPMAX Discord — Builder + Persistent Bot",
+  "main": "bot.js",
+  "scripts": {
+    "build-server": "node build-server.js",
+    "start": "node bot.js",
+    "build": "node build-server.js",
+    "check": "node --check bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.18.0"
+  }
+}

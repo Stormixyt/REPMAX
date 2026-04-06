@@ -12,13 +12,12 @@
 const { Client, GatewayIntentBits, PermissionsBitField, ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Events, ActivityType, REST, Routes, SlashCommandBuilder } = require('discord.js')
 const fs = require('fs')
 const path = require('path')
+const { getBotConfig } = require('./config')
 
 // ═══════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════
-const BOT_TOKEN = 'MTQ5MDQyODQxNzkwNzM1OTc4NA.Gx6W1A.H1s5Jm6OIWbIOVgNpQZ0Oeswc-uGiyKA2-esh4'
-const GUILD_ID = '1490284889151377559'
-const CLIENT_ID = Buffer.from(BOT_TOKEN.split(\'.\')[0], \'base64\').toString() // Extract client ID from tokennt ID from token
+const { BOT_TOKEN, GUILD_ID } = getBotConfig()
 
 const C = {
   accent: 0xCCFF00, gold: 0xFFD700, purple: 0x7C3AED, green: 0x22C55E,
@@ -94,6 +93,7 @@ const log = msg => console.log(`  [${new Date().toLocaleTimeString()}] ${msg}`)
 //  SLASH COMMANDS REGISTRATION
 // ═══════════════════════════════════════════
 const commands = [
+  new SlashCommandBuilder().setName('help').setDescription('List all REPMAX bot commands'),
   new SlashCommandBuilder().setName('profile').setDescription('View your REPMAX profile').addUserOption(o => o.setName('user').setDescription('User to view')),
   new SlashCommandBuilder().setName('leaderboard').setDescription('View the XP leaderboard'),
   new SlashCommandBuilder().setName('streak').setDescription('Check your activity streak'),
@@ -107,11 +107,20 @@ const commands = [
   new SlashCommandBuilder().setName('app').setDescription('Get the REPMAX app link'),
 ]
 
-async function registerCommands() {
+function buildInviteUrl(applicationId) {
+  const params = new URLSearchParams({
+    client_id: applicationId,
+    scope: 'bot applications.commands',
+    permissions: PermissionsBitField.Flags.Administrator.toString(),
+  })
+  return `https://discord.com/oauth2/authorize?${params.toString()}`
+}
+
+async function registerCommands(applicationId) {
   const rest = new REST({ version: '10' }).setToken(BOT_TOKEN)
   try {
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands.map(c => c.toJSON()) })
-    log('✅ Slash commands registered')
+    await rest.put(Routes.applicationGuildCommands(applicationId, GUILD_ID), { body: commands.map(c => c.toJSON()) })
+    log(`✅ Slash commands registered (${commands.length})`)
   } catch (e) { log(`⚠️  Commands: ${e.message}`) }
 }
 
@@ -141,8 +150,15 @@ client.once('ready', async () => {
   console.log('╚══════════════════════════════════════════════╝\n')
   log(`✅ ${client.user.tag} is online!`)
 
+  await client.application?.fetch()
+  const applicationId = client.application?.id
+  if (!applicationId) {
+    throw new Error('Could not resolve Discord application ID for slash command registration.')
+  }
+
   // Register slash commands
-  await registerCommands()
+  await registerCommands(applicationId)
+  log(`🔗 Install / refresh commands: ${buildInviteUrl(applicationId)}`)
 
   // Rotating status
   const statuses = [
@@ -174,7 +190,26 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.isChatInputCommand()) {
     const { commandName } = interaction
 
-    if (commandName === 'profile') {
+    if (commandName === 'help') {
+      const e = new EmbedBuilder().setColor(C.accent)
+        .setTitle('🤖 REPMAX Bot Commands')
+        .setDescription([
+          '`/help` - show every command',
+          '`/profile` - view XP, level, warnings, roles',
+          '`/leaderboard` - server XP leaderboard',
+          '`/streak` - quick activity check',
+          '`/motivation` - random motivation quote',
+          '`/workout` - quick workout suggestion',
+          '`/afk` - set your AFK status',
+          '`/warn` - staff warning command',
+          '`/serverinfo` - current server stats',
+          '`/app` - open the REPMAX app',
+        ].join('\n'))
+        .setFooter({ text: 'If commands are missing, re-invite the bot with applications.commands scope.' })
+      await interaction.reply({ embeds: [e], ephemeral: true })
+    }
+
+    else if (commandName === 'profile') {
       const user = interaction.options.getUser('user') || interaction.user
       const xp = botData.xp[user.id] || 0
       const level = getLevel(xp)
