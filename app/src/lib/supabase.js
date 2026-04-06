@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = 'https://hqwnyzmipumhhqmvdzus.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI'
 
+export const SUPABASE_URL = supabaseUrl
+export const SUPABASE_ANON_KEY = supabaseKey
+
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
@@ -36,6 +39,72 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     timeout: 30000
   }
 })
+
+export async function invokeEdgeFunction(functionName, body, options = {}) {
+  const {
+    timeoutMs = 15000,
+    requireAuth = true,
+  } = options
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      apikey: supabaseKey,
+      'x-client-info': 'repmax-app/4.0'
+    }
+
+    const {
+      data: { session }
+    } = await supabase.auth.getSession()
+
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`
+    } else if (requireAuth) {
+      throw new Error('You need to be signed in to use this feature.')
+    }
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body ?? {}),
+      signal: controller.signal
+    })
+
+    const raw = await response.text()
+    let data = null
+
+    if (raw) {
+      try {
+        data = JSON.parse(raw)
+      } catch {
+        data = { raw }
+      }
+    }
+
+    if (!response.ok) {
+      const error = new Error(
+        data?.error ||
+        data?.message ||
+        `Edge function ${functionName} failed with status ${response.status}.`
+      )
+      error.status = response.status
+      error.payload = data
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`${functionName} timed out. Please try again.`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
 // Retry wrapper
 export async function withRetry(fn, maxRetries = 3) {

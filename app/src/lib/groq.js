@@ -2,7 +2,7 @@
  * groq.js — All AI calls go through the Supabase Edge Function "ai-proxy".
  * The actual Groq API key lives only in Supabase secrets, never in this bundle.
  */
-import { supabase } from "./supabase";
+import { invokeEdgeFunction } from "./supabase";
 
 const MODEL = "llama-3.3-70b-versatile";
 const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
@@ -100,25 +100,14 @@ When the user asks about using REPMAX, use visible page names and buttons they c
 
 /**
  * Core helper — calls the ai-proxy edge function with a hard timeout.
- * If the edge function takes longer than 10 seconds (mobile/rate-limited),
+ * If the edge function takes too long (mobile/rate-limited),
  * we abort and fall back to the local program generator.
  */
-async function callGroq(body) {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 10000)
-
-  try {
-    const { data, error } = await supabase.functions.invoke("ai-proxy", {
-      body,
-      signal: controller.signal
-    })
-    clearTimeout(timeout)
-    if (error) throw new Error(error.message)
-    return data
-  } catch (err) {
-    clearTimeout(timeout)
-    throw err
-  }
+async function callGroq(body, options = {}) {
+  return invokeEdgeFunction("ai-proxy", body, {
+    timeoutMs: options.timeoutMs || 15000,
+    requireAuth: true,
+  })
 }
 
 function formatCoachList(items, fallback = "Not set") {
@@ -397,6 +386,8 @@ export async function askCoach({
     model: COACH_MODEL,
     temperature: toneMode === "gymbro" ? 0.7 : 0.55,
     max_tokens: toneMode === "gymbro" ? 260 : 1200,
+  }, {
+    timeoutMs: 18000,
   });
 
   const content = data?.choices?.[0]?.message?.content?.trim();
@@ -420,6 +411,8 @@ export async function generateProgram(profile) {
       temperature: 0.7,
       max_tokens: 8000,
       response_format: { type: "json_object" },
+    }, {
+      timeoutMs: 20000,
     });
 
     const programJson = JSON.parse(data.choices[0].message.content);
@@ -735,6 +728,8 @@ async function repairVisionProgramJson(rawOutput) {
     temperature: 0.1,
     max_tokens: 4000,
     response_format: { type: "json_object" },
+  }, {
+    timeoutMs: 20000,
   });
 
   const repairedContent = repaired?.choices?.[0]?.message?.content?.trim();
@@ -746,6 +741,39 @@ async function repairVisionProgramJson(rawOutput) {
 }
 
 export async function generateProgramFromImages(base64Images) {
+  const OCR_PROMPT = `You are REPMAX Vision OCR.
+
+Read the workout text visible in these images and return plain text only.
+
+Rules:
+- Preserve the visible routine name if there is one.
+- Preserve the schedule order exactly as shown.
+- For each visible workout day, write one line like "Day 1 - Upper Body" or "Day 12 - Cardio + Core".
+- Keep "Rest" days as rest.
+- Keep any visible notes like "Try an advanced move".
+- Do NOT output JSON.
+- Do NOT invent exercises yet.
+- Do NOT explain anything. Return only the extracted routine text.`;
+
+  const TEXT_TO_PROGRAM_PROMPT = `You are REPMAX Program Builder.
+
+Turn the extracted workout text below into a valid JSON program for the REPMAX app.
+
+Rules:
+- Output ONLY valid JSON.
+- Use:
+  {
+    "name": "Custom Routine",
+    "split_type": "custom",
+    "weeks": [...]
+  }
+- If the text only gives workout themes like "Upper Body", "Lower Body", "Core", "Cardio + Core", or "Upper Body + Lower Body", invent sensible bodyweight or minimal-equipment exercises for that theme.
+- Rest days should remain in the schedule but may have zero exercises.
+- Every non-rest day must have at least 3 useful exercises.
+- Keep the schedule order from the extracted text.
+- If only one week is available, repeat it until there are 4 weeks.
+- Use sensible defaults for sets, reps, RPE, and rest seconds.`;
+
   const VISION_PROMPT = `You are REPMAX Vision, an expert fitness AI. Your task is to extract the training routine shown in the provided images and output it EXACTLY matching the strict JSON format below.
 
 IF any vital data (like RPE or Rest time) is missing from the images, you MUST invent sensible defaults (e.g. RPE 8, 120s rest).
@@ -782,26 +810,92 @@ OUTPUT FORMAT: You MUST respond with ONLY valid JSON matching this structure exa
 
 DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
 
-  try {
-    const userMessageContent = [
-      { type: "text", text: "Parse the training routines in these images and give me the perfect JSON structure." }
-    ];
+  const userMessageContent = [
+    { type: "text", text: "Read the workout text from these images." }
+  ];
 
-    for (const img of base64Images) {
-      userMessageContent.push({
-        type: "image_url",
-        image_url: { url: img }
-      });
+  for (const img of base64Images) {
+    userMessageContent.push({
+      type: "image_url",
+      image_url: { url: img }
+    });
+  }
+
+  async function extractRoutineTextFromImages() {
+    const data = await callGroq({
+      messages: [
+        { role: "system", content: OCR_PROMPT },
+        { role: "user", content: userMessageContent },
+      ],
+      model: VISION_MODEL,
+      temperature: 0.1,
+      max_tokens: 2500,
+    }, {
+      timeoutMs: 45000,
+    });
+
+    return data?.choices?.[0]?.message?.content?.trim() || "";
+  }
+
+  async function buildProgramFromExtractedText(extractedText) {
+    const data = await callGroq({
+      messages: [
+        { role: "system", content: TEXT_TO_PROGRAM_PROMPT },
+        {
+          role: "user",
+          content: `Extracted routine text:\n\n${extractedText}`,
+        },
+      ],
+      model: MODEL,
+      temperature: 0.35,
+      max_tokens: 5000,
+      response_format: { type: "json_object" },
+    }, {
+      timeoutMs: 25000,
+    });
+
+    const content = data?.choices?.[0]?.message?.content?.trim();
+    if (!content) {
+      throw new Error("Routine text conversion returned empty output");
     }
 
+    return JSON.parse(content);
+  }
+
+  try {
+    const extractedText = await extractRoutineTextFromImages();
+    if (extractedText) {
+      const parsedProgram = await buildProgramFromExtractedText(extractedText);
+      return {
+        success: true,
+        program: normalizeVisionProgramPayload(parsedProgram),
+        extractedText,
+      };
+    }
+  } catch (err) {
+    console.warn("Vision text extraction fallback hit direct JSON mode:", err?.message || err);
+  }
+
+  try {
     const data = await callGroq({
       messages: [
         { role: "system", content: VISION_PROMPT },
-        { role: "user", content: userMessageContent },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Parse the training routines in these images and give me the perfect JSON structure." },
+            ...base64Images.map((img) => ({
+              type: "image_url",
+              image_url: { url: img }
+            }))
+          ]
+        },
       ],
       model: VISION_MODEL,
       temperature: 0.2, // Low temp for extraction tasks
       max_tokens: 6000,
+    }, {
+      timeoutMs: 45000,
     });
 
     const rawOutput = data?.choices?.[0]?.message?.content || "";

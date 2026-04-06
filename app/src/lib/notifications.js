@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { invokeEdgeFunction, supabase } from './supabase'
 
 const NOTIFICATION_PREFERENCE_BY_TYPE = {
   nudge: 'notify_nudges',
@@ -34,8 +34,8 @@ export async function triggerPushNotification({
   const targets = Array.from(new Set([userId, ...userIds].filter(Boolean)))
   if (targets.length === 0) return { error: null }
 
-  const { error } = await supabase.functions.invoke('send-push', {
-    body: {
+  try {
+    await invokeEdgeFunction('send-push', {
       notification: {
         userIds: targets,
         type,
@@ -47,14 +47,16 @@ export async function triggerPushNotification({
         requireInteraction,
         renotify
       }
-    }
-  })
+    }, {
+      timeoutMs: 12000,
+      requireAuth: false
+    })
 
-  if (error) {
+    return { error: null }
+  } catch (error) {
     console.warn('[REPMAX] Push dispatch failed:', error)
+    return { error }
   }
-
-  return { error }
 }
 
 /**
