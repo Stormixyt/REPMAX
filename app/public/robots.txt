@@ -2,11 +2,9 @@
 # https://repmax.vercel.app
 
 User-agent: *
-Allow: /info
-Allow: /info.html
-Allow: /privacy.html
-Allow: /terms.html
-Allow: /cookies.html
+Allow: /
+Allow: /guides/
+Allow: /sitemap.xml
 Disallow: /auth
 Disallow: /onboarding
 Disallow: /social
@@ -19,7 +17,11 @@ Disallow: /coach
 Disallow: /notifications
 Disallow: /subscribe
 
-# Promote the info/landing page for SEO
-# All app routes are behind auth and should NOT be indexed
+# Allow AI crawlers for GEO (Generative Engine Optimization)
+User-agent: GPTBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
 
 Sitemap: https://repmax.vercel.app/sitemap.xml
