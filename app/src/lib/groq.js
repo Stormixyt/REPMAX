@@ -98,6 +98,64 @@ COACHING RULES:
 
 When the user asks about using REPMAX, use visible page names and buttons they can see in the app, not technical explanations.`;
 
+const ROUTINE_ACTION_SYSTEM_PROMPT = `You are REPMAX Coach Program Editor.
+
+Your job is to decide whether the user is clearly asking to change their active routine, and if so, rewrite the full active program accordingly.
+
+You must return ONLY valid JSON in this exact shape:
+{
+  "should_update": true,
+  "reply": "Short user-facing confirmation of what changed.",
+  "updated_program": {
+    "name": "Program Name",
+    "split_type": "ppl|upper_lower|full_body|bro_split|arnold|custom",
+    "weeks": [
+      {
+        "week_number": 1,
+        "is_deload": false,
+        "days": [
+          {
+            "day_name": "Push Day",
+            "target_muscles": ["chest", "shoulders", "triceps"],
+            "exercises": [
+              {
+                "name": "Barbell Bench Press",
+                "sets": 4,
+                "reps": 8,
+                "rpe": 7.5,
+                "rest_seconds": 120,
+                "notes": "Short coaching note"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+
+When NOT to update:
+- If the user is only asking for advice, explanation, or general coaching
+- If the request is too unclear to safely change the program
+
+In that case return:
+{
+  "should_update": false,
+  "reply": "Short helpful answer or one short clarifying question.",
+  "updated_program": null
+}
+
+Program editor rules:
+- Preserve the current routine structure unless the user asks for a real change
+- Apply the user's request directly to the active program
+- Keep the routine realistic, evidence-based, and internally consistent
+- Every non-rest day must have 3 to 7 exercises
+- Rest days may have zero exercises
+- Keep numeric fields numeric
+- Preserve week count unless the user clearly asks to change it
+- Do not mention backend, JSON, or internal implementation
+- Reply like an in-app coach, not a developer`;
+
 /**
  * Core helper — calls the ai-proxy edge function with a hard timeout.
  * If the edge function takes too long (mobile/rate-limited),
@@ -163,6 +221,134 @@ function truncateCoachText(text = "", max = 220) {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (normalized.length <= max) return normalized;
   return `${normalized.slice(0, max - 3)}...`;
+}
+
+function toPositiveInteger(value, fallback = 1) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(1, Math.round(value));
+  }
+
+  const match = String(value ?? "").match(/\d+/);
+  if (!match) return fallback;
+
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : fallback;
+}
+
+function toPositiveFloat(value, fallback = 0) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, value);
+  }
+
+  const match = String(value ?? "").match(/-?\d*\.?\d+/);
+  if (!match) return fallback;
+
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+}
+
+function normalizeProgramExercise(exercise = {}, fallbackExercise = {}) {
+  const name =
+    exercise?.name?.trim?.() ||
+    fallbackExercise?.name?.trim?.() ||
+    "Exercise";
+
+  return {
+    name,
+    sets: toPositiveInteger(exercise?.sets, toPositiveInteger(fallbackExercise?.sets, 3)),
+    reps: toPositiveInteger(exercise?.reps, toPositiveInteger(fallbackExercise?.reps, 10)),
+    rpe: toPositiveFloat(exercise?.rpe, toPositiveFloat(fallbackExercise?.rpe, 8)),
+    rest_seconds: toPositiveInteger(
+      exercise?.rest_seconds,
+      toPositiveInteger(fallbackExercise?.rest_seconds, 90)
+    ),
+    notes:
+      typeof exercise?.notes === "string"
+        ? exercise.notes.trim()
+        : typeof fallbackExercise?.notes === "string"
+          ? fallbackExercise.notes.trim()
+          : "",
+  };
+}
+
+function normalizeProgramDay(day = {}, fallbackDay = {}, dayIndex = 0) {
+  const sourceExercises = Array.isArray(day?.exercises) ? day.exercises : [];
+  const fallbackExercises = Array.isArray(fallbackDay?.exercises)
+    ? fallbackDay.exercises
+    : [];
+
+  const exercises = (sourceExercises.length ? sourceExercises : fallbackExercises)
+    .map((exercise, index) =>
+      normalizeProgramExercise(exercise, fallbackExercises[index] || {})
+    )
+    .filter((exercise) => exercise.name);
+
+  return {
+    day_name:
+      day?.day_name?.trim?.() ||
+      fallbackDay?.day_name?.trim?.() ||
+      `Day ${dayIndex + 1}`,
+    target_muscles: Array.isArray(day?.target_muscles) && day.target_muscles.length
+      ? day.target_muscles.filter(Boolean)
+      : Array.isArray(fallbackDay?.target_muscles)
+        ? fallbackDay.target_muscles.filter(Boolean)
+        : [],
+    exercises,
+  };
+}
+
+function normalizeProgramWeek(week = {}, fallbackWeek = {}, weekIndex = 0) {
+  const sourceDays = Array.isArray(week?.days) ? week.days : [];
+  const fallbackDays = Array.isArray(fallbackWeek?.days) ? fallbackWeek.days : [];
+
+  const days = (sourceDays.length ? sourceDays : fallbackDays)
+    .map((day, index) => normalizeProgramDay(day, fallbackDays[index] || {}, index))
+    .filter((day) => Array.isArray(day.exercises));
+
+  return {
+    week_number: toPositiveInteger(
+      week?.week_number,
+      toPositiveInteger(fallbackWeek?.week_number, weekIndex + 1)
+    ),
+    is_deload:
+      typeof week?.is_deload === "boolean"
+        ? week.is_deload
+        : Boolean(fallbackWeek?.is_deload),
+    days,
+  };
+}
+
+function normalizeRoutineUpdateProgram(program = {}, fallbackProgram = {}) {
+  const sourceWeeks = Array.isArray(program?.weeks) && program.weeks.length
+    ? program.weeks
+    : Array.isArray(fallbackProgram?.weeks)
+      ? fallbackProgram.weeks
+      : [];
+  const fallbackWeeks = Array.isArray(fallbackProgram?.weeks)
+    ? fallbackProgram.weeks
+    : [];
+
+  const weeks = sourceWeeks
+    .map((week, index) =>
+      normalizeProgramWeek(week, fallbackWeeks[index] || fallbackWeeks[0] || {}, index)
+    )
+    .filter((week) => week.days.some((day) => day.exercises.length > 0 || /rest/i.test(day.day_name)));
+
+  return {
+    name: program?.name?.trim?.() || fallbackProgram?.name || "Updated Program",
+    split_type:
+      program?.split_type || fallbackProgram?.split_type || "custom",
+    weeks,
+  };
+}
+
+function hasUsableProgram(program) {
+  return Boolean(
+    program?.weeks?.some((week) =>
+      Array.isArray(week?.days) &&
+      week.days.some((day) => Array.isArray(day?.exercises) && day.exercises.length > 0)
+    )
+  );
 }
 
 function buildCoachModePrompt(toneMode = "coach") {
@@ -355,6 +541,36 @@ function getCoachSpecialResponse(trimmedQuestion) {
   return null;
 }
 
+export function canAttemptRoutineChange(question = "", coachContext = {}) {
+  const normalized = String(question || "").toLowerCase().trim();
+  const activeProgram = coachContext?.activeProgram;
+
+  if (!normalized || !activeProgram?.program_data?.weeks?.length) {
+    return false;
+  }
+
+  if (
+    /(change|adjust|update|edit|modify)\s+(my|the)\s+(routine|program|plan|split|workout)/.test(normalized)
+  ) {
+    return true;
+  }
+
+  if (
+    /(replace|swap|remove|delete|add|shorten|reduce|increase|make|turn)\b/.test(normalized) &&
+    /(routine|program|plan|split|workout|day|exercise|bench|squat|deadlift|press|row|cardio|core|shoulder|leg|push|pull)/.test(normalized)
+  ) {
+    return true;
+  }
+
+  if (
+    /(can you|could you|please)\s+(change|adjust|update|edit|modify|replace|swap|remove|delete|add)/.test(normalized)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function askCoach({
   question,
   profile = {},
@@ -396,6 +612,97 @@ export async function askCoach({
   }
 
   return content;
+}
+
+export async function requestRoutineChange({
+  question,
+  profile = {},
+  coachContext = {},
+  history = [],
+  memory = [],
+  toneMode = "coach",
+}) {
+  const trimmedQuestion = question?.trim();
+  if (!trimmedQuestion) throw new Error("Question is required");
+
+  const activeProgram = coachContext?.activeProgram;
+  const currentProgram = activeProgram?.program_data;
+
+  if (!hasUsableProgram(currentProgram)) {
+    return {
+      shouldUpdate: false,
+      reply: "I don't see an active routine to edit yet. Generate or import a program first.",
+      updatedProgram: null,
+    };
+  }
+
+  const memoryPrompt = buildCoachMemoryPrompt(memory);
+
+  const data = await callGroq({
+    messages: [
+      { role: "system", content: ROUTINE_ACTION_SYSTEM_PROMPT },
+      { role: "system", content: buildCoachModePrompt(toneMode) },
+      {
+        role: "system",
+        content: buildCoachContextPrompt(profile, coachContext),
+      },
+      ...(memoryPrompt ? [{ role: "system", content: memoryPrompt }] : []),
+      ...sanitizeCoachHistory(history),
+      {
+        role: "user",
+        content: [
+          "Current active routine JSON:",
+          JSON.stringify(currentProgram),
+          "",
+          "User request:",
+          trimmedQuestion,
+        ].join("\n"),
+      },
+    ],
+    model: COACH_MODEL,
+    temperature: toneMode === "gymbro" ? 0.55 : 0.35,
+    max_tokens: 8000,
+    response_format: { type: "json_object" },
+  }, {
+    timeoutMs: 25000,
+  });
+
+  const rawContent = data?.choices?.[0]?.message?.content?.trim();
+  if (!rawContent) {
+    throw new Error("Empty routine update response");
+  }
+
+  const parsed = JSON.parse(rawContent);
+  const shouldUpdate = Boolean(parsed?.should_update);
+  const reply =
+    typeof parsed?.reply === "string" && parsed.reply.trim()
+      ? parsed.reply.trim()
+      : shouldUpdate
+        ? "I updated your routine."
+        : "Tell me exactly what you want changed and I'll handle it.";
+
+  if (!shouldUpdate) {
+    return {
+      shouldUpdate: false,
+      reply,
+      updatedProgram: null,
+    };
+  }
+
+  const updatedProgram = normalizeRoutineUpdateProgram(
+    parsed?.updated_program || {},
+    currentProgram
+  );
+
+  if (!hasUsableProgram(updatedProgram)) {
+    throw new Error("Routine update did not produce a usable program.");
+  }
+
+  return {
+    shouldUpdate: true,
+    reply,
+    updatedProgram,
+  };
 }
 
 export async function generateProgram(profile) {

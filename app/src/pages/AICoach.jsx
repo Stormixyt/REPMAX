@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import { askCoach } from "../lib/groq";
+import { askCoach, canAttemptRoutineChange, requestRoutineChange } from "../lib/groq";
 import PaywallGate from "../components/PaywallGate";
 import {
   RiArrowRightSLine,
@@ -70,6 +70,10 @@ const SUGGESTED_PROMPTS = [
   {
     icon: <RiSparklingFill size={16} />,
     text: "How should I use REPMAX better to stay consistent?",
+  },
+  {
+    icon: <RiBrainFill size={16} />,
+    text: "Replace overhead press with a shoulder-friendly swap in my current program.",
   },
 ];
 
@@ -853,7 +857,7 @@ export default function AICoach() {
       await Promise.all([
       supabase
         .from("programs")
-        .select("name, current_week")
+        .select("id, name, current_week, split_type, total_weeks, program_data")
         .eq("user_id", userId)
         .eq("active", true)
         .order("created_at", { ascending: false })
@@ -931,6 +935,36 @@ export default function AICoach() {
     );
   }
 
+  async function persistActiveProgramUpdate(updatedProgram) {
+    if (!user?.id || !coachContext?.activeProgram?.id || !updatedProgram) {
+      throw new Error("No active routine is available to update.");
+    }
+
+    const payload = {
+      name: updatedProgram.name,
+      split_type: updatedProgram.split_type,
+      total_weeks: updatedProgram.weeks?.length || 4,
+      program_data: updatedProgram,
+    };
+
+    const { data, error } = await supabase
+      .from("programs")
+      .update(payload)
+      .eq("id", coachContext.activeProgram.id)
+      .eq("user_id", user.id)
+      .select("id, name, current_week, split_type, total_weeks, program_data")
+      .single();
+
+    if (error) throw error;
+
+    setCoachContext((prev) => ({
+      ...prev,
+      activeProgram: data,
+    }));
+
+    return data;
+  }
+
   function openConversation(conversationId) {
     startTransition(() => {
       setActiveConversationId(conversationId);
@@ -990,14 +1024,35 @@ export default function AICoach() {
     persistCoachMessage(targetConversationId, nextTitle, userMessage).catch(() => {});
 
     try {
-      const assistantContent = await askCoach({
-        question: trimmed,
-        profile,
-        coachContext,
-        history: previousMessages.slice(-MAX_CONTEXT_MESSAGES),
-        memory,
-        toneMode: coachMode,
-      });
+      let assistantContent = "";
+
+      if (canAttemptRoutineChange(trimmed, coachContext)) {
+        const routineChange = await requestRoutineChange({
+          question: trimmed,
+          profile,
+          coachContext,
+          history: previousMessages.slice(-MAX_CONTEXT_MESSAGES),
+          memory,
+          toneMode: coachMode,
+        });
+
+        assistantContent = routineChange.reply;
+
+        if (routineChange.shouldUpdate && routineChange.updatedProgram) {
+          await persistActiveProgramUpdate(routineChange.updatedProgram);
+        }
+      }
+
+      if (!assistantContent) {
+        assistantContent = await askCoach({
+          question: trimmed,
+          profile,
+          coachContext,
+          history: previousMessages.slice(-MAX_CONTEXT_MESSAGES),
+          memory,
+          toneMode: coachMode,
+        });
+      }
 
       const assistantChunks = normalizeAssistantChunks(
         assistantContent,
