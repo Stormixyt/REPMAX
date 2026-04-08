@@ -9,6 +9,7 @@ export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const path = location.pathname
+  const isCoachRoute = path === '/coach'
   const [toast, setToast] = useState(null)
   const { user } = useAuth()
   const { t } = useLanguage()
@@ -135,7 +136,7 @@ export default function Layout() {
 
   return (
     <div className="app-wrapper">
-      <div className="app-content"><Outlet /></div>
+      <div className={`app-content ${isCoachRoute ? 'app-content--coach' : ''}`}><Outlet /></div>
       <nav className="bottom-nav">
         {navItems.map(item => {
           const isActive = path === item.path

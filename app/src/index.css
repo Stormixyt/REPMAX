@@ -105,6 +105,7 @@ body.theme-cyber-orange {
 
     --nav-height: 72px;
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --app-viewport-height: 100dvh;
     --transition-fast: 0.15s ease;
     --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -180,6 +181,11 @@ select {
     flex: 1;
     padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 16px);
     overflow-y: auto;
+}
+
+.app-content--coach {
+    padding-bottom: 0;
+    overflow: hidden;
 }
 
 /* Bottom Nav */
@@ -2077,9 +2083,10 @@ select {
 .coach-page {
     position: relative;
     width: 100%;
-    height: calc(100vh - var(--nav-height) - var(--safe-bottom));
-    min-height: calc(100vh - var(--nav-height) - var(--safe-bottom));
+    height: calc(var(--app-viewport-height, 100dvh) - var(--nav-height) - var(--safe-bottom));
+    min-height: calc(var(--app-viewport-height, 100dvh) - var(--nav-height) - var(--safe-bottom));
     overflow: hidden;
+    overscroll-behavior: none;
     background:
         radial-gradient(circle at top left, rgba(204, 255, 0, 0.08), transparent 26%),
         radial-gradient(circle at top right, rgba(255, 255, 255, 0.04), transparent 24%),
@@ -2106,6 +2113,7 @@ select {
     grid-template-columns: 320px minmax(0, 1fr);
     width: 100%;
     height: 100%;
+    overflow: hidden;
 }
 .coach-sidebar {
     position: relative;
@@ -2272,8 +2280,7 @@ select {
         rgba(7, 7, 7, 0.92);
 }
 .coach-main-header {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 3;
     display: flex;
     align-items: center;
@@ -2284,6 +2291,7 @@ select {
     background: rgba(7, 7, 7, 0.76);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
+    flex-shrink: 0;
 }
 .coach-main-header-left {
     display: flex;
@@ -2378,6 +2386,8 @@ select {
     overflow-y: auto;
     padding: 24px;
     scroll-behavior: smooth;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 .coach-loading-state {
     display: inline-flex;
@@ -2626,14 +2636,14 @@ select {
     }
 }
 .coach-composer {
-    position: sticky;
-    bottom: 0;
+    position: relative;
     z-index: 3;
     padding: 14px 24px calc(18px + var(--safe-bottom));
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(7, 7, 7, 0.84);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
+    flex-shrink: 0;
 }
 .coach-composer-shell {
     display: flex;
@@ -2657,7 +2667,7 @@ select {
     outline: none;
     background: transparent;
     color: var(--text-primary);
-    font-size: 0.96rem;
+    font-size: 16px;
     line-height: 1.55;
 }
 .coach-composer-input::placeholder {
@@ -3056,8 +3066,8 @@ select {
 
 @media (max-width: 639px) {
     .coach-page {
-        height: calc(100vh - var(--nav-height) - var(--safe-bottom));
-        min-height: calc(100vh - var(--nav-height) - var(--safe-bottom));
+        height: calc(var(--app-viewport-height, 100dvh) - var(--nav-height) - var(--safe-bottom));
+        min-height: calc(var(--app-viewport-height, 100dvh) - var(--nav-height) - var(--safe-bottom));
     }
     .coach-sidebar {
         width: min(88vw, 320px);
@@ -6540,12 +6550,21 @@ body * {
     background: var(--bg-primary);
     border-top-left-radius: 28px;
     border-top-right-radius: 28px;
-    padding: 20px 24px 40px;
-    max-height: 85vh;
-    overflow-y: auto;
+    padding: 20px 24px 0;
+    max-height: min(85vh, calc(var(--app-viewport-height, 100dvh) - 12px));
+    overflow: hidden;
     width: 100%;
     max-width: 480px;
     animation: slideUp 0.35s ease;
+    display: flex;
+    flex-direction: column;
+}
+.avatar-builder-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 16px;
 }
 .avatar-builder-preview {
     width: 120px;
@@ -7178,7 +7197,19 @@ body * {
 
 .avatar-tab-content {
     min-height: 120px;
-    padding: 4px 0;
+    padding: 4px 0 28px;
+}
+.avatar-builder-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 0 -24px;
+    padding: 14px 24px calc(16px + var(--safe-bottom));
+    background: linear-gradient(180deg, rgba(7, 7, 7, 0), rgba(7, 7, 7, 0.92) 32%, var(--bg-primary) 62%);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.avatar-builder-save {
+    margin-top: 0 !important;
 }
 
 /* Color dot grid */

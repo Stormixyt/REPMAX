@@ -47,6 +47,30 @@ export default function App() {
   }, [profile?.theme_color])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const root = document.documentElement
+    const visualViewport = window.visualViewport
+
+    const syncViewportHeight = () => {
+      const height = Math.round(visualViewport?.height || window.innerHeight)
+      root.style.setProperty('--app-viewport-height', `${height}px`)
+    }
+
+    syncViewportHeight()
+
+    window.addEventListener('resize', syncViewportHeight)
+    visualViewport?.addEventListener('resize', syncViewportHeight)
+    visualViewport?.addEventListener('scroll', syncViewportHeight)
+
+    return () => {
+      window.removeEventListener('resize', syncViewportHeight)
+      visualViewport?.removeEventListener('resize', syncViewportHeight)
+      visualViewport?.removeEventListener('scroll', syncViewportHeight)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!user?.id) return
     syncPushSubscription(user.id).catch(() => {})
   }, [user?.id])
