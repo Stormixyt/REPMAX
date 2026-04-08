@@ -50,11 +50,17 @@ export default function App() {
     if (typeof window === 'undefined') return undefined
 
     const root = document.documentElement
+    const body = document.body
     const visualViewport = window.visualViewport
 
     const syncViewportHeight = () => {
       const height = Math.round(visualViewport?.height || window.innerHeight)
+      const keyboardOffset = Math.max(0, window.innerHeight - height)
+      const keyboardOpen = keyboardOffset > 160
+
       root.style.setProperty('--app-viewport-height', `${height}px`)
+      root.style.setProperty('--keyboard-offset', `${keyboardOffset}px`)
+      body.classList.toggle('keyboard-open', keyboardOpen)
     }
 
     syncViewportHeight()
@@ -67,6 +73,8 @@ export default function App() {
       window.removeEventListener('resize', syncViewportHeight)
       visualViewport?.removeEventListener('resize', syncViewportHeight)
       visualViewport?.removeEventListener('scroll', syncViewportHeight)
+      root.style.setProperty('--keyboard-offset', '0px')
+      body.classList.remove('keyboard-open')
     }
   }, [])
 

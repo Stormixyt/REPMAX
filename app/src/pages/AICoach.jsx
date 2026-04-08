@@ -735,6 +735,16 @@ export default function AICoach() {
     null;
 
   useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+
+    document.body.classList.add("coach-route-active");
+
+    return () => {
+      document.body.classList.remove("coach-route-active");
+    };
+  }, []);
+
+  useEffect(() => {
     if (!user?.id) {
       setCoachModeReady(false);
       return;
@@ -1112,6 +1122,14 @@ export default function AICoach() {
     }
   }
 
+  function handleComposerFocus() {
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+
+    window.setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 260);
+  }
+
   const coachFacts = [
     { label: "Goal", value: getGoalLabel(profile?.goal) },
     {
@@ -1344,6 +1362,7 @@ export default function AICoach() {
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleComposerKeyDown}
+                onFocus={handleComposerFocus}
                 disabled={loading}
                 rows={1}
               />

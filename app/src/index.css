@@ -106,6 +106,7 @@ body.theme-cyber-orange {
     --nav-height: 72px;
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --app-viewport-height: 100dvh;
+    --keyboard-offset: 0px;
     --transition-fast: 0.15s ease;
     --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -177,6 +178,12 @@ select {
     min-height: 100dvh;
 }
 
+.app-wrapper--coach {
+    height: var(--app-viewport-height, 100dvh);
+    min-height: var(--app-viewport-height, 100dvh);
+    overflow: hidden;
+}
+
 .app-content {
     flex: 1;
     padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 16px);
@@ -204,6 +211,15 @@ select {
     justify-content: space-around;
     align-items: center;
     z-index: 100;
+    transition:
+        transform var(--transition-smooth),
+        opacity var(--transition-fast);
+}
+
+body.keyboard-open .bottom-nav {
+    transform: translateY(calc(100% + var(--safe-bottom)));
+    opacity: 0;
+    pointer-events: none;
 }
 
 .bottom-nav-item {
@@ -2093,6 +2109,15 @@ select {
         linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 20%),
         var(--bg-primary);
 }
+
+body.coach-route-active {
+    overflow: hidden;
+}
+
+body.coach-route-active.keyboard-open .coach-page {
+    height: var(--app-viewport-height, 100dvh);
+    min-height: var(--app-viewport-height, 100dvh);
+}
 .coach-history-overlay {
     position: absolute;
     inset: 0;
@@ -2645,6 +2670,10 @@ select {
     -webkit-backdrop-filter: blur(18px);
     flex-shrink: 0;
 }
+
+body.coach-route-active.keyboard-open .coach-composer {
+    padding-bottom: 14px;
+}
 .coach-composer-shell {
     display: flex;
     align-items: center;
@@ -3068,6 +3097,10 @@ select {
     .coach-page {
         height: calc(var(--app-viewport-height, 100dvh) - var(--nav-height) - var(--safe-bottom));
         min-height: calc(var(--app-viewport-height, 100dvh) - var(--nav-height) - var(--safe-bottom));
+    }
+    body.coach-route-active.keyboard-open .coach-page {
+        height: var(--app-viewport-height, 100dvh);
+        min-height: var(--app-viewport-height, 100dvh);
     }
     .coach-sidebar {
         width: min(88vw, 320px);

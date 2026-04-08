@@ -135,7 +135,7 @@ export default function Layout() {
   }, [path, navigate])
 
   return (
-    <div className="app-wrapper">
+    <div className={`app-wrapper ${isCoachRoute ? 'app-wrapper--coach' : ''}`}>
       <div className={`app-content ${isCoachRoute ? 'app-content--coach' : ''}`}><Outlet /></div>
       <nav className="bottom-nav">
         {navItems.map(item => {
