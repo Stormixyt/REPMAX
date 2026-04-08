@@ -13,11 +13,12 @@ const { Client, GatewayIntentBits, PermissionsBitField, ChannelType, EmbedBuilde
 const fs = require('fs')
 const path = require('path')
 const { getBotConfig } = require('./config')
+const { askRepmaxAI, DEFAULT_MODEL } = require('./repmax-ai')
 
 // ═══════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════
-const { BOT_TOKEN, GUILD_ID } = getBotConfig()
+const { BOT_TOKEN, GUILD_ID, GROQ_API_KEY, GROQ_MODEL } = getBotConfig()
 
 const C = {
   accent: 0xCCFF00, gold: 0xFFD700, purple: 0x7C3AED, green: 0x22C55E,
@@ -37,6 +38,7 @@ function saveData(data) {
 }
 
 let botData = loadData()
+const aiCooldowns = new Map()
 
 // ═══════════════════════════════════════════
 //  XP / LEVELING SYSTEM
@@ -105,6 +107,11 @@ const commands = [
   new SlashCommandBuilder().setName('warn').setDescription('Warn a user (Staff only)').addUserOption(o => o.setName('user').setDescription('User to warn').setRequired(true)).addStringOption(o => o.setName('reason').setDescription('Reason').setRequired(true)),
   new SlashCommandBuilder().setName('serverinfo').setDescription('View server statistics'),
   new SlashCommandBuilder().setName('app').setDescription('Get the REPMAX app link'),
+  new SlashCommandBuilder()
+    .setName('ai')
+    .setDescription('Ask the REPMAX AI about the app, training, or getting started')
+    .addStringOption(o => o.setName('question').setDescription('What do you want to ask?').setRequired(true))
+    .addBooleanOption(o => o.setName('private').setDescription('Only show the reply to you')),
 ]
 
 function buildInviteUrl(applicationId) {
@@ -204,6 +211,7 @@ client.on(Events.InteractionCreate, async interaction => {
           '`/warn` - staff warning command',
           '`/serverinfo` - current server stats',
           '`/app` - open the REPMAX app',
+          '`/ai` - ask the REPMAX AI about the app or training',
         ].join('\n'))
         .setFooter({ text: 'If commands are missing, re-invite the bot with applications.commands scope.' })
       await interaction.reply({ embeds: [e], ephemeral: true })
@@ -335,6 +343,52 @@ client.on(Events.InteractionCreate, async interaction => {
         new ButtonBuilder().setLabel('💎 Get PRO').setStyle(ButtonStyle.Link).setURL('https://repmax.vercel.app/#/subscribe'),
       )
       await interaction.reply({ embeds: [e], components: [row] })
+    }
+
+    else if (commandName === 'ai') {
+      const question = interaction.options.getString('question', true)
+      const privateReply = interaction.options.getBoolean('private') ?? false
+      const now = Date.now()
+      const cooldownUntil = aiCooldowns.get(interaction.user.id) || 0
+
+      if (cooldownUntil > now) {
+        const secondsLeft = Math.ceil((cooldownUntil - now) / 1000)
+        return interaction.reply({
+          content: `⏳ Slow down for ${secondsLeft}s and then ask again.`,
+          ephemeral: true,
+        })
+      }
+
+      aiCooldowns.set(interaction.user.id, now + 8000)
+      await interaction.deferReply({ ephemeral: privateReply })
+
+      try {
+        const answer = await askRepmaxAI({
+          apiKey: GROQ_API_KEY,
+          model: GROQ_MODEL || DEFAULT_MODEL,
+          question,
+          username: interaction.user.username,
+        })
+
+        const e = new EmbedBuilder()
+          .setColor(C.accent)
+          .setTitle('🧠 REPMAX AI')
+          .setDescription(answer)
+          .setFooter({ text: 'Public product info only — no private/internal data.' })
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setLabel('📱 Open REPMAX').setStyle(ButtonStyle.Link).setURL('https://repmax.vercel.app'),
+          new ButtonBuilder().setLabel('💬 Join Discord').setStyle(ButtonStyle.Link).setURL('https://discord.gg/repmax'),
+        )
+
+        await interaction.editReply({ embeds: [e], components: [row] })
+      } catch (error) {
+        await interaction.editReply({
+          content: `❌ AI command failed: ${error.message}`,
+        })
+      } finally {
+        setTimeout(() => aiCooldowns.delete(interaction.user.id), 8000)
+      }
     }
   }
 

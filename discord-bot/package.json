@@ -9,6 +9,9 @@
     "build": "node build-server.js",
     "check": "node --check bot.js"
   },
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
     "discord.js": "^14.18.0"
   }

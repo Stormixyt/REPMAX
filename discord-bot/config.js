@@ -32,12 +32,19 @@ function requiredEnv(name) {
   return value
 }
 
+function optionalEnv(name) {
+  const value = process.env[name]?.trim()
+  return value || ''
+}
+
 loadEnvFile()
 
 function getBotConfig() {
   return {
     BOT_TOKEN: requiredEnv('DISCORD_BOT_TOKEN'),
     GUILD_ID: requiredEnv('DISCORD_GUILD_ID'),
+    GROQ_API_KEY: optionalEnv('GROQ_API_KEY'),
+    GROQ_MODEL: optionalEnv('GROQ_MODEL'),
   }
 }
 
