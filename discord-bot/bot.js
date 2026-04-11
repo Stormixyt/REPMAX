@@ -30,11 +30,24 @@ const C = {
 // ═══════════════════════════════════════════
 const DATA_FILE = path.join(__dirname, 'bot-data.json')
 
+function withDataDefaults(raw = {}) {
+  return {
+    xp: raw.xp || {},
+    warnings: raw.warnings || {},
+    afk: raw.afk || {},
+    changelogPosts: raw.changelogPosts || {},
+  }
+}
+
 function loadData() {
-  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) } catch { return { xp: {}, warnings: {}, afk: {} } }
+  try {
+    return withDataDefaults(JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')))
+  } catch {
+    return withDataDefaults()
+  }
 }
 function saveData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2))
+  fs.writeFileSync(DATA_FILE, JSON.stringify(withDataDefaults(data), null, 2))
 }
 
 let botData = loadData()
@@ -108,11 +121,60 @@ const commands = [
   new SlashCommandBuilder().setName('serverinfo').setDescription('View server statistics'),
   new SlashCommandBuilder().setName('app').setDescription('Get the REPMAX app link'),
   new SlashCommandBuilder()
+    .setName('changelog')
+    .setDescription('Post a REPMAX update in the changelog channel (Admin only)')
+    .addStringOption(o => o.setName('version').setDescription('Version label, for example 4.2').setRequired(true))
+    .addStringOption(o => o.setName('headline').setDescription('Short summary line for the update').setRequired(true))
+    .addStringOption(o => o.setName('new_1').setDescription('First new feature or improvement'))
+    .addStringOption(o => o.setName('new_2').setDescription('Second new feature or improvement'))
+    .addStringOption(o => o.setName('new_3').setDescription('Third new feature or improvement'))
+    .addStringOption(o => o.setName('new_4').setDescription('Fourth new feature or improvement'))
+    .addStringOption(o => o.setName('fix_1').setDescription('First bug fix'))
+    .addStringOption(o => o.setName('fix_2').setDescription('Second bug fix'))
+    .addStringOption(o => o.setName('fix_3').setDescription('Third bug fix'))
+    .addStringOption(o => o.setName('fix_4').setDescription('Fourth bug fix'))
+    .addBooleanOption(o => o.setName('ping_updates').setDescription('Ping the App Updates role')),
+  new SlashCommandBuilder()
     .setName('ai')
     .setDescription('Ask the REPMAX AI about the app, training, or getting started')
     .addStringOption(o => o.setName('question').setDescription('What do you want to ask?').setRequired(true))
     .addBooleanOption(o => o.setName('private').setDescription('Only show the reply to you')),
 ]
+
+function normalizeChangelogVersion(version = '') {
+  return version.trim().replace(/^v/i, '').trim()
+}
+
+function getChangelogChannel(guild) {
+  return guild.channels.cache.find(c => c.type === ChannelType.GuildText && c.name.includes('changelog'))
+}
+
+function getUpdatesRole(guild) {
+  return guild.roles.cache.find(r => r.name === NOTIF_MAP.updates || r.name.toLowerCase().includes('app updates'))
+}
+
+function bulletList(items = []) {
+  return items.filter(Boolean).map(item => `• ${item}`).join('\n')
+}
+
+function buildChangelogEmbed({ version, headline, newItems, fixItems, authorTag }) {
+  const embed = new EmbedBuilder()
+    .setColor(C.green)
+    .setTitle(`📰 REPMAX v${version} — Latest Update`)
+    .setDescription(headline)
+    .setTimestamp()
+    .setFooter({ text: `Posted by ${authorTag} • More updates coming soon! 🚀` })
+
+  if (newItems.length) {
+    embed.addFields({ name: '🆕 What\'s New', value: bulletList(newItems), inline: false })
+  }
+
+  if (fixItems.length) {
+    embed.addFields({ name: '🐛 Bug Fixes', value: bulletList(fixItems), inline: false })
+  }
+
+  return embed
+}
 
 function buildInviteUrl(applicationId) {
   const params = new URLSearchParams({
@@ -170,7 +232,7 @@ client.once('ready', async () => {
   // Rotating status
   const statuses = [
     { name: 'your gains 💪', type: ActivityType.Watching },
-    { name: 'repmax.vercel.app', type: ActivityType.Playing },
+    { name: 'rep-max.app', type: ActivityType.Playing },
     { name: 'workout logs 📝', type: ActivityType.Listening },
     { name: `${client.guilds.cache.reduce((a, g) => a + g.memberCount, 0)} athletes`, type: ActivityType.Watching },
     { name: 'PRs being crushed 🏆', type: ActivityType.Watching },
@@ -211,6 +273,7 @@ client.on(Events.InteractionCreate, async interaction => {
           '`/warn` - staff warning command',
           '`/serverinfo` - current server stats',
           '`/app` - open the REPMAX app',
+          '`/changelog` - publish a changelog update (admin only)',
           '`/ai` - ask the REPMAX AI about the app or training',
         ].join('\n'))
         .setFooter({ text: 'If commands are missing, re-invite the bot with applications.commands scope.' })
@@ -373,10 +436,95 @@ client.on(Events.InteractionCreate, async interaction => {
         .setTitle('📱  REPMAX — AI Fitness Tracker')
         .setDescription('🤖 AI workouts • 📊 Smart tracking • 💬 Social gym\n\n**100% free. Install on any device.**')
       const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('🔗 Open App').setStyle(ButtonStyle.Link).setURL('https://repmax.vercel.app'),
-        new ButtonBuilder().setLabel('💎 Get PRO').setStyle(ButtonStyle.Link).setURL('https://repmax.vercel.app/#/subscribe'),
+        new ButtonBuilder().setLabel('🔗 Open App').setStyle(ButtonStyle.Link).setURL('https://www.rep-max.app/app'),
+        new ButtonBuilder().setLabel('💎 Get PRO').setStyle(ButtonStyle.Link).setURL('https://www.rep-max.app/subscribe'),
       )
       await interaction.reply({ embeds: [e], components: [row] })
+    }
+
+    else if (commandName === 'changelog') {
+      if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
+        return interaction.reply({ content: '❌ Admin only.', ephemeral: true })
+      }
+
+      await interaction.deferReply({ ephemeral: true })
+
+      try {
+        const version = normalizeChangelogVersion(interaction.options.getString('version', true))
+        const versionKey = version.toLowerCase()
+        const headline = interaction.options.getString('headline', true).trim()
+        const newItems = ['new_1', 'new_2', 'new_3', 'new_4']
+          .map(key => interaction.options.getString(key))
+          .filter(Boolean)
+          .map(item => item.trim())
+        const fixItems = ['fix_1', 'fix_2', 'fix_3', 'fix_4']
+          .map(key => interaction.options.getString(key))
+          .filter(Boolean)
+          .map(item => item.trim())
+        const pingUpdates = interaction.options.getBoolean('ping_updates') ?? false
+
+        if (!version) {
+          throw new Error('Version is required.')
+        }
+
+        if (!headline) {
+          throw new Error('Headline is required.')
+        }
+
+        if (!newItems.length && !fixItems.length) {
+          throw new Error('Add at least one new item or one bug fix.')
+        }
+
+        if (botData.changelogPosts[versionKey]) {
+          throw new Error(`v${version} has already been posted in changelogs.`)
+        }
+
+        const changelogChannel = getChangelogChannel(interaction.guild)
+        if (!changelogChannel) {
+          throw new Error('Could not find the changelog channel.')
+        }
+
+        const updatesRole = pingUpdates ? getUpdatesRole(interaction.guild) : null
+        const embed = buildChangelogEmbed({
+          version,
+          headline,
+          newItems,
+          fixItems,
+          authorTag: interaction.user.tag,
+        })
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setLabel('📱 Open REPMAX').setStyle(ButtonStyle.Link).setURL('https://www.rep-max.app'),
+          new ButtonBuilder().setLabel('🚀 Open App').setStyle(ButtonStyle.Link).setURL('https://www.rep-max.app/app'),
+        )
+
+        const sent = await changelogChannel.send({
+          content: updatesRole ? `${updatesRole}` : undefined,
+          allowedMentions: updatesRole ? { roles: [updatesRole.id] } : { parse: [] },
+          embeds: [embed],
+          components: [row],
+        })
+
+        botData.changelogPosts[versionKey] = {
+          version,
+          headline,
+          newItems,
+          fixItems,
+          postedBy: interaction.user.id,
+          messageId: sent.id,
+          channelId: sent.channelId,
+          postedAt: new Date().toISOString(),
+        }
+        saveData(botData)
+
+        await interaction.editReply({
+          content: `✅ Posted REPMAX v${version} in ${changelogChannel}${updatesRole ? ` and pinged ${updatesRole}` : ''}.\n${sent.url}`,
+        })
+      } catch (error) {
+        await interaction.editReply({
+          content: `❌ Changelog failed: ${error.message}`,
+        })
+      }
     }
 
     else if (commandName === 'ai') {
@@ -411,7 +559,7 @@ client.on(Events.InteractionCreate, async interaction => {
           .setFooter({ text: 'Public product info only — no private/internal data.' })
 
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setLabel('📱 Open REPMAX').setStyle(ButtonStyle.Link).setURL('https://repmax.vercel.app'),
+          new ButtonBuilder().setLabel('📱 Open REPMAX').setStyle(ButtonStyle.Link).setURL('https://www.rep-max.app'),
           new ButtonBuilder().setLabel('💬 Join Discord').setStyle(ButtonStyle.Link).setURL('https://discord.gg/repmax'),
         )
 

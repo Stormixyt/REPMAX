@@ -309,16 +309,16 @@ async function populateChannels(guild, CH, R) {
 
   // Welcome
   if (await postIfEmpty(CH['👋│welcome'], { embeds: [img(new EmbedBuilder().setColor(C.accent), IMAGES.welcome)
-    .setTitle('🏋️  Welcome to REPMAX!').setDescription('**REPMAX** is the **#1 AI-Powered Fitness Community**.\n\n> 🤖 AI-generated workouts\n> 📊 Track everything\n> 👥 Social features\n> 💎 PRO perks\n\n🔗 [repmax.vercel.app](https://repmax.vercel.app)')
+    .setTitle('🏋️  Welcome to REPMAX!').setDescription('**REPMAX** is the **#1 AI-Powered Fitness Community**.\n\n> 🤖 AI-generated workouts\n> 📊 Track everything\n> 👥 Social features\n> 💎 PRO perks\n\n🔗 [rep-max.app](https://www.rep-max.app)')
     .setFooter({ text: 'Train. Track. Dominate. 💪' }).setTimestamp()],
-    components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel('🔗 Open REPMAX').setStyle(ButtonStyle.Link).setURL('https://repmax.vercel.app'))] })) log('  👋 Welcome')
+    components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel('🔗 Open REPMAX').setStyle(ButtonStyle.Link).setURL('https://www.rep-max.app'))] })) log('  👋 Welcome')
 
   // FAQ
   if (await postIfEmpty(CH['❓│faq'], { embeds: [img(new EmbedBuilder().setColor(C.blue), IMAGES.faq)
     .setTitle('❓  Frequently Asked Questions')
     .addFields(
       { name: '🤔 What is REPMAX?', value: 'AI-powered fitness tracker with personalized workouts, nutrition, and social features.', inline: false },
-      { name: '📱 How do I install it?', value: 'Visit [repmax.vercel.app](https://repmax.vercel.app) → "Add to Home Screen"', inline: false },
+      { name: '📱 How do I install it?', value: 'Visit [rep-max.app](https://www.rep-max.app) → "Add to Home Screen"', inline: false },
       { name: '💰 Is it free?', value: 'Yes! PRO unlocks themes, calls, and exclusive features.', inline: false },
       { name: '💎 What does PRO include?', value: '• Custom themes\n• Voice/video calls\n• AI Vision\n• Super reactions\n• Exclusive Discord channels', inline: false },
     ).setFooter({ text: 'More questions? Ask in #app-help' }).setTimestamp()] })) log('  ❓ FAQ')

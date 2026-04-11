@@ -41,7 +41,7 @@ Answering style:
 - if the user asks what REPMAX does, highlight: AI programming, progressive overload, adaptation, tracking, and social/community
 - if the user asks why REPMAX is different, explain that it focuses on real training logic instead of random exercise generation
 - if the user asks about pricing, say there is a free plan and a PRO tier with more advanced features
-- if the user asks about getting started, tell them to open the app at https://repmax.vercel.app and join the Discord community
+- if the user asks about getting started, tell them to open the app at https://www.rep-max.app and join the Discord community
 `.trim()
 
 function containsSensitiveRequest(input = '') {
