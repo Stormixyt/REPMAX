@@ -4,6 +4,13 @@
   "rewrites": [
     { "source": "/", "destination": "/info.html" },
     { "source": "/info", "destination": "/info.html" },
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/blog", "destination": "/blog.html" },
+    { "source": "/careers", "destination": "/careers.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/cookies", "destination": "/cookies.html" },
     { "source": "/guides/progressive-overload", "destination": "/guides/progressive-overload.html" },
     { "source": "/guides/ppl-workout-split", "destination": "/guides/ppl-workout-split.html" },
     { "source": "/guides/best-ai-workout-apps", "destination": "/guides/best-ai-workout-apps.html" },
