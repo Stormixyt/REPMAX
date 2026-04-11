@@ -117,7 +117,6 @@ export default function AdminPanel() {
 
     if (profileError) {
       console.warn('[REPMAX] Failed to load profiles for requests:', profileError)
-      setRequestsError(profileError.message || '')
     }
 
     const profileById = new Map((profileRows || []).map(p => [p.id, p]))
