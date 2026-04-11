@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REPMAX Discord Assets</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a1a;
+    font-family: 'Inter', sans-serif;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    padding: 40px 24px;
+  }
+  h2.label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #606060;
+    margin-bottom: -24px;
+    align-self: flex-start;
+    margin-left: calc(50% - 400px);
+  }
+
+  /* ═════ SHARED BANNER BASE ═════ */
+  .banner {
+    width: 800px;
+    height: 300px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #070707;
+  }
+  .banner .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(204,255,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(204,255,0,0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 10%, transparent 70%);
+  }
+  .banner .orb {
+    position: absolute; border-radius: 50%; filter: blur(80px);
+  }
+  .banner .content {
+    position: relative; z-index: 2;
+    height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 24px 40px;
+  }
+  .banner .accent-line {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, #ccff00, transparent);
+  }
+  .banner .corner { position: absolute; width: 50px; height: 50px; z-index: 1; }
+  .banner .corner.tl { top: 0; left: 0; border-top: 2px solid rgba(204,255,0,0.25); border-left: 2px solid rgba(204,255,0,0.25); }
+  .banner .corner.tr { top: 0; right: 0; border-top: 2px solid rgba(204,255,0,0.25); border-right: 2px solid rgba(204,255,0,0.25); }
+  .banner .corner.bl { bottom: 0; left: 0; border-bottom: 2px solid rgba(204,255,0,0.12); border-left: 2px solid rgba(204,255,0,0.12); }
+  .banner .corner.br { bottom: 0; right: 0; border-bottom: 2px solid rgba(204,255,0,0.12); border-right: 2px solid rgba(204,255,0,0.12); }
+
+  .banner .title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 800; line-height: 1;
+  }
+  .banner .title .accent {
+    background: linear-gradient(135deg, #ffffff 30%, #ccff00 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .banner .subtitle {
+    color: #a0a0a0; margin-top: 10px;
+  }
+  .banner .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(204,255,0,0.08); border: 1px solid rgba(204,255,0,0.2);
+    padding: 5px 16px; border-radius: 100px;
+    font-size: 12px; font-weight: 600; color: #ccff00; letter-spacing: 0.5px;
+  }
+  .banner .pill-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+
+  /* ═════ 1. SERVER BANNER ═════ */
+  #server-banner .orb.g1 { width: 350px; height: 350px; background: #ccff00; top: -140px; left: -60px; opacity: 0.3; }
+  #server-banner .orb.g2 { width: 250px; height: 250px; background: #ccff00; bottom: -100px; right: -40px; opacity: 0.15; }
+  #server-banner .title { font-size: 72px; letter-spacing: -2px; }
+  #server-banner .tagline {
+    font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600;
+    letter-spacing: 6px; text-transform: uppercase; color: #a0a0a0; margin-top: 16px;
+  }
+  #server-banner .tagline em { font-style: normal; color: #ccff00; }
+
+  /* ═════ 2. RULES ═════ */
+  #rules-banner { background: linear-gradient(135deg, #070707 60%, #0d1a00); }
+  #rules-banner .orb.g1 { width: 300px; height: 300px; background: #ccff00; top: -100px; right: -50px; opacity: 0.2; }
+  #rules-banner .icon { font-size: 48px; margin-bottom: 8px; }
+  #rules-banner .title { font-size: 40px; letter-spacing: -1px; }
+  #rules-banner .subtitle { font-size: 15px; font-weight: 500; max-width: 500px; }
+
+  /* ═════ 3. WELCOME ═════ */
+  #welcome-banner { background: linear-gradient(160deg, #070707 50%, #0a0d00); }
+  #welcome-banner .orb.g1 { width: 400px; height: 400px; background: #ccff00; top: -160px; left: 50%; transform: translateX(-50%); opacity: 0.12; }
+  #welcome-banner .orb.g2 { width: 200px; height: 200px; background: #fff; bottom: -80px; left: 20%; opacity: 0.03; }
+  #welcome-banner .badge {
+    background: rgba(204,255,0,0.1); border: 1px solid rgba(204,255,0,0.25);
+    color: #ccff00; font-size: 11px; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; padding: 5px 18px; border-radius: 100px; margin-bottom: 12px;
+  }
+  #welcome-banner .title { font-size: 52px; letter-spacing: -1px; }
+  #welcome-banner .subtitle { font-size: 16px; font-weight: 500; }
+  #welcome-banner .feature-row { display: flex; gap: 16px; margin-top: 20px; }
+  #welcome-banner .feat {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 12px 20px; text-align: center;
+  }
+  #welcome-banner .feat .fi { font-size: 22px; }
+  #welcome-banner .feat .fl { font-size: 11px; font-weight: 600; color: #a0a0a0; margin-top: 4px; }
+
+  /* ═════ 4. FAQ ═════ */
+  #faq-banner { background: linear-gradient(135deg, #070707 60%, #000d1a); }
+  #faq-banner .orb.g1 { width: 300px; height: 300px; background: #3b82f6; top: -100px; right: -50px; opacity: 0.15; }
+  #faq-banner .icon { font-size: 48px; margin-bottom: 8px; }
+  #faq-banner .title { font-size: 40px; letter-spacing: -1px; }
+  #faq-banner .subtitle { font-size: 15px; font-weight: 500; max-width: 500px; }
+
+  /* ═════ 5. TRAINING ═════ */
+  #training-banner { background: linear-gradient(135deg, #070707 60%, #0d0800); }
+  #training-banner .orb.g1 { width: 300px; height: 300px; background: #ff6b35; top: -120px; left: -40px; opacity: 0.2; }
+  #training-banner .orb.g2 { width: 200px; height: 200px; background: #ccff00; bottom: -80px; right: 10%; opacity: 0.1; }
+  #training-banner .icon { font-size: 48px; margin-bottom: 8px; }
+  #training-banner .title { font-size: 40px; letter-spacing: -1px; }
+  #training-banner .subtitle { font-size: 15px; font-weight: 500; max-width: 500px; }
+
+  /* ═════ 6. NUTRITION ═════ */
+  #nutrition-banner { background: linear-gradient(135deg, #070707 60%, #001a0d); }
+  #nutrition-banner .orb.g1 { width: 300px; height: 300px; background: #22c55e; top: -100px; right: -50px; opacity: 0.15; }
+  #nutrition-banner .icon { font-size: 48px; margin-bottom: 8px; }
+  #nutrition-banner .title { font-size: 40px; letter-spacing: -1px; }
+  #nutrition-banner .subtitle { font-size: 15px; font-weight: 500; max-width: 500px; }
+
+  /* ═════ 7. PRO LOUNGE ═════ */
+  #pro-banner { background: linear-gradient(135deg, #070707 40%, #1a0f00); }
+  #pro-banner .orb.g1 { width: 350px; height: 350px; background: #f59e0b; top: -120px; left: 50%; transform: translateX(-50%); opacity: 0.15; }
+  #pro-banner .orb.g2 { width: 200px; height: 200px; background: #ccff00; bottom: -80px; right: -40px; opacity: 0.1; }
+  #pro-banner .icon { font-size: 48px; margin-bottom: 8px; }
+  #pro-banner .title { font-size: 40px; letter-spacing: -1px; }
+  #pro-banner .subtitle { font-size: 15px; font-weight: 500; max-width: 520px; }
+  #pro-banner .title .gold { background: linear-gradient(135deg, #fff 20%, #f59e0b 80%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ═════ 8. SUPPORT ═════ */
+  #support-banner { background: linear-gradient(135deg, #070707 60%, #0d001a); }
+  #support-banner .orb.g1 { width: 300px; height: 300px; background: #7c3aed; top: -100px; left: -50px; opacity: 0.2; }
+  #support-banner .icon { font-size: 48px; margin-bottom: 8px; }
+  #support-banner .title { font-size: 40px; letter-spacing: -1px; }
+  #support-banner .subtitle { font-size: 15px; font-weight: 500; max-width: 500px; }
+
+  /* ═════ 9. PROGRESS ═════ */
+  #progress-banner { background: linear-gradient(135deg, #070707 60%, #1a1200); }
+  #progress-banner .orb.g1 { width: 300px; height: 300px; background: #ffd700; top: -100px; right: -50px; opacity: 0.15; }
+  #progress-banner .icon { font-size: 48px; margin-bottom: 8px; }
+  #progress-banner .title { font-size: 40px; letter-spacing: -1px; }
+  #progress-banner .subtitle { font-size: 15px; font-weight: 500; max-width: 500px; }
+
+  /* ═════ 10. INVITE SPLASH ═════ */
+  #invite-banner { width: 800px; height: 450px; }
+  #invite-banner .orb.g1 { width: 500px; height: 500px; background: #ccff00; top: -200px; left: 50%; transform: translateX(-50%); opacity: 0.12; }
+  #invite-banner .bars { position: absolute; inset: 0; z-index: 0; }
+  #invite-banner .bar {
+    position: absolute; bottom: 0; width: 30px;
+    background: rgba(204,255,0,0.04); border-radius: 4px 4px 0 0;
+    animation: barPulse 3s ease-in-out infinite;
+  }
+  #invite-banner .bar:nth-child(1) { left: 8%; height: 35%; animation-delay: 0s; }
+  #invite-banner .bar:nth-child(2) { left: 13%; height: 55%; animation-delay: 0.3s; }
+  #invite-banner .bar:nth-child(3) { left: 18%; height: 42%; animation-delay: 0.6s; }
+  #invite-banner .bar:nth-child(4) { left: 23%; height: 68%; animation-delay: 0.2s; }
+  #invite-banner .bar:nth-child(5) { left: 28%; height: 48%; animation-delay: 0.8s; }
+  #invite-banner .bar:nth-child(6) { right: 8%; height: 38%; animation-delay: 0.1s; }
+  #invite-banner .bar:nth-child(7) { right: 13%; height: 58%; animation-delay: 0.5s; }
+  #invite-banner .bar:nth-child(8) { right: 18%; height: 35%; animation-delay: 0.7s; }
+  #invite-banner .bar:nth-child(9) { right: 23%; height: 62%; animation-delay: 0.4s; }
+  #invite-banner .bar:nth-child(10) { right: 28%; height: 45%; animation-delay: 0.9s; }
+  @keyframes barPulse { 0%,100% { transform: scaleY(0.7); } 50% { transform: scaleY(1); } }
+  #invite-banner .badge {
+    background: rgba(204,255,0,0.1); border: 1px solid rgba(204,255,0,0.25);
+    color: #ccff00; font-size: 11px; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; padding: 5px 18px; border-radius: 100px; margin-bottom: 16px;
+  }
+  #invite-banner .title { font-size: 64px; letter-spacing: -2px; }
+  #invite-banner .subtitle { font-size: 18px; font-weight: 500; }
+  #invite-banner .subtitle strong { color: #fff; font-weight: 700; }
+  #invite-banner .feature-row { display: flex; gap: 16px; margin-top: 24px; }
+  #invite-banner .feat {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px; padding: 14px 22px; text-align: center; backdrop-filter: blur(10px);
+  }
+  #invite-banner .feat .fi { font-size: 24px; }
+  #invite-banner .feat .fl { font-size: 11px; font-weight: 600; color: #a0a0a0; margin-top: 2px; }
+  #invite-banner .feat .fv { font-family: 'Space Grotesk'; font-size: 13px; font-weight: 700; color: #ccff00; }
+  #invite-banner .url { margin-top: 20px; font-size: 13px; color: #606060; letter-spacing: 1px; }
+  #invite-banner .url strong { color: #ccff00; }
+
+  /* ═════ 11. SERVER ICON ═════ */
+  .icon-wrap {
+    width: 400px; height: 400px; background: #070707; border-radius: 50%;
+    position: relative; overflow: hidden;
+    box-shadow: 0 0 60px rgba(204,255,0,0.1);
+  }
+  .icon-wrap .glow { position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(204,255,0,0.1) 0%, transparent 60%); }
+  .icon-wrap .ring { position: absolute; inset: 6px; border-radius: 50%; border: 2px solid rgba(204,255,0,0.15); }
+  .icon-wrap .content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .icon-wrap .it { font-family: 'Space Grotesk'; font-size: 100px; font-weight: 800; letter-spacing: -3px; }
+  .icon-wrap .it span { background: linear-gradient(135deg, #fff 40%, #ccff00 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .icon-wrap .is { font-size: 15px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: rgba(204,255,0,0.5); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Instructions -->
+<div style="max-width: 800px; text-align: center; padding: 20px; background: rgba(204,255,0,0.05); border: 1px solid rgba(204,255,0,0.15); border-radius: 16px;">
+  <h1 style="font-family: 'Space Grotesk'; font-size: 24px; margin-bottom: 8px;">📸 Screenshot Guide</h1>
+  <p style="color: #a0a0a0; font-size: 14px;">Right-click each banner → "Save image as" or screenshot the exact area.<br>Upload to <strong style="color:#ccff00">imgur.com</strong> and paste the URLs into <code style="color:#ccff00">build-server.js</code> IMAGES section.</p>
+</div>
+
+<!-- 1. SERVER BANNER -->
+<h2 class="label">1 · Server Banner (960×540)</h2>
+<div id="server-banner" class="banner" style="width: 960px; height: 540px;">
+  <div class="grid"></div>
+  <div class="orb g1"></div><div class="orb g2"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line"></div>
+  <div class="content">
+    <div class="title"><span class="accent">REPMAX</span></div>
+    <div class="tagline">TRAIN · TRACK · <em>DOMINATE</em></div>
+    <div class="pill-row">
+      <div class="pill">🤖 AI Coach</div>
+      <div class="pill">💪 Social Gym</div>
+      <div class="pill">📊 Smart Tracking</div>
+      <div class="pill">💎 PRO Perks</div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. RULES -->
+<h2 class="label">2 · Rules Banner</h2>
+<div id="rules-banner" class="banner">
+  <div class="grid"></div><div class="orb g1"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line"></div>
+  <div class="content">
+    <div class="icon">📜</div>
+    <div class="title"><span class="accent">COMMUNITY RULES</span></div>
+    <div class="subtitle">Read before participating · Respect the grind · Support each other</div>
+    <div class="pill-row">
+      <div class="pill">🤝 Be Respectful</div>
+      <div class="pill">🚫 No Spam</div>
+      <div class="pill">💪 Stay Positive</div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. WELCOME -->
+<h2 class="label">3 · Welcome Banner</h2>
+<div id="welcome-banner" class="banner" style="height: 340px;">
+  <div class="grid"></div><div class="orb g1"></div><div class="orb g2"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line"></div>
+  <div class="content">
+    <div class="badge">🏋️ Official Community</div>
+    <div class="title"><span class="accent">WELCOME TO REPMAX</span></div>
+    <div class="subtitle">The #1 AI-Powered Fitness Community</div>
+    <div class="feature-row">
+      <div class="feat"><div class="fi">🤖</div><div class="fl">AI Workouts</div></div>
+      <div class="feat"><div class="fi">📊</div><div class="fl">Track Progress</div></div>
+      <div class="feat"><div class="fi">💬</div><div class="fl">Social Gym</div></div>
+      <div class="feat"><div class="fi">📱</div><div class="fl">Free PWA</div></div>
+      <div class="feat"><div class="fi">💎</div><div class="fl">PRO Perks</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. FAQ -->
+<h2 class="label">4 · FAQ Banner</h2>
+<div id="faq-banner" class="banner">
+  <div class="grid"></div><div class="orb g1"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+  <div class="content">
+    <div class="icon">❓</div>
+    <div class="title" style="font-size: 38px;"><span class="accent" style="background: linear-gradient(135deg, #fff 30%, #3b82f6 100%); -webkit-background-clip: text; background-clip: text;">FREQUENTLY ASKED QUESTIONS</span></div>
+    <div class="subtitle">Everything you need to know about REPMAX</div>
+    <div class="pill-row">
+      <div class="pill" style="border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.08); color: #60a5fa;">📱 App Help</div>
+      <div class="pill" style="border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.08); color: #60a5fa;">💎 PRO Info</div>
+      <div class="pill" style="border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.08); color: #60a5fa;">🐛 Bug Help</div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. TRAINING -->
+<h2 class="label">5 · Training Banner</h2>
+<div id="training-banner" class="banner">
+  <div class="grid"></div><div class="orb g1"></div><div class="orb g2"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line" style="background: linear-gradient(90deg, transparent, #ff6b35, transparent);"></div>
+  <div class="content">
+    <div class="icon">💪</div>
+    <div class="title"><span class="accent" style="background: linear-gradient(135deg, #fff 30%, #ff6b35 100%); -webkit-background-clip: text; background-clip: text;">TRAINING HUB</span></div>
+    <div class="subtitle">Share workouts · Get form checks · Celebrate PRs</div>
+    <div class="pill-row">
+      <div class="pill" style="border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.08); color: #ff6b35;">📝 Logs</div>
+      <div class="pill" style="border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.08); color: #ff6b35;">🎥 Form Checks</div>
+      <div class="pill" style="border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.08); color: #ff6b35;">🏆 PRs</div>
+      <div class="pill" style="border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.08); color: #ff6b35;">🏠 Home Gym</div>
+    </div>
+  </div>
+</div>
+
+<!-- 6. NUTRITION -->
+<h2 class="label">6 · Nutrition Banner</h2>
+<div id="nutrition-banner" class="banner">
+  <div class="grid"></div><div class="orb g1"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line" style="background: linear-gradient(90deg, transparent, #22c55e, transparent);"></div>
+  <div class="content">
+    <div class="icon">🥗</div>
+    <div class="title"><span class="accent" style="background: linear-gradient(135deg, #fff 30%, #22c55e 100%); -webkit-background-clip: text; background-clip: text;">NUTRITION ZONE</span></div>
+    <div class="subtitle">Meal prep · Recipes · Supplements · Macro tracking</div>
+    <div class="pill-row">
+      <div class="pill" style="border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); color: #22c55e;">🍳 Meal Prep</div>
+      <div class="pill" style="border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); color: #22c55e;">📖 Recipes</div>
+      <div class="pill" style="border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); color: #22c55e;">💊 Supps</div>
+    </div>
+  </div>
+</div>
+
+<!-- 7. PRO LOUNGE -->
+<h2 class="label">7 · PRO Lounge Banner</h2>
+<div id="pro-banner" class="banner">
+  <div class="grid"></div><div class="orb g1"></div><div class="orb g2"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line" style="background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+  <div class="content">
+    <div class="icon">💎</div>
+    <div class="title"><span class="gold">PRO LOUNGE</span></div>
+    <div class="subtitle">Exclusive access for REPMAX PRO subscribers · Advanced coaching & challenges</div>
+    <div class="pill-row">
+      <div class="pill" style="border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.08); color: #f59e0b;">👑 Exclusive</div>
+      <div class="pill" style="border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.08); color: #f59e0b;">🧠 Coaching</div>
+      <div class="pill" style="border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.08); color: #f59e0b;">⚔️ Challenges</div>
+    </div>
+  </div>
+</div>
+
+<!-- 8. SUPPORT -->
+<h2 class="label">8 · Support Banner</h2>
+<div id="support-banner" class="banner">
+  <div class="grid"></div><div class="orb g1"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line" style="background: linear-gradient(90deg, transparent, #7c3aed, transparent);"></div>
+  <div class="content">
+    <div class="icon">🛠️</div>
+    <div class="title"><span class="accent" style="background: linear-gradient(135deg, #fff 30%, #7c3aed 100%); -webkit-background-clip: text; background-clip: text;">SUPPORT CENTER</span></div>
+    <div class="subtitle">Bug reports · Feature requests · App help · Ticket system</div>
+    <div class="pill-row">
+      <div class="pill" style="border-color: rgba(124,58,237,0.3); background: rgba(124,58,237,0.08); color: #a78bfa;">🐛 Bugs</div>
+      <div class="pill" style="border-color: rgba(124,58,237,0.3); background: rgba(124,58,237,0.08); color: #a78bfa;">💡 Ideas</div>
+      <div class="pill" style="border-color: rgba(124,58,237,0.3); background: rgba(124,58,237,0.08); color: #a78bfa;">🎫 Tickets</div>
+    </div>
+  </div>
+</div>
+
+<!-- 9. PROGRESS -->
+<h2 class="label">9 · Progress Banner</h2>
+<div id="progress-banner" class="banner">
+  <div class="grid"></div><div class="orb g1"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line" style="background: linear-gradient(90deg, transparent, #ffd700, transparent);"></div>
+  <div class="content">
+    <div class="icon">🏆</div>
+    <div class="title"><span class="accent" style="background: linear-gradient(135deg, #fff 30%, #ffd700 100%); -webkit-background-clip: text; background-clip: text;">PROGRESS TRACKER</span></div>
+    <div class="subtitle">Transformations · Progress pics · Milestones · Streak board</div>
+    <div class="pill-row">
+      <div class="pill" style="border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.08); color: #ffd700;">📈 Before/After</div>
+      <div class="pill" style="border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.08); color: #ffd700;">🔥 Streaks</div>
+      <div class="pill" style="border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.08); color: #ffd700;">🎯 Goals</div>
+    </div>
+  </div>
+</div>
+
+<!-- 10. INVITE SPLASH -->
+<h2 class="label">10 · Invite Splash (1920×1080)</h2>
+<div id="invite-banner" class="banner" style="width: 960px; height: 540px;">
+  <div class="grid"></div><div class="orb g1"></div>
+  <div class="bars">
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  </div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="accent-line"></div>
+  <div class="content">
+    <div class="badge">🏋️ Official Community</div>
+    <div class="title"><span class="accent">REPMAX</span></div>
+    <div class="subtitle">The <strong>#1 AI-Powered</strong> Fitness Community</div>
+    <div class="feature-row">
+      <div class="feat"><div class="fi">🤖</div><div class="fl">AI Workouts</div><div class="fv">Personalized</div></div>
+      <div class="feat"><div class="fi">📱</div><div class="fl">Free App</div><div class="fv">PWA Ready</div></div>
+      <div class="feat"><div class="fi">💬</div><div class="fl">Community</div><div class="fv">Active 24/7</div></div>
+      <div class="feat"><div class="fi">💎</div><div class="fl">PRO Perks</div><div class="fv">Exclusive</div></div>
+    </div>
+    <div class="url">discord.gg/<strong>repmax</strong></div>
+  </div>
+</div>
+
+<!-- 11. SERVER ICON -->
+<h2 class="label">11 · Server Icon (512×512)</h2>
+<div class="icon-wrap">
+  <div class="glow"></div><div class="ring"></div>
+  <div class="content">
+    <div class="it"><span>RM</span></div>
+    <div class="is">REPMAX</div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -18,6 +18,7 @@ import Notifications from './pages/Notifications'
 import ChatRoom from './pages/ChatRoom'
 import HomeExercises from './pages/HomeExercises'
 import Recovery from './pages/Recovery'
+import AdminPanel from './pages/AdminPanel'
 import RunTracker from './pages/RunTracker'
 import Layout from './components/Layout'
 import CallScreen from './components/CallScreen'
@@ -25,7 +26,7 @@ import UsernameModal from './components/UsernameModal'
 import { syncPushSubscription } from './lib/pushNotifications'
 
 export default function App() {
-  const { user, profile, loading, isOnboarded, needsUsername, fetchProfile } = useAuth()
+  const { user, profile, loading, isOnboarded, needsUsername, fetchProfile, isAdmin } = useAuth()
   const { activeCall, clearActiveCall, callMinimized, setCallMinimized, callToast, showCallToast } = useCall()
   const navigate = useNavigate()
   const location = useLocation()
@@ -390,6 +391,7 @@ export default function App() {
         <Route path="/chat/:chatId" element={<ChatRoom />} />
         <Route path="/exercises" element={<HomeExercises />} />
         <Route path="/recovery" element={<Recovery />} />
+        {isAdmin && <Route path="/admin" element={<AdminPanel />} />}
 
         <Route element={<Layout />}>
           <Route path="/app" element={<Dashboard />} />

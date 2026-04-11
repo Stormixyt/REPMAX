@@ -5,8 +5,11 @@ import { useLanguage } from '../context/LanguageContext'
 import { supabase } from '../lib/supabase'
 import { shareDNACard } from '../lib/shareDNA'
 import { subscribeToPush, showLocalNotification } from '../lib/pushNotifications'
-import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill, RiFireFill, RiWaterFlashFill, RiRunFill, RiScalesFill, RiShareLine, RiSparklingFill, RiStarFill, RiTeamFill } from '@remixicon/react'
+import { formatWeight, formatVolume, weightLabel } from '../lib/units'
+import { getLearningProgress, getLearningStatus } from '../lib/learningEngine'
+import { RiFlashlightFill, RiMoonClearFill, RiTrophyFill, RiMedalFill, RiArrowRightLine, RiVipCrownFill, RiNotification3Fill, RiSwordFill, RiFireFill, RiWaterFlashFill, RiRunFill, RiScalesFill, RiShareLine, RiSparklingFill, RiStarFill, RiTeamFill, RiBrainFill } from '@remixicon/react'
 import ProBadge from '../components/ProBadge'
+
 
 const MOTIVATIONS = [
   "No excuses, just execution.",

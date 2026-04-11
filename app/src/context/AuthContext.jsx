@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
+const ADMIN_EMAILS = ['nassimchahman8@gmail.com']
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
@@ -144,7 +145,10 @@ export function AuthProvider({ children }) {
       signUp, signIn, signOut, updateProfile,
       fetchProfile: () => user && loadProfileWithTimeout(user.id, 5000),
       isOnboarded: profile?.onboarded === true,
-      isPro: profile?.subscription_status === 'pro' || (profile?.pro_until && new Date(profile.pro_until) > new Date())
+      isAdmin: !!(profile?.is_admin || ADMIN_EMAILS.includes(user?.email)),
+      isPro: profile?.subscription_tier === 'pro' || profile?.subscription_tier === 'ultra' || profile?.subscription_status === 'pro' || (profile?.pro_until && new Date(profile.pro_until) > new Date()),
+      isUltra: profile?.subscription_tier === 'ultra',
+      subscriptionTier: profile?.subscription_tier || 'free'
     }}>
       {children}
     </AuthContext.Provider>

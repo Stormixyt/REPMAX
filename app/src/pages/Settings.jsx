@@ -9,7 +9,7 @@ import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNoti
 import { getPushSupportState, requestNotificationPermission, subscribeToPush } from '../lib/pushNotifications'
 
 export default function Settings() {
-  const { user, profile, signOut, updateProfile, isPro } = useAuth()
+  const { user, profile, signOut, updateProfile, isPro, isAdmin } = useAuth()
   const { language, setLanguage, t, languageOptions } = useLanguage()
   const navigate = useNavigate()
   const [editName, setEditName] = useState(false)
@@ -305,6 +305,13 @@ export default function Settings() {
       <div style={{ textAlign: 'center', padding: '24px 0 40px' }}>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>REPMAX v2.0 · Made with grit</div>
       </div>
+
+      {/* Admin Panel — only visible to admin */}
+      {isAdmin && (
+        <button className="btn btn-full" onClick={() => navigate('/admin')} style={{ marginBottom: 12, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#8b5cf6', fontWeight: 700 }}>
+          <RiInformationFill size={18} /> Admin Panel
+        </button>
+      )}
 
       {/* Sign Out */}
       <button className="btn btn-secondary btn-full" onClick={signOut} style={{ marginBottom: 24 }}>

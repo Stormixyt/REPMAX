@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import PaywallGate from "../components/PaywallGate";
-import { callGroq } from "../lib/groq";
+import { callGroq, MODEL, VISION_MODEL } from "../lib/groq";
 import {
   RiArrowLeftLine,
   RiFireFill,
@@ -168,7 +168,7 @@ async function translateQuery(query) {
         },
         { role: "user", content: `Food query: ${query}` },
       ],
-      model: "llama-3.3-70b-versatile",
+      model: MODEL,
       temperature: 0.1,
       max_tokens: 120,
       response_format: { type: "json_object" },
@@ -196,7 +196,7 @@ Rules:
         },
         { role: "user", content: `Nutritional info for: ${query}` },
       ],
-      model: "llama-3.3-70b-versatile",
+      model: MODEL,
       temperature: 0.2,
       max_tokens: 500,
       response_format: { type: "json_object" },
@@ -1217,7 +1217,7 @@ Return ONLY valid JSON, no extra text:
             ],
           },
         ],
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: VISION_MODEL,
         temperature: 0.2,
         max_tokens: 700,
         response_format: { type: "json_object" },

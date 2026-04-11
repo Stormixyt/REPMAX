@@ -1,0 +1,53 @@
+
+  REPMAX ONBOARDING v4 ΓÇö FINAL
+
+  [1:48:52 PM] Logged in as REPMAX#1770
+
+ΓöüΓöüΓöü STEP 1: FIXING PERMISSIONS ΓöüΓöüΓöü
+(node:17444) DeprecationWarning: The ready event has been renamed to clientReady to distinguish it from the gateway READY event and will only emit under that name in v15. Please use clientReady instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  [1:48:52 PM]   Γ£à general-chat ΓåÆ View+Send
+  [1:48:52 PM]   Γ£à introductions ΓåÆ View+Send
+  [1:48:53 PM]   Γ£à motivation ΓåÆ View+Send
+  [1:48:53 PM]   Γ£à memes ΓåÆ View+Send
+  [1:48:53 PM]   Γ£à gym-selfies ΓåÆ View+Send
+  [1:48:53 PM]   Γ£à pump-playlist ΓåÆ View+Send
+  [1:48:53 PM]   Γ£à workout-logs ΓåÆ View+Send
+  [1:48:54 PM]   Γ£à form-checks ΓåÆ View+Send
+  [1:48:54 PM]   Γ£à exercise-tips ΓåÆ View+Send
+  [1:48:54 PM]   Γ£à home-workouts ΓåÆ View+Send
+  [1:48:54 PM]   Γ£à personal-records ΓåÆ View+Send
+  [1:48:56 PM]   Γ£à program-reviews ΓåÆ View+Send
+  [1:48:57 PM]   Γ£à meal-prep ΓåÆ View+Send
+  [1:48:57 PM]   Γ£à recipes ΓåÆ View+Send
+  [1:48:57 PM]   Γ£à supplements ΓåÆ View+Send
+  [1:48:57 PM]   Γ£à diet-help ΓåÆ View+Send
+  [1:48:57 PM]   Γ£à food-pics ΓåÆ View+Send
+  [1:48:58 PM]   Γ£à transformations ΓåÆ View+Send
+  [1:48:58 PM]   Γ£à progress-pics ΓåÆ View+Send
+  [1:48:58 PM]   Γ£à milestones ΓåÆ View+Send
+  [1:48:58 PM]   Γ£à streak-board ΓåÆ View+Send
+  [1:48:58 PM]   Γ£à bug-reports ΓåÆ View+Send
+  [1:48:59 PM]   Γ£à feature-requests ΓåÆ View+Send
+  [1:48:59 PM]   Γ£à app-help ΓåÆ View+Send
+  [1:48:59 PM]   ≡ƒöÆ rules ΓåÆ View only
+  [1:48:59 PM]   ≡ƒöÆ announcements ΓåÆ View only
+  [1:48:59 PM]   ≡ƒöÆ changelogs ΓåÆ View only
+  [1:49:00 PM]   ≡ƒöÆ faq ΓåÆ View only
+  [1:49:00 PM]   ≡ƒöÆ get-roles ΓåÆ View only
+  [1:49:00 PM]   ≡ƒöÆ welcome ΓåÆ View only
+  [1:49:00 PM]   ≡ƒöÆ create-ticket ΓåÆ View only
+  [1:49:00 PM] Permissions fixed!
+
+ΓöüΓöüΓöü STEP 2: BUILDING QUESTIONS ΓöüΓöüΓöü
+  [1:49:00 PM] 7 default channels (all writable)
+  [1:49:00 PM] Q1: 6 goals
+  [1:49:00 PM] Q2: 4 levels
+  [1:49:00 PM] Q3: 6 interests
+  [1:49:00 PM] Q4: 3 notifications
+
+ΓöüΓöüΓöü STEP 3: APPLYING ΓöüΓöüΓöü
+  [1:49:01 PM] SUCCESS! Onboarding ENABLED with 4 questions!
+  [1:49:01 PM] Welcome screen OK
+
+Done!

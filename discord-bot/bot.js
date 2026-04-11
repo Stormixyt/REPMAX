@@ -293,29 +293,63 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 
     else if (commandName === 'warn') {
-      if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+      if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageMessages)) {
         return interaction.reply({ content: '❌ Staff only.', ephemeral: true })
       }
-      const target = interaction.options.getUser('user')
-      const reason = interaction.options.getString('reason')
-      if (!botData.warnings[target.id]) botData.warnings[target.id] = []
-      botData.warnings[target.id].push({ reason, by: interaction.user.id, date: Date.now() })
-      saveData(botData)
 
-      const count = botData.warnings[target.id].length
-      const e = new EmbedBuilder().setColor(C.red)
-        .setTitle('⚠️  Warning Issued')
-        .addFields(
-          { name: 'User', value: `${target}`, inline: true },
-          { name: 'Reason', value: reason, inline: true },
-          { name: 'Total Warnings', value: `${count}/3`, inline: true },
-        )
-        .setFooter({ text: count >= 3 ? '⚠️ 3 warnings reached — consider a mute/ban' : '' })
-      await interaction.reply({ embeds: [e] })
+      await interaction.deferReply({ ephemeral: true })
 
-      // Log to mod-logs
-      const modLogs = interaction.guild.channels.cache.find(c => c.name.includes('mod-logs'))
-      if (modLogs) await modLogs.send({ embeds: [e] })
+      try {
+        const target = interaction.options.getUser('user', true)
+        const reason = interaction.options.getString('reason', true)
+
+        if (!botData.warnings[target.id]) botData.warnings[target.id] = []
+        botData.warnings[target.id].push({ reason, by: interaction.user.id, date: Date.now() })
+        saveData(botData)
+
+        const count = botData.warnings[target.id].length
+        let dmDelivered = false
+
+        const userDmEmbed = new EmbedBuilder()
+          .setColor(C.red)
+          .setTitle('⚠️ You received a warning in REPMAX')
+          .addFields(
+            { name: 'Server', value: interaction.guild?.name || 'REPMAX', inline: true },
+            { name: 'Moderator', value: `${interaction.user.tag}`, inline: true },
+            { name: 'Warning count', value: `${count}/3`, inline: true },
+            { name: 'Reason', value: reason, inline: false },
+          )
+          .setFooter({ text: count >= 3 ? 'You have reached 3 warnings. Contact staff if you think this was a mistake.' : 'Please fix the issue and avoid more warnings.' })
+
+        try {
+          await target.send({ embeds: [userDmEmbed] })
+          dmDelivered = true
+        } catch {}
+
+        const e = new EmbedBuilder().setColor(C.red)
+          .setTitle('⚠️  Warning Issued')
+          .addFields(
+            { name: 'User', value: `${target}`, inline: true },
+            { name: 'Reason', value: reason, inline: true },
+            { name: 'Total Warnings', value: `${count}/3`, inline: true },
+            { name: 'User notified', value: dmDelivered ? 'DM sent' : 'DM failed / closed', inline: true },
+          )
+
+        if (count >= 3) {
+          e.setFooter({ text: '⚠️ 3 warnings reached — consider a mute/ban' })
+        }
+
+        await interaction.editReply({ embeds: [e] })
+
+        const modLogs = interaction.guild.channels.cache.find(c => c.name.includes('mod-logs'))
+        if (modLogs) {
+          await modLogs.send({ embeds: [e] }).catch(() => {})
+        }
+      } catch (error) {
+        await interaction.editReply({
+          content: `❌ Warn failed: ${error.message}`,
+        })
+      }
     }
 
     else if (commandName === 'serverinfo') {

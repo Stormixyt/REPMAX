@@ -1,0 +1,377 @@
+{
+  "guild_id": "1490284889151377559",
+  "prompts": [
+    {
+      "id": "1490678298626363445",
+      "title": "What are your fitness goals?",
+      "options": [
+        {
+          "id": "1490678298626363448",
+          "title": "Muscle Building",
+          "description": "Hypertrophy, size, and strength",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [
+            "1490669809501737081"
+          ],
+          "channel_ids": [
+            "1490669910630727760",
+            "1490669900174327809",
+            "1490669897359818762",
+            "1490669907497455759"
+          ]
+        },
+        {
+          "id": "1490678298626363449",
+          "title": "Weight Loss",
+          "description": "Fat loss, cutting, recomp",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [
+            "1490669813603766302"
+          ],
+          "channel_ids": [
+            "1490669897359818762",
+            "1490669923725217947",
+            "1490669932977979396",
+            "1490669915848314941"
+          ]
+        },
+        {
+          "id": "1490678298626363450",
+          "title": "Powerlifting",
+          "description": "Squat, bench, deadlift",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [
+            "1490669817206669312"
+          ],
+          "channel_ids": [
+            "1490669900174327809",
+            "1490669897359818762",
+            "1490669907497455759"
+          ]
+        },
+        {
+          "id": "1490678298626363451",
+          "title": "Calisthenics",
+          "description": "Bodyweight & gymnastics",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [
+            "1490669820721762418"
+          ],
+          "channel_ids": [
+            "1490669900174327809",
+            "1490669897359818762",
+            "1490669904884531201"
+          ]
+        },
+        {
+          "id": "1490678298861375498",
+          "title": "Cardio & Endurance",
+          "description": "Running, cycling, HIIT",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [
+            "1490669824383385650"
+          ],
+          "channel_ids": [
+            "1490669950422220801",
+            "1490669897359818762",
+            "1490669932977979396"
+          ]
+        },
+        {
+          "id": "1490678298861375499",
+          "title": "Home Gym",
+          "description": "Train from home",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [
+            "1490669828359454870"
+          ],
+          "channel_ids": [
+            "1490669904884531201",
+            "1490669902548172861"
+          ]
+        }
+      ],
+      "single_select": false,
+      "required": true,
+      "in_onboarding": true,
+      "type": 0
+    },
+    {
+      "id": "1490678298861375500",
+      "title": "What's your experience level?",
+      "options": [
+        {
+          "id": "1490678298861375503",
+          "title": "Beginner (0-6 months)",
+          "description": "Just getting started",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669900174327809",
+            "1490669990691737690",
+            "1490669902548172861"
+          ]
+        },
+        {
+          "id": "1490678298861375504",
+          "title": "Intermediate (6mo-2yr)",
+          "description": "Building consistency",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669910630727760",
+            "1490669897359818762",
+            "1490669907497455759"
+          ]
+        },
+        {
+          "id": "1490678298861375505",
+          "title": "Advanced (2+ years)",
+          "description": "Experienced lifter",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669910630727760",
+            "1490669900174327809",
+            "1490669897359818762",
+            "1490669907497455759"
+          ]
+        },
+        {
+          "id": "1490678298861375506",
+          "title": "Coach / Trainer",
+          "description": "Certified or experienced",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669910630727760",
+            "1490669900174327809",
+            "1490669902548172861"
+          ]
+        }
+      ],
+      "single_select": true,
+      "required": true,
+      "in_onboarding": true,
+      "type": 0
+    },
+    {
+      "id": "1490678298861375507",
+      "title": "What content interests you?",
+      "options": [
+        {
+          "id": "1490678298894663853",
+          "title": "Workout Sharing",
+          "description": "Daily logs and programs",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669910630727760",
+            "1490669897359818762",
+            "1490669907497455759"
+          ]
+        },
+        {
+          "id": "1490678298894663854",
+          "title": "Nutrition & Meal Prep",
+          "description": "Recipes, diets, supplements",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669921276002505",
+            "1490669918176149518",
+            "1490669926975930389",
+            "1490669923725217947",
+            "1490669915848314941"
+          ]
+        },
+        {
+          "id": "1490678298894663855",
+          "title": "Progress & Transformations",
+          "description": "Before/after, milestones",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669948052443209",
+            "1490669945544249484",
+            "1490669932977979396",
+            "1490669950422220801"
+          ]
+        },
+        {
+          "id": "1490678298894663856",
+          "title": "Form Checks & Tips",
+          "description": "Video feedback and guides",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669900174327809",
+            "1490669902548172861"
+          ]
+        },
+        {
+          "id": "1490678298894663857",
+          "title": "Memes & Vibes",
+          "description": "Gym humor, selfies, music",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669885951447050",
+            "1490669888543658156",
+            "1490669891530002493"
+          ]
+        },
+        {
+          "id": "1490678298894663858",
+          "title": "App Support",
+          "description": "Bugs, features, help",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [],
+          "channel_ids": [
+            "1490669993288012016",
+            "1490669985083953162",
+            "1490669990691737690",
+            "1490669987818639490"
+          ]
+        }
+      ],
+      "single_select": false,
+      "required": true,
+      "in_onboarding": true,
+      "type": 0
+    },
+    {
+      "id": "1490678298894663859",
+      "title": "What notifications do you want?",
+      "options": [
+        {
+          "id": "1490678298936868886",
+          "title": "App Updates",
+          "description": "New features and patches",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [
+            "1490669794242990212"
+          ],
+          "channel_ids": [
+            "1490669864581599393",
+            "1490669861385408523"
+          ]
+        },
+        {
+          "id": "1490678298936868887",
+          "title": "Events & Challenges",
+          "description": "Community competitions",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [
+            "1490669797476667394"
+          ],
+          "channel_ids": [
+            "1490669861385408523"
+          ]
+        },
+        {
+          "id": "1490678298936868888",
+          "title": "Giveaways",
+          "description": "Free PRO and prizes",
+          "emoji": {
+            "id": null,
+            "name": null,
+            "animated": false
+          },
+          "role_ids": [
+            "1490669801905983558"
+          ],
+          "channel_ids": [
+            "1490669861385408523"
+          ]
+        }
+      ],
+      "single_select": false,
+      "required": false,
+      "in_onboarding": true,
+      "type": 0
+    }
+  ],
+  "default_channel_ids": [
+    "1490669858730279016",
+    "1490669874916229181"
+  ],
+  "enabled": false,
+  "mode": 0,
+  "below_requirements": true,
+  "responses": [],
+  "onboarding_prompts_seen": {},
+  "onboarding_responses_seen": {}
+}

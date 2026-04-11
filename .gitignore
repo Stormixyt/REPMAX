@@ -44,3 +44,6 @@ supabase-cli.tar.gz
 
 # Windows artifacts
 nul
+
+# Internal launch docs (never commit)
+.internal/

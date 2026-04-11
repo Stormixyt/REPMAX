@@ -2,8 +2,15 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const GROQ_KEY = Deno.env.get("GROQ_API_KEY")!;
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const OPENROUTER_KEY = Deno.env.get("OPENROUTER_API_KEY")!;
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_SITE_URL =
+  Deno.env.get("OPENROUTER_SITE_URL") || "https://repmax.vercel.app";
+const OPENROUTER_SITE_NAME =
+  Deno.env.get("OPENROUTER_SITE_NAME") || "REPMAX";
+const DEFAULT_TEXT_MODEL =
+  Deno.env.get("OPENROUTER_DEFAULT_MODEL") ||
+  "meta-llama/llama-3.3-70b-instruct:exacto";
 
 // Simple in-memory rate limiting (per isolate)
 // Stores array of timestamps for each user
@@ -67,20 +74,26 @@ serve(async (req: Request) => {
     }
 
     const body = JSON.parse(bodyStr);
+    const payload = {
+      ...body,
+      model: body?.model || DEFAULT_TEXT_MODEL,
+    };
 
-    const groqRes = await fetch(GROQ_URL, {
+    const upstreamRes = await fetch(OPENROUTER_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GROQ_KEY}`,
+        Authorization: `Bearer ${OPENROUTER_KEY}`,
         "Content-Type": "application/json",
+        "HTTP-Referer": OPENROUTER_SITE_URL,
+        "X-Title": OPENROUTER_SITE_NAME,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
-    const data = await groqRes.json();
+    const data = await upstreamRes.json();
 
     return new Response(JSON.stringify(data), {
-      status: groqRes.status,
+      status: upstreamRes.status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

@@ -1,11 +1,12 @@
 /**
- * groq.js — All AI calls go through the Supabase Edge Function "ai-proxy".
- * The actual Groq API key lives only in Supabase secrets, never in this bundle.
+ * groq.js — Legacy filename, but AI calls now route through the Supabase
+ * Edge Function "ai-proxy" backed by OpenRouter. The actual API key lives
+ * only in Supabase secrets, never in this bundle.
  */
 import { invokeEdgeFunction } from "./supabase";
 
-const MODEL = "llama-3.3-70b-versatile";
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const MODEL = "meta-llama/llama-3.3-70b-instruct:exacto";
+const VISION_MODEL = "meta-llama/llama-4-scout";
 const COACH_MODEL = MODEL;
 
 const SYSTEM_PROMPT = `You are REPMAX, an expert strength and conditioning coach AI. You create scientifically-backed, periodized workout programs.
@@ -148,6 +149,11 @@ In that case return:
 Program editor rules:
 - Preserve the current routine structure unless the user asks for a real change
 - Apply the user's request directly to the active program
+- Preserve every existing training day unless the user explicitly asks to remove, replace, or turn that day into rest
+- Never convert a lifting day into a rest day unless the user explicitly asks for a rest day
+- If the user asks to add exercises, keep the existing exercises and add 1 to 2 relevant exercises to the requested day instead of replacing the day
+- If the user asks to replace one exercise, keep the rest of the day intact
+- If the user asks to fix a weak day, expand that day instead of shrinking it
 - Keep the routine realistic, evidence-based, and internally consistent
 - Every non-rest day must have 3 to 7 exercises
 - Rest days may have zero exercises
@@ -247,6 +253,107 @@ function toPositiveFloat(value, fallback = 0) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
 }
 
+function normalizeRoutineText(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^\w\s+]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isRestLikeDayName(name = "") {
+  return /\brest\b|\brecovery\b|\boff\b/.test(normalizeRoutineText(name));
+}
+
+function normalizeExerciseIdentity(name = "") {
+  return normalizeRoutineText(name);
+}
+
+function dedupeProgramExercises(exercises = []) {
+  const seen = new Set();
+
+  return exercises.filter((exercise) => {
+    const key = normalizeExerciseIdentity(exercise?.name);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+const ROUTINE_EXPANSION_LIBRARY = {
+  chest: [
+    { name: "Incline Push-Up", sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: "Added to expand chest volume." },
+    { name: "Deficit Push-Up", sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: "Added to expand chest volume." },
+  ],
+  shoulders: [
+    { name: "Pike Push-Up", sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: "Added to expand shoulder work." },
+    { name: "Lateral Raise", sets: 3, reps: 15, rpe: 8, rest_seconds: 60, notes: "Added to expand shoulder work." },
+  ],
+  triceps: [
+    { name: "Bench Dips", sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: "Added to expand triceps work." },
+    { name: "Overhead Triceps Extension", sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: "Added to expand triceps work." },
+  ],
+  back: [
+    { name: "Inverted Row", sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: "Added to expand back volume." },
+    { name: "Chest-Supported Row", sets: 3, reps: 12, rpe: 8, rest_seconds: 90, notes: "Added to expand back volume." },
+  ],
+  biceps: [
+    { name: "Hammer Curl", sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: "Added to expand biceps work." },
+    { name: "Incline Dumbbell Curl", sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: "Added to expand biceps work." },
+  ],
+  legs: [
+    { name: "Walking Lunge", sets: 3, reps: 12, rpe: 8, rest_seconds: 90, notes: "Added to expand lower-body volume." },
+    { name: "Split Squat", sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: "Added to expand lower-body volume." },
+  ],
+  quads: [
+    { name: "Walking Lunge", sets: 3, reps: 12, rpe: 8, rest_seconds: 90, notes: "Added to expand quad work." },
+    { name: "Leg Extension", sets: 3, reps: 15, rpe: 8, rest_seconds: 60, notes: "Added to expand quad work." },
+  ],
+  hamstrings: [
+    { name: "Glute Bridge Walkout", sets: 3, reps: 10, rpe: 8, rest_seconds: 75, notes: "Added to expand hamstring work." },
+    { name: "Romanian Deadlift", sets: 3, reps: 10, rpe: 8, rest_seconds: 105, notes: "Added to expand hamstring work." },
+  ],
+  glutes: [
+    { name: "Glute Bridge", sets: 3, reps: 15, rpe: 8, rest_seconds: 75, notes: "Added to expand glute work." },
+    { name: "Hip Thrust", sets: 3, reps: 12, rpe: 8, rest_seconds: 90, notes: "Added to expand glute work." },
+  ],
+  calves: [
+    { name: "Standing Calf Raise", sets: 4, reps: 15, rpe: 8, rest_seconds: 45, notes: "Added to expand calf work." },
+  ],
+  core: [
+    { name: "Hollow Body Hold", sets: 3, reps: 30, rpe: 7, rest_seconds: 45, notes: "30 seconds per set." },
+    { name: "Cable Crunch", sets: 3, reps: 15, rpe: 8, rest_seconds: 45, notes: "Added to expand core work." },
+  ],
+  abs: [
+    { name: "Hanging Knee Raise", sets: 3, reps: 12, rpe: 8, rest_seconds: 45, notes: "Added to expand ab work." },
+    { name: "Dead Bug", sets: 3, reps: 12, rpe: 7, rest_seconds: 45, notes: "Added to expand ab work." },
+  ],
+  cardio: [
+    { name: "Jump Rope Intervals", sets: 6, reps: 45, rpe: 8, rest_seconds: 30, notes: "45 seconds hard effort." },
+    { name: "Incline Walk", sets: 1, reps: 15, rpe: 7, rest_seconds: 0, notes: "15 minutes steady pace." },
+  ],
+  push: [
+    { name: "Incline Push-Up", sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: "Added to expand push volume." },
+    { name: "Bench Dips", sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: "Added to expand push volume." },
+  ],
+  pull: [
+    { name: "Inverted Row", sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: "Added to expand pull volume." },
+    { name: "Hammer Curl", sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: "Added to expand pull volume." },
+  ],
+  upper: [
+    { name: "Chest-Supported Row", sets: 3, reps: 12, rpe: 8, rest_seconds: 90, notes: "Added to expand upper-body volume." },
+    { name: "Lateral Raise", sets: 3, reps: 15, rpe: 8, rest_seconds: 60, notes: "Added to expand upper-body volume." },
+  ],
+  lower: [
+    { name: "Split Squat", sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: "Added to expand lower-body volume." },
+    { name: "Standing Calf Raise", sets: 4, reps: 15, rpe: 8, rest_seconds: 45, notes: "Added to expand lower-body volume." },
+  ],
+  full: [
+    { name: "Push-Up", sets: 3, reps: 15, rpe: 8, rest_seconds: 60, notes: "Added to expand the full-body day." },
+    { name: "Walking Lunge", sets: 3, reps: 12, rpe: 8, rest_seconds: 90, notes: "Added to expand the full-body day." },
+  ],
+};
+
 function normalizeProgramExercise(exercise = {}, fallbackExercise = {}) {
   const name =
     exercise?.name?.trim?.() ||
@@ -297,6 +404,113 @@ function normalizeProgramDay(day = {}, fallbackDay = {}, dayIndex = 0) {
   };
 }
 
+function getRoutineUpdateIntent(question = "") {
+  const normalized = normalizeRoutineText(question);
+
+  return {
+    normalized,
+    wantsMoreExercises:
+      /(add|extra|more|another|expand|fill out|increase)\b/.test(normalized) &&
+      /(exercise|volume|day|workout|routine|program|plan|split|chest|back|shoulder|arm|leg|core|push|pull|upper|lower)/.test(normalized),
+    allowsRemoval: /\b(remove|delete|drop|cut)\b/.test(normalized),
+    allowsReplacement: /\b(replace|swap)\b/.test(normalized),
+    allowsRestConversion:
+      /\b(rest day|make .* rest|turn .* rest|convert .* rest|swap .* for rest|replace .* with rest)\b/.test(normalized),
+    allowsReorder:
+      /\b(reorder|move|shuffle|switch day order|change split|rebuild the split)\b/.test(normalized),
+  };
+}
+
+function scoreRoutineDayForQuestion(day = {}, normalizedQuestion = "") {
+  if (!normalizedQuestion) return 0;
+
+  const descriptor = normalizeRoutineText([
+    day?.day_name,
+    ...(Array.isArray(day?.target_muscles) ? day.target_muscles : []),
+  ].join(" "));
+
+  const tags = [
+    "push",
+    "pull",
+    "upper",
+    "lower",
+    "full",
+    "chest",
+    "back",
+    "shoulders",
+    "triceps",
+    "biceps",
+    "legs",
+    "quads",
+    "hamstrings",
+    "glutes",
+    "calves",
+    "core",
+    "abs",
+    "cardio",
+  ];
+
+  return tags.reduce((score, tag) => {
+    if (!normalizedQuestion.includes(tag)) return score;
+    return descriptor.includes(tag) ? score + 3 : score;
+  }, 0);
+}
+
+function getExpansionExerciseForDay(day = {}, normalizedQuestion = "") {
+  const descriptor = normalizeRoutineText([
+    normalizedQuestion,
+    day?.day_name,
+    ...(Array.isArray(day?.target_muscles) ? day.target_muscles : []),
+  ].join(" "));
+
+  const keys = [
+    "push",
+    "pull",
+    "upper",
+    "lower",
+    "full",
+    "chest",
+    "back",
+    "shoulders",
+    "triceps",
+    "biceps",
+    "legs",
+    "quads",
+    "hamstrings",
+    "glutes",
+    "calves",
+    "core",
+    "abs",
+    "cardio",
+  ];
+
+  const existing = new Set(
+    (Array.isArray(day?.exercises) ? day.exercises : [])
+      .map((exercise) => normalizeExerciseIdentity(exercise?.name))
+      .filter(Boolean)
+  );
+
+  for (const key of keys) {
+    if (!descriptor.includes(key)) continue;
+
+    for (const candidate of ROUTINE_EXPANSION_LIBRARY[key] || []) {
+      if (!existing.has(normalizeExerciseIdentity(candidate.name))) {
+        return candidate;
+      }
+    }
+  }
+
+  for (const key of ["upper", "full", "push", "pull", "lower", "core"]) {
+    for (const candidate of ROUTINE_EXPANSION_LIBRARY[key] || []) {
+      if (!existing.has(normalizeExerciseIdentity(candidate.name))) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
 function normalizeProgramWeek(week = {}, fallbackWeek = {}, weekIndex = 0) {
   const sourceDays = Array.isArray(week?.days) ? week.days : [];
   const fallbackDays = Array.isArray(fallbackWeek?.days) ? fallbackWeek.days : [];
@@ -338,6 +552,132 @@ function normalizeRoutineUpdateProgram(program = {}, fallbackProgram = {}) {
     name: program?.name?.trim?.() || fallbackProgram?.name || "Updated Program",
     split_type:
       program?.split_type || fallbackProgram?.split_type || "custom",
+    weeks,
+  };
+}
+
+function reconcileRoutineUpdate(updatedProgram = {}, currentProgram = {}, question = "") {
+  const intent = getRoutineUpdateIntent(question);
+  const currentWeeks = Array.isArray(currentProgram?.weeks) ? currentProgram.weeks : [];
+  const updatedWeeks = Array.isArray(updatedProgram?.weeks) ? updatedProgram.weeks : [];
+
+  const weeks = currentWeeks.map((currentWeek, weekIndex) => {
+    const updatedWeek = updatedWeeks[weekIndex] || currentWeek;
+    const sourceDays = Array.isArray(updatedWeek?.days) ? updatedWeek.days : [];
+    const currentDays = Array.isArray(currentWeek?.days) ? currentWeek.days : [];
+
+    const days = currentDays.map((currentDay, dayIndex) => {
+      const draftDay = sourceDays[dayIndex] || currentDay;
+      const currentExerciseCount = Array.isArray(currentDay?.exercises)
+        ? currentDay.exercises.length
+        : 0;
+
+      let nextDay = normalizeProgramDay(draftDay, currentDay, dayIndex);
+      nextDay.exercises = dedupeProgramExercises(nextDay.exercises);
+
+      if (
+        currentExerciseCount > 0 &&
+        !intent.allowsRestConversion &&
+        isRestLikeDayName(nextDay.day_name)
+      ) {
+        nextDay = {
+          ...nextDay,
+          day_name: currentDay?.day_name || nextDay.day_name,
+        };
+      }
+
+      if (!intent.allowsRemoval && currentExerciseCount > 0 && nextDay.exercises.length < currentExerciseCount) {
+        const fallbackExercises = dedupeProgramExercises(
+          (currentDay.exercises || []).map((exercise) =>
+            normalizeProgramExercise(exercise, exercise)
+          )
+        );
+
+        for (const exercise of fallbackExercises) {
+          if (nextDay.exercises.length >= currentExerciseCount) break;
+
+          const exists = nextDay.exercises.some(
+            (currentExercise) =>
+              normalizeExerciseIdentity(currentExercise?.name) ===
+              normalizeExerciseIdentity(exercise?.name)
+          );
+
+          if (!exists) {
+            nextDay.exercises.push(exercise);
+          }
+        }
+      }
+
+      if (!intent.allowsReorder && !intent.allowsRestConversion && currentDay?.day_name) {
+        nextDay.day_name = currentDay.day_name;
+      }
+
+      return nextDay;
+    });
+
+    return {
+      week_number: toPositiveInteger(
+        updatedWeek?.week_number,
+        toPositiveInteger(currentWeek?.week_number, weekIndex + 1)
+      ),
+      is_deload:
+        typeof updatedWeek?.is_deload === "boolean"
+          ? updatedWeek.is_deload
+          : Boolean(currentWeek?.is_deload),
+      days,
+    };
+  });
+
+  if (intent.wantsMoreExercises) {
+    const expandedAlready = weeks.some((week, weekIndex) =>
+      week.days.some((day, dayIndex) => {
+        const previousCount = currentWeeks?.[weekIndex]?.days?.[dayIndex]?.exercises?.length || 0;
+        return day.exercises.length > previousCount;
+      })
+    );
+
+    if (!expandedAlready) {
+      const firstWeekDays = currentWeeks?.[0]?.days || [];
+      let bestDayIndex = -1;
+      let bestScore = -1;
+
+      firstWeekDays.forEach((day, dayIndex) => {
+        const count = Array.isArray(day?.exercises) ? day.exercises.length : 0;
+        if (count === 0 || isRestLikeDayName(day?.day_name)) return;
+
+        const score = scoreRoutineDayForQuestion(day, intent.normalized);
+        if (score > bestScore) {
+          bestScore = score;
+          bestDayIndex = dayIndex;
+        }
+      });
+
+      if (bestDayIndex === -1) {
+        bestDayIndex = firstWeekDays.findIndex(
+          (day) => Array.isArray(day?.exercises) && day.exercises.length > 0
+        );
+      }
+
+      if (bestDayIndex !== -1) {
+        weeks.forEach((week) => {
+          const targetDay = week.days?.[bestDayIndex];
+          if (!targetDay || isRestLikeDayName(targetDay.day_name)) return;
+
+          const extraExercise = getExpansionExerciseForDay(targetDay, intent.normalized);
+          if (!extraExercise) return;
+
+          targetDay.exercises = dedupeProgramExercises([
+            ...targetDay.exercises,
+            normalizeProgramExercise(extraExercise, extraExercise),
+          ]);
+        });
+      }
+    }
+  }
+
+  return {
+    name: updatedProgram?.name?.trim?.() || currentProgram?.name || "Updated Program",
+    split_type: updatedProgram?.split_type || currentProgram?.split_type || "custom",
     weeks,
   };
 }
@@ -694,14 +1034,20 @@ export async function requestRoutineChange({
     currentProgram
   );
 
-  if (!hasUsableProgram(updatedProgram)) {
+  const reconciledProgram = reconcileRoutineUpdate(
+    updatedProgram,
+    currentProgram,
+    trimmedQuestion
+  );
+
+  if (!hasUsableProgram(reconciledProgram)) {
     throw new Error("Routine update did not produce a usable program.");
   }
 
   return {
     shouldUpdate: true,
     reply,
-    updatedProgram,
+    updatedProgram: reconciledProgram,
   };
 }
 
@@ -1055,9 +1401,18 @@ Read the workout text visible in these images and return plain text only.
 Rules:
 - Preserve the visible routine name if there is one.
 - Preserve the schedule order exactly as shown.
-- For each visible workout day, write one line like "Day 1 - Upper Body" or "Day 12 - Cardio + Core".
+- For each visible workout day, keep the day heading exactly as shown.
+- If exercises are listed under a day, include EVERY visible exercise line under that day.
+- If sets, reps, tempos, supersets, rest times, notes, or intensity cues are visible, preserve them on the same line.
+- Use a readable structure like:
+  Day 1 - Upper Body
+  - Push-Up — 3 x 12
+  - Pike Push-Up — 3 x 10
+  Day 2 - Lower Body
+  - Bodyweight Squat — 4 x 15
 - Keep "Rest" days as rest.
 - Keep any visible notes like "Try an advanced move".
+- If multiple exercises are clearly visible, do NOT summarize the day as just "Upper Body" or "Leg Day".
 - Do NOT output JSON.
 - Do NOT invent exercises yet.
 - Do NOT explain anything. Return only the extracted routine text.`;
@@ -1074,9 +1429,13 @@ Rules:
     "split_type": "custom",
     "weeks": [...]
   }
+- If the extracted text clearly lists exercises for a day, preserve ALL of those visible exercises in the JSON.
+- Do NOT compress a detailed day into a generic theme day.
 - If the text only gives workout themes like "Upper Body", "Lower Body", "Core", "Cardio + Core", or "Upper Body + Lower Body", invent sensible bodyweight or minimal-equipment exercises for that theme.
 - Rest days should remain in the schedule but may have zero exercises.
 - Every non-rest day must have at least 3 useful exercises.
+- If a day clearly shows more than 3 exercises, keep the full list instead of trimming it down.
+- Preserve the visible order of exercises within each day whenever possible.
 - Keep the schedule order from the extracted text.
 - If only one week is available, repeat it until there are 4 weeks.
 - Use sensible defaults for sets, reps, RPE, and rest seconds.`;
@@ -1085,6 +1444,8 @@ Rules:
 
 IF any vital data (like RPE or Rest time) is missing from the images, you MUST invent sensible defaults (e.g. RPE 8, 120s rest).
 IF the image is a calendar or plan that only shows workout themes like "Upper Body", "Core", "Cardio + Core", or "Rest", you MUST still turn every non-rest day into a usable workout by inventing sensible bodyweight exercises that match that theme.
+IF a day clearly lists individual exercises, you MUST preserve all visible exercises for that day instead of summarizing or trimming the list.
+DO NOT reduce a visible 6-exercise day into a 3-exercise day.
 Assume 4 weeks of training (just duplicate week 1 into week 2, 3, and 4 if only 1 week is shown).
 
 OUTPUT FORMAT: You MUST respond with ONLY valid JSON matching this structure exactly (do not wrap in markdown blocks, just raw JSON):
@@ -1136,7 +1497,7 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
       ],
       model: VISION_MODEL,
       temperature: 0.1,
-      max_tokens: 2500,
+      max_tokens: 4000,
     }, {
       timeoutMs: 45000,
     });
@@ -1155,7 +1516,7 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
       ],
       model: MODEL,
       temperature: 0.35,
-      max_tokens: 5000,
+      max_tokens: 7000,
       response_format: { type: "json_object" },
     }, {
       timeoutMs: 25000,
@@ -1200,7 +1561,7 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
       ],
       model: VISION_MODEL,
       temperature: 0.2, // Low temp for extraction tasks
-      max_tokens: 6000,
+      max_tokens: 7000,
     }, {
       timeoutMs: 45000,
     });
