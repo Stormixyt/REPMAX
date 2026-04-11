@@ -43,7 +43,7 @@
         <a href="#features" id="nav-features">Why REPMAX</a>
         <a href="#how-it-works" id="nav-how">System</a>
         <a href="#pricing" id="nav-pricing">Tiers</a>
-        <a href="#community" id="nav-community">Community</a>
+        <a href="#reviews" id="nav-community">Reviews</a>
         <a href="/app" class="nav-app" id="nav-app">Open App</a>
         <a href="#waitlist" class="nav-cta" id="nav-cta">Reserve Spot</a>
       </div>
@@ -229,16 +229,53 @@
           </p>
         </div>
 
+        <div class="tension-overview reveal">
+          <div class="tension-overview-copy">
+            <p class="tension-overview-kicker">Built for actual momentum</p>
+            <h3>Logging is easy. Running the full system is where most apps collapse.</h3>
+            <p>
+              REPMAX is designed to connect programming, adaptation, analytics, and accountability so your training does not turn into another dead dashboard after week one.
+            </p>
+          </div>
+
+          <div class="tension-overview-grid">
+            <div class="tension-overview-tile">
+              <strong>Progression engine</strong>
+              <span>Real split logic, progressive overload, and structure that evolves.</span>
+            </div>
+            <div class="tension-overview-tile">
+              <strong>Adaptive intelligence</strong>
+              <span>The plan responds to performance, consistency, and recovery timing.</span>
+            </div>
+            <div class="tension-overview-tile">
+              <strong>Live accountability</strong>
+              <span>Coaching, social pressure, and better feedback than a silent tracker.</span>
+            </div>
+          </div>
+        </div>
+
         <div class="tension-grid">
           <article class="tension-card tension-card-main reveal">
             <div class="tension-kicker">What usually goes wrong</div>
-            <h3>Generic apps feel dead because they do not run the system for you.</h3>
-            <ul class="tension-list">
-              <li>Random exercise generators disguised as programming</li>
-              <li>Trackers that collect data without turning it into action</li>
-              <li>No real progression logic, deload control, or structure</li>
-              <li>No social energy, no accountability, no sense of momentum</li>
-            </ul>
+            <h3>Generic apps collect effort. They do not convert it into better decisions.</h3>
+            <div class="tension-problem-list">
+              <div class="tension-problem-item">
+                <strong>Random generators</strong>
+                <span>Exercises get shuffled without respecting fatigue, progression, or weekly structure.</span>
+              </div>
+              <div class="tension-problem-item">
+                <strong>Dead trackers</strong>
+                <span>Data gets logged, but nothing in the plan really changes because of it.</span>
+              </div>
+              <div class="tension-problem-item">
+                <strong>Weak progression logic</strong>
+                <span>No real overload model, no deload control, and no sense of where the cycle is heading.</span>
+              </div>
+              <div class="tension-problem-item">
+                <strong>No momentum layer</strong>
+                <span>No coach energy, no accountability, and no community signal pushing you forward.</span>
+              </div>
+            </div>
           </article>
 
           <article class="tension-card reveal reveal-delay-1">
@@ -399,47 +436,60 @@
       </div>
     </section>
 
-    <section class="section community-section" id="community">
-      <div class="container community-grid">
-        <div class="community-copy reveal">
-          <p class="section-label">Community Momentum</p>
-          <h2 class="section-title">Get inside the build before the crowd gets there.</h2>
+    <section class="section proof-section" id="reviews">
+      <div class="container proof-grid">
+        <div class="proof-copy reveal">
+          <p class="section-label">Public Proof</p>
+          <h2 class="section-title">Real public reviews beat made-up testimonials every time.</h2>
           <p class="section-subtitle">
-            The Discord is where drops hit first, feedback gets turned into shipped features, and the most locked-in users are already building momentum together.
+            This block pulls from Trustpilot and only surfaces public 4-star and 5-star reviews. No fake quotes. No screenshots pretending to be proof.
           </p>
-          <div class="community-pill-row">
-            <span>Early access</span>
-            <span>Live build updates</span>
-            <span>Direct feedback loop</span>
-            <span>Daily lock-in energy</span>
+
+          <div class="trust-summary-card" id="trustpilot-summary">
+            <div class="trust-summary-loading">
+              <span class="trust-summary-kicker">Loading public signal</span>
+              <strong>Pulling live Trustpilot data...</strong>
+              <p>We only show reviews that meet the rating filter.</p>
+            </div>
           </div>
-          <div class="community-actions">
-            <a href="https://discord.gg/repmax" class="community-cta" target="_blank" rel="noopener noreferrer">Join the Discord</a>
-            <a href="#waitlist" class="community-secondary">Reserve your spot</a>
+
+          <div class="proof-pill-row">
+            <span>Live Trustpilot source</span>
+            <span>4-star and 5-star only</span>
+            <span>Server-side fetched</span>
+            <span>No fake quotes</span>
           </div>
         </div>
 
-        <div class="community-stack reveal reveal-delay-2">
-          <article class="community-card community-card-primary">
-            <span class="community-card-kicker">Live signal</span>
-            <h3>Already moving before launch day.</h3>
-            <p>Waitlist demand, real users, and early feedback are shaping the product in public.</p>
-          </article>
+        <div class="proof-stage reveal reveal-delay-2">
+          <div class="trustpilot-review-grid" id="trustpilot-review-grid">
+            <article class="trust-review-card trust-review-card-loading">
+              <div class="trust-review-stars loading-line"></div>
+              <div class="loading-line loading-line-title"></div>
+              <div class="loading-line"></div>
+              <div class="loading-line loading-line-short"></div>
+              <div class="trust-review-footer-row">
+                <div class="loading-line loading-line-avatar"></div>
+                <div class="loading-line loading-line-author"></div>
+              </div>
+            </article>
+            <article class="trust-review-card trust-review-card-loading">
+              <div class="trust-review-stars loading-line"></div>
+              <div class="loading-line loading-line-title"></div>
+              <div class="loading-line"></div>
+              <div class="loading-line loading-line-short"></div>
+              <div class="trust-review-footer-row">
+                <div class="loading-line loading-line-avatar"></div>
+                <div class="loading-line loading-line-author"></div>
+              </div>
+            </article>
+          </div>
 
-          <article class="community-card quote-card">
-            <span class="community-card-kicker">Early tester</span>
-            <p>"It actually feels like a training system instead of a glorified note app."</p>
-            <strong>Marcus K.</strong>
-          </article>
-
-          <article class="community-card">
-            <span class="community-card-kicker">What you get</span>
-            <ul class="community-list">
-              <li>See drops before the main launch</li>
-              <li>Talk directly into the build</li>
-              <li>Find people already locked into REPMAX</li>
-            </ul>
-          </article>
+          <div class="trustpilot-actions">
+            <a href="https://nl.trustpilot.com/review/rep-max.app" class="trustpilot-link-btn" target="_blank" rel="noopener noreferrer">
+              View REPMAX on Trustpilot
+            </a>
+          </div>
         </div>
       </div>
     </section>

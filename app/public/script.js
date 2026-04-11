@@ -7,7 +7,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   initNavScroll();
   initMobileMenu();
   initWaitlistForm();
-  await hydrateLandingStats();
+  await Promise.allSettled([
+    hydrateLandingStats(),
+    hydrateTrustpilotReviews()
+  ]);
   initCounterAnimation();
   initDynamicTitle();
   initNotifications();
@@ -88,6 +91,7 @@ function initMobileMenu() {
 const SUPABASE_URL = 'https://hqwnyzmipumhhqmvdzus.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI';
 const LANDING_STATS_ENDPOINT = '/api/landing-stats';
+const TRUSTPILOT_REVIEWS_ENDPOINT = '/api/trustpilot-reviews';
 
 function initWaitlistForm() {
   const forms = document.querySelectorAll('.waitlist-form');
@@ -231,6 +235,176 @@ async function hydrateLandingStats() {
   }
 }
 
+/* --- Trustpilot Reviews --- */
+async function hydrateTrustpilotReviews() {
+  const summaryEl = document.querySelector('#trustpilot-summary');
+  const gridEl = document.querySelector('#trustpilot-review-grid');
+
+  if (!summaryEl || !gridEl) return;
+
+  try {
+    const response = await fetch(TRUSTPILOT_REVIEWS_ENDPOINT, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Trustpilot request failed with ${response.status}`);
+    }
+
+    const payload = await response.json();
+    renderTrustpilotSummary(summaryEl, payload);
+    renderTrustpilotReviews(gridEl, payload);
+  } catch (error) {
+    console.warn('[REPMAX] Failed to load Trustpilot reviews:', error);
+    const fallbackPayload = {
+      business: { name: 'REPMAX', trustScore: 0, numberOfReviews: 0 },
+      reviews: [],
+      minimumRating: 4,
+      sourceUrl: 'https://nl.trustpilot.com/review/rep-max.app',
+      error: 'unavailable'
+    };
+    renderTrustpilotSummary(summaryEl, fallbackPayload);
+    renderTrustpilotReviews(gridEl, fallbackPayload);
+  }
+}
+
+function renderTrustpilotSummary(container, payload) {
+  const business = payload?.business || {};
+  const reviewCount = Number(business.numberOfReviews || 0);
+  const trustScore = Number(business.trustScore || 0);
+  const minimumRating = Number(payload?.minimumRating || 4);
+  const sourceUrl = payload?.sourceUrl || 'https://nl.trustpilot.com/review/rep-max.app';
+  const hasQualifyingReviews = Array.isArray(payload?.reviews) && payload.reviews.length > 0;
+
+  if (reviewCount === 0) {
+    container.innerHTML = `
+      <div class="trust-summary-head">
+        <span class="trust-summary-kicker">Trustpilot profile live</span>
+        <span class="trust-summary-pill">Waiting for first review</span>
+      </div>
+      <div class="trust-summary-main trust-summary-main-empty">
+        <div>
+          <strong>No public Trustpilot reviews yet.</strong>
+          <p>The profile is live. Once public reviews land, this section will switch from placeholder mode to real review cards automatically.</p>
+        </div>
+      </div>
+      <a href="${sourceUrl}" class="trust-summary-link" target="_blank" rel="noopener noreferrer">Open the Trustpilot profile</a>
+    `;
+    return;
+  }
+
+  const qualityLabel = hasQualifyingReviews
+    ? `Showing ${minimumRating}-star and 5-star public reviews only`
+    : `No ${minimumRating}-star and 5-star reviews available yet`;
+
+  container.innerHTML = `
+    <div class="trust-summary-head">
+      <span class="trust-summary-kicker">Trustpilot signal</span>
+      <span class="trust-summary-pill">${escapeHtml(qualityLabel)}</span>
+    </div>
+    <div class="trust-summary-main">
+      <div class="trust-summary-score">${trustScore > 0 ? trustScore.toFixed(1) : '0.0'}</div>
+      <div class="trust-summary-meta">
+        <strong>${escapeHtml(business.name || 'REPMAX')}</strong>
+        <p>${reviewCount.toLocaleString()} public review${reviewCount === 1 ? '' : 's'} on Trustpilot</p>
+      </div>
+    </div>
+    <div class="trust-summary-bar">
+      ${renderTrustpilotStars(Math.round(trustScore))}
+    </div>
+    <a href="${sourceUrl}" class="trust-summary-link" target="_blank" rel="noopener noreferrer">Verify on Trustpilot</a>
+  `;
+}
+
+function renderTrustpilotReviews(container, payload) {
+  const reviews = Array.isArray(payload?.reviews) ? payload.reviews : [];
+  const minimumRating = Number(payload?.minimumRating || 4);
+  const sourceUrl = payload?.sourceUrl || 'https://nl.trustpilot.com/review/rep-max.app';
+
+  if (!reviews.length) {
+    const emptyTitle = payload?.error === 'unavailable'
+      ? 'Trustpilot is not responding right now.'
+      : `No public ${minimumRating}-star and 5-star reviews yet.`;
+    const emptyBody = payload?.error === 'unavailable'
+      ? 'The live review feed is temporarily unavailable, but the profile button below still takes people to Trustpilot directly.'
+      : 'As soon as qualifying public reviews show up for REPMAX, they will appear here automatically instead of fake testimonial cards.';
+
+    container.innerHTML = `
+      <article class="trust-review-card trust-review-empty">
+        <span class="trust-review-tag">Live section ready</span>
+        <h3>${escapeHtml(emptyTitle)}</h3>
+        <p>${escapeHtml(emptyBody)}</p>
+        <a href="${sourceUrl}" class="trust-inline-link" target="_blank" rel="noopener noreferrer">Open Trustpilot</a>
+      </article>
+    `;
+    return;
+  }
+
+  container.innerHTML = reviews.map((review) => {
+    const publishedDate = formatReviewDate(review.publishedDate);
+    const reviewCountLabel = Number(review.consumer?.numberOfReviews || 0);
+    const countryCode = review.consumer?.countryCode ? ` ${escapeHtml(review.consumer.countryCode)}` : '';
+    const avatar = getReviewerInitial(review.consumer?.displayName);
+
+    return `
+      <article class="trust-review-card">
+        <div class="trust-review-top">
+          <div class="trust-review-stars" aria-label="Rated ${Number(review.rating || 0)} out of 5">
+            ${renderTrustpilotStars(Number(review.rating || 0))}
+          </div>
+          <span class="trust-review-date">${escapeHtml(publishedDate)}</span>
+        </div>
+        <h3>${escapeHtml(review.title || 'Trustpilot review')}</h3>
+        <p>${escapeHtml(review.text || '')}</p>
+        <div class="trust-review-footer">
+          <div class="trust-review-avatar">${escapeHtml(avatar)}</div>
+          <div class="trust-review-author">
+            <strong>${escapeHtml(review.consumer?.displayName || 'Trustpilot reviewer')}</strong>
+            <span>${reviewCountLabel} review${reviewCountLabel === 1 ? '' : 's'}${countryCode}</span>
+          </div>
+          ${review.verification?.isVerified ? '<span class="trust-review-verified">Verified</span>' : ''}
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+function renderTrustpilotStars(rating) {
+  const safeRating = Math.max(0, Math.min(5, Number(rating || 0)));
+  return Array.from({ length: 5 }, (_, index) => {
+    const active = index < safeRating ? ' active' : '';
+    return `<span class="trust-star${active}"></span>`;
+  }).join('');
+}
+
+function formatReviewDate(value) {
+  if (!value) return 'Recent review';
+
+  try {
+    return new Date(value).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  } catch {
+    return 'Recent review';
+  }
+}
+
+function getReviewerInitial(name) {
+  const first = String(name || 'R').trim().charAt(0).toUpperCase();
+  return first || 'R';
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function setLiveStat(key, rawValue) {
   const value = Number(rawValue);
   if (!Number.isFinite(value) || value < 0) return;
@@ -322,38 +496,10 @@ function initDynamicTitle() {
 
 /* --- Notifications (Social Proof & Live Signups) --- */
 function initNotifications() {
-  // 1. Fake Signups (Less frequent, more realistic)
-  const names = [
-    'Marcus K.', 'Jake T.', 'Aiden S.', 'David L.', 'Omar M.',
-    'Ethan R.', 'Lucas F.', 'Kai N.', 'Noah W.', 'Liam B.',
-    'Mateo C.', 'Julian H.', 'Alex P.', 'Chris D.'
-  ];
-
-  const messages = [
-    'just joined the waitlist',
-    'secured their early access spot',
-    'just got on the waitlist'
-  ];
-
-  function showRandomNotification() {
-    const name = names[Math.floor(Math.random() * names.length)];
-    const msg = messages[Math.floor(Math.random() * messages.length)];
-    showToast(name, msg);
-  }
-
-  // Show fake ones every 45 to 90 seconds (much less annoying)
-  setTimeout(() => {
-    showRandomNotification();
-    setInterval(() => {
-      showRandomNotification();
-    }, 45000 + Math.random() * 45000);
-  }, 20000);
-
-  // 2. REAL Live Signups via Supabase Websockets
+  // REAL live signups via Supabase Realtime
   try {
     const channel = supabase.channel('public:waitlist')
     channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'waitlist' }, payload => {
-      // Whenever ANYONE inserts into the waitlist DB, trigger a toast immediately
       showToast('A new lifter', 'just joined the waitlist! 🚀');
       incrementWaitlistCount();
     }).subscribe();

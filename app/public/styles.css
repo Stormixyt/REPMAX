@@ -901,6 +901,107 @@ img {
   box-shadow: 0 0 18px rgba(204, 255, 0, 0.38);
 }
 
+.tension-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.tension-overview-copy,
+.tension-overview-tile {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.tension-overview-copy {
+  padding: 30px;
+  background:
+    radial-gradient(circle at top left, rgba(91, 217, 255, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+    rgba(10, 12, 16, 0.92);
+}
+
+.tension-overview-kicker {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.tension-overview-copy h3 {
+  margin-top: 16px;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+
+.tension-overview-copy p {
+  margin-top: 16px;
+  max-width: 58ch;
+  color: var(--text-secondary);
+  font-size: 0.96rem;
+  line-height: 1.8;
+}
+
+.tension-overview-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.tension-overview-tile {
+  padding: 22px;
+}
+
+.tension-overview-tile strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: -0.04em;
+}
+
+.tension-overview-tile span {
+  display: block;
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+.tension-problem-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.tension-problem-item {
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tension-problem-item strong {
+  display: block;
+  font-size: 0.92rem;
+  letter-spacing: -0.03em;
+}
+
+.tension-problem-item span {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
 .system-section {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0)),
@@ -1176,6 +1277,365 @@ img {
   font-size: 0.88rem;
 }
 
+.proof-section {
+  padding-top: 34px;
+}
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.trust-summary-card,
+.trust-review-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+    rgba(10, 12, 16, 0.92);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.2);
+}
+
+.trust-summary-card {
+  padding: 28px;
+  margin-top: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(0, 182, 122, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+    rgba(10, 12, 16, 0.92);
+}
+
+.trust-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trust-summary-kicker {
+  color: #00b67a;
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.trust-summary-loading strong {
+  display: block;
+  margin-top: 18px;
+  font-family: var(--font-display);
+  font-size: 1.18rem;
+  letter-spacing: -0.04em;
+}
+
+.trust-summary-loading p {
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+
+.trust-summary-pill {
+  padding: 10px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(0, 182, 122, 0.22);
+  background: rgba(0, 182, 122, 0.1);
+  color: #9ff3d2;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.trust-summary-main {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+  align-items: center;
+  margin-top: 22px;
+}
+
+.trust-summary-main-empty {
+  grid-template-columns: 1fr;
+}
+
+.trust-summary-score {
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 5vw, 4.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.08em;
+}
+
+.trust-summary-meta strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: -0.04em;
+}
+
+.trust-summary-meta p,
+.trust-summary-main-empty p {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.75;
+}
+
+.trust-summary-main-empty strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.24rem;
+  letter-spacing: -0.04em;
+}
+
+.trust-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.proof-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.proof-pill-row span {
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.trust-summary-link,
+.trustpilot-link-btn,
+.trust-inline-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 54px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  font-size: 0.9rem;
+  font-weight: 800;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.trust-summary-link,
+.trust-inline-link {
+  margin-top: 22px;
+  border: 1px solid rgba(0, 182, 122, 0.18);
+  background: rgba(0, 182, 122, 0.08);
+  color: #b9f9e1;
+}
+
+.trustpilot-link-btn {
+  width: 100%;
+  border: 1px solid rgba(0, 182, 122, 0.16);
+  background: linear-gradient(180deg, rgba(0, 182, 122, 0.18), rgba(0, 182, 122, 0.12));
+  color: #ecfff7;
+}
+
+.trust-summary-link:hover,
+.trustpilot-link-btn:hover,
+.trust-inline-link:hover {
+  transform: translateY(-2px);
+}
+
+.proof-stage {
+  display: grid;
+  gap: 18px;
+}
+
+.trustpilot-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.trust-review-card {
+  padding: 24px;
+  min-height: 260px;
+}
+
+.trust-review-top,
+.trust-review-footer,
+.trust-review-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.trust-review-top {
+  align-items: flex-start;
+}
+
+.trust-review-card h3 {
+  margin-top: 18px;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.trust-review-card p {
+  margin-top: 14px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.75;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+
+.trust-review-date {
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.trust-review-stars {
+  display: flex;
+  gap: 7px;
+}
+
+.trust-star {
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.trust-star.active {
+  background: linear-gradient(180deg, #00d28c, #00b67a);
+  border-color: rgba(0, 182, 122, 0.6);
+  box-shadow: 0 0 16px rgba(0, 182, 122, 0.22);
+}
+
+.trust-review-footer {
+  align-items: center;
+  margin-top: 18px;
+}
+
+.trust-review-avatar {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 182, 122, 0.24);
+  background: rgba(0, 182, 122, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d8fff0;
+  font-family: var(--font-display);
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.trust-review-author {
+  flex: 1;
+}
+
+.trust-review-author strong,
+.trust-review-author span {
+  display: block;
+}
+
+.trust-review-author strong {
+  font-size: 0.9rem;
+  letter-spacing: -0.03em;
+}
+
+.trust-review-author span {
+  margin-top: 4px;
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+}
+
+.trust-review-verified,
+.trust-review-tag {
+  padding: 8px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(0, 182, 122, 0.18);
+  background: rgba(0, 182, 122, 0.08);
+  color: #aef7da;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.trust-review-empty {
+  grid-column: 1 / -1;
+  min-height: unset;
+  background:
+    radial-gradient(circle at top left, rgba(0, 182, 122, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+    rgba(10, 12, 16, 0.92);
+}
+
+.trust-review-empty h3 {
+  margin-top: 18px;
+}
+
+.trustpilot-actions {
+  margin-top: 4px;
+}
+
+.trust-review-card-loading {
+  min-height: 280px;
+}
+
+.loading-line {
+  width: 100%;
+  height: 13px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+  background-size: 200% 100%;
+  animation: trust-loading 1.4s linear infinite;
+}
+
+.loading-line-title {
+  width: 74%;
+  height: 18px;
+  margin-top: 18px;
+}
+
+.loading-line-short {
+  width: 62%;
+}
+
+.loading-line-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
+
+.loading-line-author {
+  width: 42%;
+}
+
+@keyframes trust-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 .cta-section {
   padding-top: 30px;
   padding-bottom: 100px;
@@ -1360,8 +1820,10 @@ img {
 
 @media (max-width: 1180px) {
   .hero-shell,
+  .proof-grid,
   .community-grid,
-  .system-editorial {
+  .system-editorial,
+  .tension-overview {
     grid-template-columns: 1fr;
   }
 
@@ -1384,6 +1846,10 @@ img {
   .tension-card-main {
     grid-column: span 2;
   }
+
+  .trustpilot-review-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 960px) {
@@ -1394,6 +1860,10 @@ img {
 
   .hero-proof-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tension-problem-list {
+    grid-template-columns: 1fr;
   }
 
   .footer-inner,
@@ -1471,6 +1941,10 @@ img {
     grid-column: span 1;
   }
 
+  .proof-pill-row {
+    gap: 10px;
+  }
+
   .section-heading {
     margin-bottom: 40px;
   }
@@ -1515,6 +1989,8 @@ img {
   .system-editorial,
   .pricing-card,
   .community-card,
+  .trust-summary-card,
+  .trust-review-card,
   .cta-panel {
     padding: 20px;
     border-radius: 24px;
