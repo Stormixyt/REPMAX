@@ -379,12 +379,11 @@ export default function Dashboard() {
   const auraLevel = getAuraLevel(stats.streak)
   const avatarSeed = profile?.avatar_seed || user?.id || 'default'
   const avatarUrl = profile?.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
-  const ultraInsights = useMemo(() => buildUltraInsights({
-    profile,
-    workouts: workoutHistory,
-    recentPRs,
-    unit,
-  }), [profile, workoutHistory, recentPRs, unit])
+  const ultraLabHref = '/ultra-lab?tab=intelligence'
+  const ultraLabTitle = isUltra ? 'ULTRA Lab is live inside your app now.' : 'ULTRA Lab keeps the deep analytics off your main dashboard.'
+  const ultraLabBody = isUltra
+    ? 'Open Intelligence for readiness, plateau detection, and PR forecasting, then jump into Import Studio or Social Edge from the same premium surface.'
+    : 'Preview the premium analytics, routine import, and social planning layer before you upgrade. The dashboard stays cleaner either way.'
 
   if (loading) {
     return (
@@ -510,33 +509,22 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {isUltra && (
-        <section className="ultra-intelligence-shell">
-          <div className="ultra-intelligence-header">
-            <div>
-              <div className="ultra-intelligence-kicker">ULTRA ANALYTICS</div>
-              <h3 className="ultra-intelligence-title">Personalized Intelligence Layer</h3>
-            </div>
-            <div className="ultra-intelligence-chip">Live model</div>
+      <section className={`ultra-lab-spotlight ${isUltra ? 'live' : 'locked'}`} onClick={() => navigate(ultraLabHref)}>
+        <div className="ultra-lab-spotlight-copy">
+          <div className="ultra-lab-spotlight-kicker">{isUltra ? 'ULTRA LAB' : 'ULTRA PREVIEW'}</div>
+          <h3 className="ultra-lab-spotlight-title">{ultraLabTitle}</h3>
+          <p className="ultra-lab-spotlight-body">{ultraLabBody}</p>
+          <div className="ultra-lab-spotlight-tags">
+            <span>Intelligence</span>
+            <span>Import Studio</span>
+            <span>Social Edge</span>
           </div>
-
-          <div className="ultra-intelligence-grid">
-            {ultraInsights.map((insight) => {
-              const Icon = ULTRA_INSIGHT_ICONS[insight.id] || RiBrainFill
-              return (
-                <article key={insight.id} className="ultra-insight-card">
-                  <div className="ultra-insight-top">
-                    <span className="ultra-insight-icon"><Icon size={15} /></span>
-                    <span className="ultra-insight-name">{insight.title}</span>
-                  </div>
-                  <div className="ultra-insight-value">{insight.value}</div>
-                  <p className="ultra-insight-note">{insight.note}</p>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-      )}
+        </div>
+        <div className="ultra-lab-spotlight-cta">
+          <div className="ultra-lab-spotlight-chip">{isUltra ? 'Open now' : 'Preview'}</div>
+          <RiArrowRightLine size={18} />
+        </div>
+      </section>
 
       {/* Today's Workout */}
       {todayWorkout ? (

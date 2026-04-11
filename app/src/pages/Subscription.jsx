@@ -17,11 +17,12 @@ const TIERS = {
       'Unlimited AI programs',
       'Weekly AI adaptation',
       'Full periodization cycles',
-      'Advanced analytics',
+      'Advanced progress analytics',
       'Custom themes (4 colors)',
       'Unlimited friends',
       'Group chats',
       'Smart diet tracker',
+      'Premium app skin',
       'PRO badge on profile',
     ]
   },
@@ -36,14 +37,16 @@ const TIERS = {
     popular: true,
     features: [
       'Everything in PRO',
+      'ULTRA Lab intelligence screen',
       'Priority AI processing',
       'Unlimited AI Coach chat',
-      'Recurring buddy series',
+      'Import Studio for text + screenshot routines',
+      'Recurring buddy series insights',
       'AI food photo scanning',
+      'Partner compatibility + accountability board',
       'Data export (CSV/PDF)',
       'Exclusive ULTRA badge',
-      'Early access to new features',
-      'Direct founder support line',
+      'Early access to new features'
     ]
   }
 }
@@ -51,14 +54,16 @@ const TIERS = {
 const COMPARISON = [
   { feature: 'AI Programs', free: '1', pro: '∞', ultra: '∞ + Priority' },
   { feature: 'AI Coach', free: '—', pro: '10/day', ultra: 'Unlimited' },
+  { feature: 'ULTRA Lab', free: 'Preview', pro: 'Preview', ultra: 'Full access' },
+  { feature: 'Routine Import', free: '—', pro: '—', ultra: 'Text + screenshots + edit' },
   { feature: 'Friends', free: '3', pro: '∞', ultra: '∞' },
   { feature: 'Themes', free: 'Default', pro: '4 colors', ultra: '4 colors' },
-  { feature: 'Analytics', free: 'Basic', pro: 'Advanced', ultra: 'Advanced+' },
-  { feature: 'Social', free: 'DMs only', pro: 'Groups + invites', ultra: 'Groups + recurring series' },
+  { feature: 'Analytics', free: 'Basic', pro: 'Advanced', ultra: 'Intelligence layer' },
+  { feature: 'Social', free: 'DMs only', pro: 'Groups + invites', ultra: 'Social Edge planner' },
   { feature: 'Diet Tracker', free: 'Basic', pro: 'Full + search', ultra: 'Full + AI scan' },
   { feature: 'Data Export', free: '—', pro: '—', ultra: 'CSV / PDF' },
   { feature: 'Badge', free: '—', pro: '⭐ PRO', ultra: '🚀 ULTRA' },
-  { feature: 'Support', free: 'Community', pro: 'Priority', ultra: 'Founder line' },
+  { feature: 'Support', free: 'Community', pro: 'Priority', ultra: 'Priority' },
 ]
 
 export default function Subscription() {
@@ -233,7 +238,7 @@ export default function Subscription() {
           Choose Your <span style={{ color: 'var(--accent)' }}>Level</span>
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: 340, margin: '0 auto', lineHeight: 1.6 }}>
-          Free is powerful. PRO is serious. ULTRA is unfair.
+          Free is powerful. PRO refines the whole app. ULTRA unlocks the lab: intelligence, import studio, and social edge.
         </p>
       </div>
 
@@ -278,6 +283,11 @@ export default function Subscription() {
                 REPMAX {tier.name}
               </div>
               <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: 16 }}>{tier.tagline}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 auto 14px', maxWidth: 280, lineHeight: 1.55 }}>
+                {isUltraTier
+                  ? 'ULTRA moves the deep analytics, custom routine import, and premium social planning into one dedicated screen.'
+                  : 'PRO upgrades the visual polish, smarter tracking, and faster access to the premium surfaces around the app.'}
+              </div>
 
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 2, marginBottom: 4 }}>
                 <span style={{ fontSize: '1rem', color: 'var(--text-tertiary)' }}>{tier.currency}</span>

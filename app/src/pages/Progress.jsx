@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { formatWeight, formatVolume, weightLabel } from '../lib/units'
 import { getLearningProgress, getLearningStatus } from '../lib/learningEngine'
 
 export default function Progress() {
-  const { user, profile } = useAuth()
+  const { user, profile, isUltra } = useAuth()
+  const navigate = useNavigate()
   const [prs, setPRs] = useState([])
   const [workouts, setWorkouts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -110,6 +112,21 @@ export default function Progress() {
       <div className="page-header">
         <h1 className="page-title">Your <span className="accent">Progress</span></h1>
       </div>
+
+      <section className={`progress-ultra-cta ${isUltra ? 'live' : 'locked'}`} onClick={() => navigate('/ultra-lab?tab=intelligence')}>
+        <div>
+          <div className="progress-ultra-kicker">{isUltra ? 'ULTRA LAB' : 'ULTRA PREVIEW'}</div>
+          <div className="progress-ultra-title">{isUltra ? 'Open Intelligence from your progress history.' : 'See how ULTRA turns your history into decisions.'}</div>
+          <div className="progress-ultra-copy">
+            {isUltra
+              ? 'Readiness, plateau detection, exercise ROI, and next-session forecasting now live in one dedicated screen.'
+              : 'Preview personalized intelligence, import studio, and premium social planning before you upgrade.'}
+          </div>
+        </div>
+        <button className="btn btn-secondary btn-sm">
+          {isUltra ? 'Open ULTRA Lab' : 'Preview ULTRA'}
+        </button>
+      </section>
 
       {/* Learning status for quick onboarding users */}
       {learningStatus && (

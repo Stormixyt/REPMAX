@@ -20,6 +20,7 @@ import HomeExercises from './pages/HomeExercises'
 import Recovery from './pages/Recovery'
 import AdminPanel from './pages/AdminPanel'
 import RunTracker from './pages/RunTracker'
+import UltraLab from './pages/UltraLab'
 import Layout from './components/Layout'
 import CallScreen from './components/CallScreen'
 import UsernameModal from './components/UsernameModal'
@@ -409,6 +410,7 @@ export default function App() {
           <Route path="/coach" element={<AICoach />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/run" element={<RunTracker />} />
+          <Route path="/ultra-lab" element={<UltraLab />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/app" replace />} />

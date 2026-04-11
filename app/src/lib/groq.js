@@ -1635,6 +1635,62 @@ async function repairVisionProgramJson(rawOutput) {
   return JSON.parse(repairedContent);
 }
 
+export async function generateProgramFromText(routineText) {
+  const TEXT_TO_PROGRAM_PROMPT = `You are REPMAX Program Builder.
+
+Turn the extracted workout text below into a valid JSON program for the REPMAX app.
+
+Rules:
+- Output ONLY valid JSON.
+- Use:
+  {
+    "name": "Custom Routine",
+    "split_type": "custom",
+    "weeks": [...]
+  }
+- If the extracted text clearly lists exercises for a day, preserve ALL of those visible exercises in the JSON.
+- Do NOT compress a detailed day into a generic theme day.
+- If the text only gives workout themes like "Upper Body", "Lower Body", "Core", "Cardio + Core", or "Upper Body + Lower Body", invent sensible bodyweight or minimal-equipment exercises for that theme.
+- Rest days should remain in the schedule but may have zero exercises.
+- Every non-rest day must have at least 3 useful exercises.
+- If a day clearly shows more than 3 exercises, keep the full list instead of trimming it down.
+- Preserve the visible order of exercises within each day whenever possible.
+- Keep the schedule order from the extracted text.
+- If only one week is available, repeat it until there are 4 weeks.
+- Use sensible defaults for sets, reps, RPE, and rest seconds.`;
+
+  try {
+    const data = await callGroq({
+      messages: [
+        { role: "system", content: TEXT_TO_PROGRAM_PROMPT },
+        {
+          role: "user",
+          content: `Extracted routine text:\n\n${routineText}`,
+        },
+      ],
+      model: MODEL,
+      temperature: 0.35,
+      max_tokens: 7000,
+      response_format: { type: "json_object" },
+    }, {
+      timeoutMs: 25000,
+    });
+
+    const content = data?.choices?.[0]?.message?.content?.trim();
+    if (!content) {
+      throw new Error("Routine text conversion returned empty output");
+    }
+
+    return {
+      success: true,
+      program: normalizeVisionProgramPayload(JSON.parse(content)),
+    };
+  } catch (error) {
+    console.error("Routine text import failed:", error);
+    return { success: false, error };
+  }
+}
+
 export async function generateProgramFromImages(base64Images) {
   const OCR_PROMPT = `You are REPMAX Vision OCR.
 

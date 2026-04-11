@@ -270,17 +270,13 @@ export default function Settings() {
       </div>
 
       <div className="settings-item" onClick={() => {
-        if (!isPro) {
-          navigate('/subscribe')
-        } else {
-          navigate('/setup?vision=true')
-        }
+        navigate('/ultra-lab?tab=import')
       }}>
         <div className="settings-item-left">
           <div className="settings-icon"><RiImageFill size={18} /></div>
           <div>
-            <div className="settings-label" style={{ color: isPro ? 'var(--text-primary)' : 'var(--accent)' }}>Upload Custom Routine</div>
-            <div className="settings-value">{isPro ? 'Build program from pictures' : 'PRO Feature'}</div>
+            <div className="settings-label" style={{ color: isUltra ? 'var(--text-primary)' : 'var(--accent)' }}>Import Studio</div>
+            <div className="settings-value">{isUltra ? 'ULTRA screenshots + text import' : 'ULTRA preview'}</div>
           </div>
         </div>
         <RiArrowRightSLine size={20} className="settings-chevron" />
