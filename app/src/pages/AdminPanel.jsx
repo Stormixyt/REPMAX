@@ -10,6 +10,7 @@ export default function AdminPanel() {
   const [tab, setTab] = useState('dashboard')
   const [stats, setStats] = useState(null)
   const [requests, setRequests] = useState([])
+  const [requestsError, setRequestsError] = useState('')
   const [users, setUsers] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -83,13 +84,49 @@ export default function AdminPanel() {
   }
 
   async function loadRequests() {
-    const { data } = await supabase
+    setRequestsError('')
+
+    const { data: requestRows, error: requestError } = await supabase
       .from('subscription_requests')
-      .select('*, profiles!subscription_requests_user_id_fkey(display_name, username, email, created_at, current_streak)')
+      .select('id, user_id, requested_tier, status, reason, reviewed_by, reviewed_at, created_at')
       .order('created_at', { ascending: false })
       .limit(100)
 
-    if (mounted.current) setRequests(data || [])
+    if (!mounted.current) return
+
+    if (requestError) {
+      console.warn('[REPMAX] Failed to load subscription requests:', requestError)
+      setRequests([])
+      setRequestsError(requestError.message || 'Could not load requests')
+      return
+    }
+
+    const baseRows = requestRows || []
+    if (baseRows.length === 0) {
+      setRequests([])
+      return
+    }
+
+    const userIds = Array.from(new Set(baseRows.map(r => r.user_id).filter(Boolean)))
+    const { data: profileRows, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, display_name, username, created_at, current_streak')
+      .in('id', userIds)
+
+    if (!mounted.current) return
+
+    if (profileError) {
+      console.warn('[REPMAX] Failed to load profiles for requests:', profileError)
+      setRequestsError(profileError.message || '')
+    }
+
+    const profileById = new Map((profileRows || []).map(p => [p.id, p]))
+    const enriched = baseRows.map((row) => ({
+      ...row,
+      profiles: profileById.get(row.user_id) || null
+    }))
+
+    setRequests(enriched)
   }
 
   async function loadUsers() {
@@ -297,7 +334,16 @@ export default function AdminPanel() {
                 </div>
               )}
 
-              {requests.length === 0 ? (
+              {requestsError ? (
+                <div className="empty-state">
+                  <div className="empty-emoji">⚠️</div>
+                  <h3 className="empty-title">Couldn't load requests</h3>
+                  <p className="empty-text">{requestsError}</p>
+                  <button className="btn btn-secondary" style={{ marginTop: 10 }} onClick={loadRequests}>
+                    <RiRefreshLine size={16} /> Retry
+                  </button>
+                </div>
+              ) : requests.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-emoji">📭</div>
                   <h3 className="empty-title">No requests yet</h3>
