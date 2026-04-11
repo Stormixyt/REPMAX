@@ -3,7 +3,7 @@
  * Edge Function "ai-proxy" backed by OpenRouter. The actual API key lives
  * only in Supabase secrets, never in this bundle.
  */
-import { invokeEdgeFunction } from "./supabase";
+import { invokeEdgeFunction, invokeServerApi } from "./supabase";
 
 const MODEL = "meta-llama/llama-3.3-70b-instruct:exacto";
 const VISION_MODEL = "meta-llama/llama-4-scout";
@@ -168,10 +168,64 @@ Program editor rules:
  * we abort and fall back to the local program generator.
  */
 async function callGroq(body, options = {}) {
-  return invokeEdgeFunction("ai-proxy", body, {
-    timeoutMs: options.timeoutMs || 15000,
-    requireAuth: true,
-  })
+  const timeoutMs = options.timeoutMs || 15000;
+
+  try {
+    return await invokeEdgeFunction("ai-proxy", body, {
+      timeoutMs,
+      requireAuth: true,
+    });
+  } catch (edgeError) {
+    const status = edgeError?.status;
+    const message = String(edgeError?.message || "");
+    const shouldFallback =
+      status === 404 ||
+      status === 500 ||
+      status === 503 ||
+      status === 504 ||
+      /not configured|not deployed|timed out|function/i.test(message);
+
+    if (!shouldFallback) {
+      throw edgeError;
+    }
+
+    console.warn("[REPMAX] Edge AI proxy failed, trying Vercel API fallback:", message);
+    return invokeServerApi("/api/ai-proxy", body, {
+      timeoutMs,
+      requireAuth: true,
+    });
+  }
+}
+
+function normalizeProgramProfile(profile = {}) {
+  const trainingDays = Array.isArray(profile.training_days)
+    ? profile.training_days
+    : Array.isArray(profile.days)
+      ? profile.days
+      : ["Mon", "Wed", "Fri"];
+
+  const equipmentValue = profile.equipment;
+  const equipment = Array.isArray(equipmentValue)
+    ? equipmentValue
+    : equipmentValue
+      ? [equipmentValue]
+      : ["full_gym"];
+
+  return {
+    ...profile,
+    goal: profile.goal || "general",
+    experience_level: profile.experience_level || profile.level || "intermediate",
+    training_days: trainingDays,
+    preferred_split: profile.preferred_split || profile.split || "full_body",
+    equipment,
+    display_name: profile.display_name || profile.name || "Athlete",
+    focus_muscles: Array.isArray(profile.focus_muscles)
+      ? profile.focus_muscles
+      : Array.isArray(profile.focusMuscles)
+        ? profile.focusMuscles
+        : [],
+    injuries: Array.isArray(profile.injuries) ? profile.injuries : [],
+  };
 }
 
 function formatCoachList(items, fallback = "Not set") {
@@ -1052,7 +1106,8 @@ export async function requestRoutineChange({
 }
 
 export async function generateProgram(profile) {
-  const userPrompt = buildUserPrompt(profile);
+  const normalizedProfile = normalizeProgramProfile(profile);
+  const userPrompt = buildUserPrompt(normalizedProfile);
 
   try {
     const data = await callGroq({
@@ -1072,21 +1127,30 @@ export async function generateProgram(profile) {
     return { success: true, program: programJson };
   } catch (err) {
     console.warn("AI generation failed/timed out, using local fallback:", err.message);
-    return generateFallbackProgram(profile);
+    return generateFallbackProgram(normalizedProfile);
   }
 }
 
 function generateFallbackProgram(profile) {
-  const days = profile.training_days || ['Mon', 'Wed', 'Fri'];
-  const goal = profile.goal || 'general';
-  const level = profile.experience_level || 'intermediate';
-  const split = profile.preferred_split || 'full_body';
+  const normalized = normalizeProgramProfile(profile);
+  const days = normalized.training_days || ['Mon', 'Wed', 'Fri'];
+  const goal = normalized.goal || 'general';
+  const level = normalized.experience_level || 'intermediate';
+  const split = normalized.preferred_split || 'full_body';
+  const equipment = normalized.equipment || ['full_gym'];
+  const primaryEquipment = equipment.includes('full_gym')
+    ? 'full_gym'
+    : equipment.includes('home_gym')
+      ? 'home_gym'
+      : equipment.includes('dumbbells')
+        ? 'dumbbells'
+        : 'bodyweight';
 
   const repRange = { strength: 5, hypertrophy: 10, athletic: 8, general: 10 };
   const baseReps = repRange[goal] || 10;
   const baseSets = level === 'beginner' ? 3 : 4;
 
-  const exerciseBank = {
+  const gymExerciseBank = {
     push: [
       { name: 'Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Controlled descent' },
       { name: 'Overhead Press', sets: 3, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Brace core' },
@@ -1137,13 +1201,175 @@ function generateFallbackProgram(profile) {
     ]
   };
 
-  function getDayExercises(dayIndex, numDays) {
+  const homeExerciseBank = {
+    push: [
+      { name: 'Push-Up', sets: baseSets, reps: 12, rpe: 7.5, rest_seconds: 75, notes: 'Leave 1 to 2 reps in reserve.' },
+      { name: 'Pike Push-Up', sets: 3, reps: 10, rpe: 8, rest_seconds: 75, notes: 'Bias the shoulders.' },
+      { name: 'Chair Dips', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Use a bench or chair.' },
+      { name: 'Decline Push-Up', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Elevate feet if possible.' },
+      { name: 'Diamond Push-Up', sets: 3, reps: 8, rpe: 8.5, rest_seconds: 75, notes: 'Slow eccentric.' },
+    ],
+    pull: [
+      { name: 'Inverted Row', sets: baseSets, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Use a sturdy table or bar.' },
+      { name: 'Doorframe Row', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Control the tempo.' },
+      { name: 'Superman Hold', sets: 3, reps: 30, rpe: 7, rest_seconds: 60, notes: 'Seconds per set.' },
+      { name: 'Reverse Snow Angel', sets: 3, reps: 12, rpe: 7.5, rest_seconds: 60, notes: 'Squeeze upper back.' },
+      { name: 'Towel Curl', sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: 'Drive the resistance with your foot.' },
+    ],
+    legs: [
+      { name: 'Bodyweight Squat', sets: baseSets, reps: 15, rpe: 7.5, rest_seconds: 75, notes: 'Full range of motion.' },
+      { name: 'Walking Lunge', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Per leg.' },
+      { name: 'Bulgarian Split Squat', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Per leg.' },
+      { name: 'Single-Leg Calf Raise', sets: 4, reps: 15, rpe: 7.5, rest_seconds: 45, notes: 'Per leg.' },
+      { name: 'Glute Bridge', sets: 3, reps: 15, rpe: 7.5, rest_seconds: 60, notes: 'Pause hard at the top.' },
+    ],
+    upper: [
+      { name: 'Push-Up', sets: baseSets, reps: 12, rpe: 7.5, rest_seconds: 75, notes: 'Smooth tempo.' },
+      { name: 'Inverted Row', sets: baseSets, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Use a sturdy surface.' },
+      { name: 'Pike Push-Up', sets: 3, reps: 10, rpe: 8, rest_seconds: 75, notes: 'Shoulder focus.' },
+      { name: 'Doorframe Row', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Pause at the squeeze.' },
+      { name: 'Chair Dips', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Control the depth.' },
+    ],
+    lower: [
+      { name: 'Bodyweight Squat', sets: baseSets, reps: 15, rpe: 7.5, rest_seconds: 75, notes: 'Stay balanced over mid-foot.' },
+      { name: 'Bulgarian Split Squat', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Per leg.' },
+      { name: 'Walking Lunge', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Per leg.' },
+      { name: 'Single-Leg Romanian Deadlift', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 75, notes: 'Control your balance.' },
+      { name: 'Single-Leg Calf Raise', sets: 4, reps: 15, rpe: 7.5, rest_seconds: 45, notes: 'Per leg.' },
+    ],
+    full: [
+      { name: 'Push-Up', sets: baseSets, reps: 12, rpe: 7.5, rest_seconds: 75, notes: 'Leave 1 to 2 reps in reserve.' },
+      { name: 'Bodyweight Squat', sets: baseSets, reps: 15, rpe: 7.5, rest_seconds: 75, notes: 'Full depth.' },
+      { name: 'Inverted Row', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Use a sturdy surface.' },
+      { name: 'Walking Lunge', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Per leg.' },
+      { name: 'Pike Push-Up', sets: 3, reps: 10, rpe: 8, rest_seconds: 75, notes: 'Shoulder bias.' },
+      { name: 'Plank', sets: 3, reps: 45, rpe: 7, rest_seconds: 45, notes: 'Seconds per set.' },
+    ]
+  };
+
+  const dumbbellExerciseBank = {
+    push: [
+      { name: 'Dumbbell Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Controlled descent and full lockout.' },
+      { name: 'Incline Dumbbell Press', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 90, notes: 'Use a low incline.' },
+      { name: 'Seated Dumbbell Shoulder Press', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 75, notes: 'Keep ribs down.' },
+      { name: 'Dumbbell Lateral Raise', sets: 3, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Control the eccentric.' },
+      { name: 'Close-Grip Push-Up', sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: 'Bias the triceps.' },
+      { name: 'Overhead Dumbbell Triceps Extension', sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: 'Stretch at the bottom.' },
+    ],
+    pull: [
+      { name: 'One-Arm Dumbbell Row', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 75, notes: 'Pause at the top.' },
+      { name: 'Chest-Supported Dumbbell Row', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 75, notes: 'Keep torso still.' },
+      { name: 'Dumbbell Rear Delt Fly', sets: 3, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Light and controlled.' },
+      { name: 'Hammer Curl', sets: 3, reps: 12, rpe: 8, rest_seconds: 45, notes: 'Neutral grip throughout.' },
+      { name: 'Incline Dumbbell Curl', sets: 3, reps: 12, rpe: 8, rest_seconds: 45, notes: 'Stretch fully.' },
+      { name: 'Renegade Row', sets: 3, reps: 8, rpe: 8, rest_seconds: 75, notes: 'Stay braced.' },
+    ],
+    legs: [
+      { name: 'Goblet Squat', sets: baseSets, reps: baseReps, rpe: 8, rest_seconds: 90, notes: 'Stay upright.' },
+      { name: 'Dumbbell Romanian Deadlift', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Hinge through the hips.' },
+      { name: 'Bulgarian Split Squat', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Per leg.' },
+      { name: 'Reverse Lunge', sets: 3, reps: 10, rpe: 8, rest_seconds: 75, notes: 'Per leg.' },
+      { name: 'Dumbbell Hip Thrust', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Pause at the top.' },
+      { name: 'Standing Calf Raise', sets: 4, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Use full range.' },
+    ],
+    upper: [
+      { name: 'Dumbbell Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Controlled tempo.' },
+      { name: 'One-Arm Dumbbell Row', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 75, notes: 'Brace with the free hand.' },
+      { name: 'Seated Dumbbell Shoulder Press', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 75, notes: 'Do not overarch.' },
+      { name: 'Chest-Supported Dumbbell Row', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 75, notes: 'Stay strict.' },
+      { name: 'Dumbbell Lateral Raise', sets: 3, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Smooth reps.' },
+      { name: 'Hammer Curl', sets: 3, reps: 12, rpe: 8, rest_seconds: 45, notes: 'Finish strong.' },
+    ],
+    lower: [
+      { name: 'Goblet Squat', sets: baseSets, reps: baseReps, rpe: 8, rest_seconds: 90, notes: 'Full range.' },
+      { name: 'Dumbbell Romanian Deadlift', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Keep a soft knee bend.' },
+      { name: 'Bulgarian Split Squat', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Per leg.' },
+      { name: 'Step-Up', sets: 3, reps: 10, rpe: 8, rest_seconds: 75, notes: 'Drive through the front foot.' },
+      { name: 'Dumbbell Hip Thrust', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Squeeze glutes hard.' },
+      { name: 'Standing Calf Raise', sets: 4, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Pause at the top.' },
+    ],
+    full: [
+      { name: 'Goblet Squat', sets: baseSets, reps: baseReps, rpe: 8, rest_seconds: 90, notes: 'Stay stacked.' },
+      { name: 'Dumbbell Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 90, notes: 'Drive evenly.' },
+      { name: 'One-Arm Dumbbell Row', sets: 3, reps: baseReps, rpe: 7.5, rest_seconds: 75, notes: 'Per side.' },
+      { name: 'Seated Dumbbell Shoulder Press', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 75, notes: 'Smooth and controlled.' },
+      { name: 'Dumbbell Romanian Deadlift', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 90, notes: 'Own the hinge.' },
+      { name: 'Plank', sets: 3, reps: 45, rpe: 7, rest_seconds: 45, notes: 'Seconds per set.' },
+    ],
+  };
+
+  const homeGymExerciseBank = {
+    push: [
+      { name: 'Barbell Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Use safety pins if training solo.' },
+      { name: 'Standing Overhead Press', sets: 3, reps: 8, rpe: 7.5, rest_seconds: 90, notes: 'Brace hard.' },
+      { name: 'Incline Dumbbell Press', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 90, notes: 'Low incline works best.' },
+      { name: 'Dumbbell Lateral Raise', sets: 3, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Stay strict.' },
+      { name: 'Close-Grip Bench Press', sets: 3, reps: 8, rpe: 8, rest_seconds: 90, notes: 'Triceps focus.' },
+      { name: 'Bench Dips', sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: 'Controlled depth.' },
+    ],
+    pull: [
+      { name: 'Barbell Row', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Keep torso stable.' },
+      { name: 'Pull-Up', sets: 3, reps: 8, rpe: 8, rest_seconds: 90, notes: 'Use band assist if needed.' },
+      { name: 'One-Arm Dumbbell Row', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 75, notes: 'Pause at the top.' },
+      { name: 'Rear Delt Fly', sets: 3, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Light and strict.' },
+      { name: 'Barbell Curl', sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: 'No body English.' },
+      { name: 'Hammer Curl', sets: 3, reps: 12, rpe: 8, rest_seconds: 45, notes: 'Neutral grip.' },
+    ],
+    legs: [
+      { name: 'Back Squat', sets: baseSets, reps: baseReps, rpe: 8, rest_seconds: 150, notes: 'Brace and hit depth.' },
+      { name: 'Romanian Deadlift', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Hinge with control.' },
+      { name: 'Bulgarian Split Squat', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Per leg.' },
+      { name: 'Barbell Hip Thrust', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Pause at lockout.' },
+      { name: 'Walking Lunge', sets: 3, reps: 12, rpe: 8, rest_seconds: 75, notes: 'Per leg.' },
+      { name: 'Standing Calf Raise', sets: 4, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Slow and controlled.' },
+    ],
+    upper: [
+      { name: 'Barbell Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Smooth descent.' },
+      { name: 'Barbell Row', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Drive elbows back.' },
+      { name: 'Standing Overhead Press', sets: 3, reps: 8, rpe: 7.5, rest_seconds: 90, notes: 'Stay tight.' },
+      { name: 'Pull-Up', sets: 3, reps: 8, rpe: 8, rest_seconds: 90, notes: 'Use full range.' },
+      { name: 'Dumbbell Lateral Raise', sets: 3, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Shoulder control.' },
+      { name: 'Barbell Curl', sets: 3, reps: 12, rpe: 8, rest_seconds: 60, notes: 'Stay strict.' },
+    ],
+    lower: [
+      { name: 'Back Squat', sets: baseSets, reps: baseReps, rpe: 8, rest_seconds: 150, notes: 'Brace hard.' },
+      { name: 'Romanian Deadlift', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Control the stretch.' },
+      { name: 'Front-Foot Elevated Split Squat', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Per leg.' },
+      { name: 'Barbell Hip Thrust', sets: 3, reps: 10, rpe: 8, rest_seconds: 90, notes: 'Glute lockout.' },
+      { name: 'Hamstring Walkout', sets: 3, reps: 10, rpe: 8, rest_seconds: 60, notes: 'Slow steps.' },
+      { name: 'Standing Calf Raise', sets: 4, reps: 15, rpe: 8, rest_seconds: 45, notes: 'Full stretch.' },
+    ],
+    full: [
+      { name: 'Back Squat', sets: baseSets, reps: baseReps, rpe: 8, rest_seconds: 150, notes: 'Stay braced.' },
+      { name: 'Barbell Bench Press', sets: baseSets, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Own the bar path.' },
+      { name: 'Barbell Row', sets: 3, reps: baseReps, rpe: 7.5, rest_seconds: 120, notes: 'Pull toward lower ribs.' },
+      { name: 'Standing Overhead Press', sets: 3, reps: 8, rpe: 7.5, rest_seconds: 90, notes: 'Stable core.' },
+      { name: 'Romanian Deadlift', sets: 3, reps: 10, rpe: 7.5, rest_seconds: 120, notes: 'Hips back.' },
+      { name: 'Hanging Knee Raise', sets: 3, reps: 12, rpe: 8, rest_seconds: 45, notes: 'Control the swing.' },
+    ],
+  };
+
+  const exerciseBank = (
+    {
+      full_gym: gymExerciseBank,
+      home_gym: homeGymExerciseBank,
+      dumbbells: dumbbellExerciseBank,
+      bodyweight: homeExerciseBank,
+    }[primaryEquipment] || gymExerciseBank
+  );
+
+  const arnoldCycle = ['upper', 'upper', 'legs'];
+
+  function getDayExercises(dayIndex) {
     if (split === 'ppl') {
       const cycle = ['push', 'pull', 'legs'];
       return exerciseBank[cycle[dayIndex % 3]];
     }
     if (split === 'upper_lower') {
       return dayIndex % 2 === 0 ? exerciseBank.upper : exerciseBank.lower;
+    }
+    if (split === 'arnold') {
+      return exerciseBank[arnoldCycle[dayIndex % arnoldCycle.length]];
     }
     if (split === 'bro_split') {
       const cycle = ['push', 'pull', 'legs', 'upper', 'lower'];
@@ -1160,6 +1386,10 @@ function generateFallbackProgram(profile) {
     if (split === 'upper_lower') {
       return dayIndex % 2 === 0 ? 'Upper Body' : 'Lower Body';
     }
+    if (split === 'arnold') {
+      const names = ['Chest & Back', 'Shoulders & Arms', 'Legs'];
+      return names[dayIndex % names.length];
+    }
     if (split === 'bro_split') {
       const names = ['Chest & Triceps', 'Back & Biceps', 'Legs', 'Shoulders & Arms', 'Full Body'];
       return names[dayIndex % 5];
@@ -1175,6 +1405,14 @@ function generateFallbackProgram(profile) {
     if (split === 'upper_lower') {
       return dayIndex % 2 === 0 ? ['chest', 'back', 'shoulders', 'arms'] : ['quads', 'hamstrings', 'glutes', 'calves'];
     }
+    if (split === 'arnold') {
+      const targets = [
+        ['chest', 'back'],
+        ['shoulders', 'biceps', 'triceps'],
+        ['quads', 'hamstrings', 'glutes', 'calves'],
+      ];
+      return targets[dayIndex % targets.length];
+    }
     return ['full body'];
   }
 
@@ -1184,7 +1422,7 @@ function generateFallbackProgram(profile) {
       week_number: weekIdx + 1,
       is_deload: isDeload,
       days: days.map((_, dayIdx) => {
-        const exercises = getDayExercises(dayIdx, days.length).map(ex => ({
+        const exercises = getDayExercises(dayIdx).map(ex => ({
           ...ex,
           sets: isDeload ? Math.max(2, ex.sets - 1) : ex.sets,
           rpe: isDeload ? Math.max(5, ex.rpe - 2) : ex.rpe + (weekIdx * 0.5)
@@ -1198,7 +1436,7 @@ function generateFallbackProgram(profile) {
     };
   });
 
-  const splitNames = { ppl: 'Push/Pull/Legs', upper_lower: 'Upper/Lower', full_body: 'Full Body', bro_split: 'Bro Split' };
+  const splitNames = { ppl: 'Push/Pull/Legs', upper_lower: 'Upper/Lower', full_body: 'Full Body', bro_split: 'Bro Split', arnold: 'Arnold Split' };
 
   return {
     success: true,
@@ -1251,6 +1489,7 @@ Output the updated program for next week ONLY as JSON in the same format.`;
 }
 
 function buildUserPrompt(profile) {
+  const normalized = normalizeProgramProfile(profile);
   const splitMap = {
     ppl: "Push/Pull/Legs (PPL)",
     upper_lower: "Upper/Lower",
@@ -1266,26 +1505,29 @@ function buildUserPrompt(profile) {
     general: "improve overall fitness, build muscle, and get stronger",
   };
 
-  const days = profile.training_days || [];
-  const equipment = profile.equipment || [];
-  const split = splitMap[profile.preferred_split] || profile.preferred_split;
-  const goal = goalDesc[profile.goal] || profile.goal;
-  const level = profile.experience_level || 'intermediate';
-  const prompt = `As an elite strength and conditioning coach, generate a highly optimized ${profile.total_weeks || 4}-week training program in strict JSON format.
+  const days = normalized.training_days || [];
+  const equipment = normalized.equipment || [];
+  const split = splitMap[normalized.preferred_split] || normalized.preferred_split;
+  const goal = goalDesc[normalized.goal] || normalized.goal;
+  const level = normalized.experience_level || 'intermediate';
+  const prompt = `As an elite strength and conditioning coach, generate a highly optimized ${normalized.total_weeks || 4}-week training program in strict JSON format.
 
 Client Profile:
-- Goal: ${profile.goal}
-- Experience Level: ${profile.experience_level}
-- Training Days per Week: ${profile.training_days?.length || 3} (${profile.training_days?.join(', ')})
-- Equipment Available: ${profile.equipment?.join(', ') || 'Standard Gym'}
-- Split: ${profile.preferred_split}
-${profile.focus_muscles?.length > 0 ? `- Primary Muscle Focuses: ${profile.focus_muscles.join(', ')} (PRIORITIZE THESE IN VOLUME/INTENSITY)` : ''}
-- Name: ${profile.display_name || "Athlete"}
+- Goal: ${normalized.goal}
+- Experience Level: ${normalized.experience_level}
+- Training Days per Week: ${normalized.training_days?.length || 3} (${normalized.training_days?.join(', ')})
+- Equipment Available: ${normalized.equipment?.join(', ') || 'Standard Gym'}
+- Split: ${normalized.preferred_split}
+${normalized.focus_muscles?.length > 0 ? `- Primary Muscle Focuses: ${normalized.focus_muscles.join(', ')} (PRIORITIZE THESE IN VOLUME/INTENSITY)` : ''}
+- Name: ${normalized.display_name || "Athlete"}
 
 REQUIREMENTS:
 - Build the program for ${days.length} training days per week
 - Use the ${split} split style
 - Only use exercises possible with my available equipment
+- Every non-rest training day must include 5 to 7 exercises
+- Preserve variety without dropping important compounds for my goal
+- If I selected focus muscles, bias weekly volume toward them without ruining overall balance
 - Week 4 should be a deload week
 - Include warmup sets for main compound lifts
 - Suggest starting weights appropriate for a ${level} lifter (in lbs)

@@ -106,6 +106,71 @@ export async function invokeEdgeFunction(functionName, body, options = {}) {
   }
 }
 
+export async function invokeServerApi(path, body, options = {}) {
+  const {
+    timeoutMs = 15000,
+    requireAuth = true,
+  } = options
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-client-info': 'repmax-app/4.0'
+    }
+
+    const {
+      data: { session }
+    } = await supabase.auth.getSession()
+
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`
+    } else if (requireAuth) {
+      throw new Error('You need to be signed in to use this feature.')
+    }
+
+    const response = await fetch(path, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body ?? {}),
+      signal: controller.signal
+    })
+
+    const raw = await response.text()
+    let data = null
+
+    if (raw) {
+      try {
+        data = JSON.parse(raw)
+      } catch {
+        data = { raw }
+      }
+    }
+
+    if (!response.ok) {
+      const error = new Error(
+        data?.error ||
+        data?.message ||
+        `Request to ${path} failed with status ${response.status}.`
+      )
+      error.status = response.status
+      error.payload = data
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`${path} timed out. Please try again.`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 // Retry wrapper
 export async function withRetry(fn, maxRetries = 3) {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
