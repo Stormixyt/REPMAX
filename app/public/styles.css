@@ -1152,9 +1152,9 @@ img {
    ============================================ */
 .pricing-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  max-width: 800px;
+  max-width: 1180px;
   margin: 64px auto 0;
 }
 
@@ -1172,14 +1172,27 @@ img {
   background: linear-gradient(165deg, var(--bg-card) 0%, rgba(204, 255, 0, 0.03) 100%);
 }
 
+.pricing-card-pro {
+  border-color: rgba(204, 255, 0, 0.25);
+  background: linear-gradient(180deg, rgba(204, 255, 0, 0.04) 0%, rgba(17, 17, 17, 0.96) 100%);
+}
+
+.pricing-card-ultra {
+  border-color: rgba(255, 42, 133, 0.55);
+  background:
+    radial-gradient(circle at top right, rgba(255, 42, 133, 0.18), transparent 42%),
+    linear-gradient(165deg, rgba(255, 42, 133, 0.06) 0%, rgba(204, 255, 0, 0.03) 100%);
+  box-shadow: 0 18px 60px rgba(255, 42, 133, 0.12);
+}
+
 .pricing-card.featured::before {
-  content: 'MOST POPULAR';
+  content: 'MOST LOCKED IN';
   position: absolute;
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: linear-gradient(90deg, #ff2a85 0%, var(--accent) 100%);
+  color: #0b0b0b;
   font-size: 0.7rem;
   font-weight: 800;
   padding: 4px 16px;
@@ -1193,6 +1206,10 @@ img {
 
 .pricing-card.featured:hover {
   box-shadow: 0 20px 60px rgba(204, 255, 0, 0.1);
+}
+
+.pricing-card-ultra:hover {
+  box-shadow: 0 24px 70px rgba(255, 42, 133, 0.18);
 }
 
 .pricing-tier {
