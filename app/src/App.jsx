@@ -40,7 +40,21 @@ export default function App() {
   }, [activeCall])
 
   useEffect(() => {
-    document.body.classList.remove('theme-green', 'theme-pink', 'theme-blue', 'theme-gold', 'theme-cherry-red', 'theme-neon-purple', 'theme-cyber-orange', 'tier-free', 'tier-pro', 'tier-ultra')
+    document.body.classList.remove(
+      'theme-green',
+      'theme-pink',
+      'theme-blue',
+      'theme-gold',
+      'theme-cherry-red',
+      'theme-neon-purple',
+      'theme-cyber-orange',
+      'tier-free',
+      'tier-pro',
+      'tier-ultra',
+      'skin-default',
+      'skin-ultra-signature'
+    )
+
     if (profile?.theme_color) {
       document.body.classList.add(`theme-${profile.theme_color}`)
     } else {
@@ -54,7 +68,13 @@ export default function App() {
     } else {
       document.body.classList.add('tier-free')
     }
-  }, [profile?.theme_color, isPro, isUltra])
+
+    const interfaceSkin = isUltra && profile?.interface_skin === 'ultra-signature'
+      ? 'skin-ultra-signature'
+      : 'skin-default'
+
+    document.body.classList.add(interfaceSkin)
+  }, [profile?.theme_color, profile?.interface_skin, isPro, isUltra])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
