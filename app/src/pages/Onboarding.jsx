@@ -144,6 +144,7 @@ export default function Onboarding() {
 
   const totalSteps = path === 'advanced' ? advancedSteps.length : quickSteps.length
   const progress = totalSteps > 0 ? ((step + 1) / totalSteps) * 100 : 0
+  const motionKey = `${path || 'chooser'}-${step}`
 
   function canProceed() {
     if (path === 'advanced') {
@@ -267,15 +268,15 @@ export default function Onboarding() {
   // Generating screen
   if (generating) {
     return (
-      <div className="onboarding-page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24, textAlign: 'center' }}>
-        <div style={{ position: 'relative', marginBottom: 32 }}>
+      <div className="onboarding-page onboarding-generating-screen" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24, textAlign: 'center' }}>
+        <div className="onboarding-generating-icon-wrap" style={{ position: 'relative', marginBottom: 32 }}>
           <RiMagicFill size={56} style={{ color: 'var(--accent)', animation: 'pulseGlow 2s ease-in-out infinite' }} />
           <div style={{ position: 'absolute', inset: -20, border: '2px solid rgba(204,255,0,0.2)', borderRadius: '50%', animation: 'spin 3s linear infinite' }} />
         </div>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, marginBottom: 12 }}>
+        <h2 className="onboarding-generating-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, marginBottom: 12 }}>
           {path === 'quick' ? 'Building Your Starter Program' : 'Crafting Your Perfect Program'}
         </h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', maxWidth: 320, lineHeight: 1.6 }}>
+        <p className="onboarding-generating-copy" style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', maxWidth: 320, lineHeight: 1.6 }}>
           {path === 'quick'
             ? 'REPMAX will learn more about you as you train. Every workout teaches the AI something new.'
             : 'Analyzing your preferences, building a periodized mesocycle tailored to your exact goals and level.'
@@ -289,9 +290,9 @@ export default function Onboarding() {
   // Path selection screen
   if (path === null) {
     return (
-      <div className="onboarding-page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 24 }}>
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{
+      <div className="onboarding-page onboarding-chooser" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 24 }}>
+        <div className="onboarding-chooser-hero" style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div className="onboarding-hero-badge" style={{
             width: 68,
             height: 68,
             borderRadius: 22,
@@ -313,6 +314,7 @@ export default function Onboarding() {
 
         {/* Advanced Path */}
         <button
+          className="onboarding-path-card"
           onClick={() => { setPath('advanced'); setStep(0) }}
           style={{
             width: '100%', padding: 24, marginBottom: 12,
@@ -341,6 +343,7 @@ export default function Onboarding() {
 
         {/* Quick Path */}
         <button
+          className="onboarding-path-card onboarding-path-card-secondary"
           onClick={() => { setPath('quick'); setStep(0) }}
           style={{
             width: '100%', padding: 24,
@@ -397,10 +400,11 @@ export default function Onboarding() {
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
           {GOALS.map(g => (
-            <button key={g.id} onClick={() => setGoal(g.id)} style={{
+            <button key={g.id} className={`onboarding-choice-card ${goal === g.id ? 'is-selected' : ''}`} onClick={() => setGoal(g.id)} style={{
               padding: 16, background: goal === g.id ? `${g.color}15` : 'var(--bg-card)',
               border: `2px solid ${goal === g.id ? g.color : 'var(--border)'}`, borderRadius: 16,
-              cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'center', transition: 'all 0.2s ease'
+              cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'center', transition: 'all 0.2s ease',
+              animationDelay: `${GOALS.findIndex((item) => item.id === g.id) * 70}ms`
             }}>
               <div style={{ color: g.color, marginBottom: 6 }}>{g.icon}</div>
               <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{g.label}</div>
@@ -412,11 +416,12 @@ export default function Onboarding() {
         <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 12 }}>Experience Level</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {LEVELS.map(l => (
-            <button key={l.id} onClick={() => setLevel(l.id)} style={{
+            <button key={l.id} className={`onboarding-choice-card onboarding-list-card ${level === l.id ? 'is-selected' : ''}`} onClick={() => setLevel(l.id)} style={{
               display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
               background: level === l.id ? `${l.color}15` : 'var(--bg-card)',
               border: `2px solid ${level === l.id ? l.color : 'var(--border)'}`, borderRadius: 14,
-              cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left', transition: 'all 0.2s ease'
+              cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left', transition: 'all 0.2s ease',
+              animationDelay: `${LEVELS.findIndex((item) => item.id === l.id) * 70}ms`
             }}>
               <div style={{ color: l.color }}>{l.icon}</div>
               <div>
@@ -458,7 +463,7 @@ export default function Onboarding() {
     const previewEquipment = equipment || 'full_gym'
 
     return (
-      <div style={{
+      <div className="onboarding-preview-card" style={{
         position: 'relative',
         overflow: 'hidden',
         borderRadius: 24,
@@ -675,12 +680,13 @@ export default function Onboarding() {
           {DAYS.map(d => {
             const active = days.includes(d)
             return (
-              <button key={d} onClick={() => setDays(active ? days.filter(x => x !== d) : [...days, d])} style={{
+              <button key={d} className={`onboarding-day-pill ${active ? 'is-selected' : ''}`} onClick={() => setDays(active ? days.filter(x => x !== d) : [...days, d])} style={{
                 padding: '14px 0', borderRadius: 12, fontWeight: 700, fontSize: '0.8rem',
                 background: active ? 'var(--accent)' : 'var(--bg-card)',
                 color: active ? '#000' : 'var(--text-secondary)',
                 border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                cursor: 'pointer', transition: 'all 0.2s ease'
+                cursor: 'pointer', transition: 'all 0.2s ease',
+                animationDelay: `${DAYS.findIndex((item) => item === d) * 45}ms`
               }}>
                 {d}
               </button>
@@ -693,12 +699,13 @@ export default function Onboarding() {
             <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 10, marginTop: 8 }}>Equipment</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
               {EQUIPMENT.map(e => (
-                <button key={e.id} onClick={() => setEquipment(e.id)} style={{
+                <button key={e.id} className={`onboarding-choice-card onboarding-list-card ${equipment === e.id ? 'is-selected' : ''}`} onClick={() => setEquipment(e.id)} style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
                   background: equipment === e.id ? 'rgba(204,255,0,0.1)' : 'var(--bg-card)',
                   border: `2px solid ${equipment === e.id ? 'var(--accent)' : 'var(--border)'}`,
                   borderRadius: 14, cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  animationDelay: `${EQUIPMENT.findIndex((item) => item.id === e.id) * 70}ms`
                 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{e.label}</div>
@@ -712,7 +719,7 @@ export default function Onboarding() {
             <h3 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 10, marginTop: 8 }}>Weight Unit</h3>
             <div style={{ display: 'flex', gap: 6, background: 'var(--bg-card)', borderRadius: 10, padding: 4 }}>
               {['kg', 'lbs'].map(u => (
-                <button key={u} onClick={() => setUnit(u)} style={{
+                <button key={u} className={`onboarding-toggle-pill ${unit === u ? 'is-selected' : ''}`} onClick={() => setUnit(u)} style={{
                   flex: 1, padding: '12px 0', fontWeight: 700, fontSize: '0.92rem', textTransform: 'uppercase',
                   background: unit === u ? 'var(--accent)' : 'transparent', color: unit === u ? '#000' : 'var(--text-secondary)',
                   border: 'none', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s ease'
@@ -766,11 +773,12 @@ export default function Onboarding() {
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {EQUIPMENT.map(e => (
-            <button key={e.id} onClick={() => setEquipment(e.id)} style={{
+            <button key={e.id} className={`onboarding-choice-card onboarding-list-card ${equipment === e.id ? 'is-selected' : ''}`} onClick={() => setEquipment(e.id)} style={{
               display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px',
               background: equipment === e.id ? 'rgba(204,255,0,0.1)' : 'var(--bg-card)',
               border: `2px solid ${equipment === e.id ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 14,
-              cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left', transition: 'all 0.2s ease'
+              cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left', transition: 'all 0.2s ease',
+              animationDelay: `${EQUIPMENT.findIndex((item) => item.id === e.id) * 70}ms`
             }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{e.label}</div>
@@ -797,12 +805,13 @@ export default function Onboarding() {
           {FOCUS_MUSCLES.map(m => {
             const active = focusMuscles.includes(m)
             return (
-              <button key={m} onClick={() => setFocusMuscles(active ? focusMuscles.filter(x => x !== m) : [...focusMuscles, m])} style={{
+              <button key={m} className={`onboarding-chip ${active ? 'is-selected' : ''}`} onClick={() => setFocusMuscles(active ? focusMuscles.filter(x => x !== m) : [...focusMuscles, m])} style={{
                 padding: '10px 18px', borderRadius: 20, fontWeight: 600, fontSize: '0.85rem',
                 background: active ? 'var(--accent)' : 'var(--bg-card)',
                 color: active ? '#000' : 'var(--text-secondary)',
                 border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                cursor: 'pointer', transition: 'all 0.2s ease'
+                cursor: 'pointer', transition: 'all 0.2s ease',
+                animationDelay: `${FOCUS_MUSCLES.findIndex((item) => item === m) * 35}ms`
               }}>
                 {m}
               </button>
@@ -852,11 +861,12 @@ export default function Onboarding() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {available.map(s => (
-            <button key={s.id} onClick={() => setSplit(s.id)} style={{
+            <button key={s.id} className={`onboarding-choice-card onboarding-list-card ${split === s.id ? 'is-selected' : ''}`} onClick={() => setSplit(s.id)} style={{
               display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', position: 'relative',
               background: split === s.id ? 'rgba(204,255,0,0.1)' : 'var(--bg-card)',
               border: `2px solid ${split === s.id ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 14,
-              cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left', transition: 'all 0.2s ease'
+              cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left', transition: 'all 0.2s ease',
+              animationDelay: `${available.findIndex((item) => item.id === s.id) * 80}ms`
             }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -890,14 +900,15 @@ export default function Onboarding() {
             const active = injuries.includes(inj.id)
             const isNone = inj.id === 'none'
             return (
-              <button key={inj.id} onClick={() => {
+              <button key={inj.id} className={`onboarding-choice-card onboarding-list-card ${active ? 'is-selected' : ''}`} onClick={() => {
                 if (isNone) setInjuries(['none'])
                 else setInjuries(active ? injuries.filter(x => x !== inj.id) : [...injuries.filter(x => x !== 'none'), inj.id])
               }} style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
                 background: active ? (isNone ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)') : 'var(--bg-card)',
                 border: `2px solid ${active ? (isNone ? '#22c55e' : '#ef4444') : 'var(--border)'}`, borderRadius: 14,
-                cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left', transition: 'all 0.2s ease'
+                cursor: 'pointer', color: 'var(--text-primary)', textAlign: 'left', transition: 'all 0.2s ease',
+                animationDelay: `${INJURIES.findIndex((item) => item.id === inj.id) * 70}ms`
               }}>
                 <span style={{ fontSize: '0.9rem' }}>{inj.label}</span>
                 {active && <RiCheckFill size={18} style={{ marginLeft: 'auto', color: isNone ? '#22c55e' : '#ef4444' }} />}
@@ -947,7 +958,7 @@ export default function Onboarding() {
             <RiArrowLeftLine size={20} />
           </button>
           <div style={{ flex: 1, height: 4, background: 'var(--bg-card)', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent)', borderRadius: 4, transition: 'width 0.4s ease' }} />
+            <div className="onboarding-progress-fill" style={{ width: `${progress}%`, height: '100%', background: 'var(--accent)', borderRadius: 4, transition: 'width 0.4s ease' }} />
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, minWidth: 40, textAlign: 'right' }}>
             {step + 1}/{totalSteps}
@@ -960,7 +971,10 @@ export default function Onboarding() {
 
       {/* Content */}
       <div style={{ flex: 1, padding: 24, overflowY: 'auto', position: 'relative', zIndex: 1 }}>
-        <div style={{
+        <div
+          key={motionKey}
+          className="onboarding-step-shell"
+          style={{
           borderRadius: 28,
           border: '1px solid rgba(255,255,255,0.06)',
           background: 'linear-gradient(180deg, rgba(18,18,18,0.92), rgba(10,10,10,0.96))',
@@ -988,7 +1002,7 @@ export default function Onboarding() {
         <button
           onClick={nextStep}
           disabled={!canProceed()}
-          className="btn btn-primary btn-full btn-lg"
+          className={`btn btn-primary btn-full btn-lg onboarding-cta ${canProceed() ? 'is-ready' : ''}`}
           style={{
             fontSize: '1rem',
             fontWeight: 800,
