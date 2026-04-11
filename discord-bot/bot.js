@@ -13,7 +13,7 @@ const { Client, GatewayIntentBits, PermissionsBitField, ChannelType, EmbedBuilde
 const fs = require('fs')
 const path = require('path')
 const { getBotConfig } = require('./config')
-const { askRepmaxAI, DEFAULT_MODEL } = require('./repmax-ai')
+const { askRepmaxAI, generateUpdateDraft, DEFAULT_MODEL } = require('./repmax-ai')
 
 // ═══════════════════════════════════════════
 //  CONFIG
@@ -36,6 +36,7 @@ function withDataDefaults(raw = {}) {
     warnings: raw.warnings || {},
     afk: raw.afk || {},
     changelogPosts: raw.changelogPosts || {},
+    announcementPosts: raw.announcementPosts || {},
   }
 }
 
@@ -135,6 +136,29 @@ const commands = [
     .addStringOption(o => o.setName('fix_4').setDescription('Fourth bug fix'))
     .addBooleanOption(o => o.setName('ping_updates').setDescription('Ping the App Updates role')),
   new SlashCommandBuilder()
+    .setName('announce')
+    .setDescription('Post a REPMAX announcement in the announcements channel (Admin only)')
+    .addStringOption(o => o.setName('title').setDescription('Announcement title').setRequired(true))
+    .addStringOption(o => o.setName('summary').setDescription('Short summary paragraph').setRequired(true))
+    .addStringOption(o => o.setName('point_1').setDescription('First highlight'))
+    .addStringOption(o => o.setName('point_2').setDescription('Second highlight'))
+    .addStringOption(o => o.setName('point_3').setDescription('Third highlight'))
+    .addStringOption(o => o.setName('point_4').setDescription('Fourth highlight'))
+    .addStringOption(o => o.setName('cta').setDescription('Call to action text'))
+    .addBooleanOption(o => o.setName('ping_updates').setDescription('Ping the App Updates role')),
+  new SlashCommandBuilder()
+    .setName('autoupdate')
+    .setDescription('Use AI to draft and post a changelog or announcement from rough notes (Admin only)')
+    .addStringOption(o => o.setName('type').setDescription('What should the AI post?').setRequired(true).addChoices(
+      { name: 'Changelog', value: 'changelog' },
+      { name: 'Announcement', value: 'announcement' },
+      { name: 'Both', value: 'both' },
+    ))
+    .addStringOption(o => o.setName('notes').setDescription('Raw notes, shipped changes, or patch summary').setRequired(true))
+    .addStringOption(o => o.setName('version').setDescription('Version label for changelogs, for example 4.3'))
+    .addStringOption(o => o.setName('direction').setDescription('Optional angle for the AI, for example premium, hype, concise'))
+    .addBooleanOption(o => o.setName('ping_updates').setDescription('Ping the App Updates role')),
+  new SlashCommandBuilder()
     .setName('ai')
     .setDescription('Ask the REPMAX AI about the app, training, or getting started')
     .addStringOption(o => o.setName('question').setDescription('What do you want to ask?').setRequired(true))
@@ -149,12 +173,24 @@ function getChangelogChannel(guild) {
   return guild.channels.cache.find(c => c.type === ChannelType.GuildText && c.name.includes('changelog'))
 }
 
+function getAnnouncementsChannel(guild) {
+  return guild.channels.cache.find(c => c.type === ChannelType.GuildText && c.name.includes('announcement'))
+}
+
 function getUpdatesRole(guild) {
   return guild.roles.cache.find(r => r.name === NOTIF_MAP.updates || r.name.toLowerCase().includes('app updates'))
 }
 
 function bulletList(items = []) {
   return items.filter(Boolean).map(item => `• ${item}`).join('\n')
+}
+
+function slugifyKey(value = '') {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 function buildChangelogEmbed({ version, headline, newItems, fixItems, authorTag }) {
@@ -174,6 +210,35 @@ function buildChangelogEmbed({ version, headline, newItems, fixItems, authorTag 
   }
 
   return embed
+}
+
+function buildAnnouncementEmbed({ title, summary, highlights, cta, authorTag }) {
+  const embed = new EmbedBuilder()
+    .setColor(C.blue)
+    .setTitle(`📣 ${title}`)
+    .setDescription(summary)
+    .setTimestamp()
+    .setFooter({ text: `Posted by ${authorTag} • REPMAX announcements` })
+
+  if (highlights.length) {
+    embed.addFields({ name: '⚡ Highlights', value: bulletList(highlights), inline: false })
+  }
+
+  if (cta) {
+    embed.addFields({ name: '🚀 Next Move', value: cta, inline: false })
+  }
+
+  return embed
+}
+
+function buildUpdateButtons(kind = 'announcement') {
+  const primaryLabel = kind === 'changelog' ? '📱 Open REPMAX' : '🚀 Open App'
+  const primaryUrl = kind === 'changelog' ? 'https://www.rep-max.app' : 'https://www.rep-max.app/app'
+
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setLabel(primaryLabel).setStyle(ButtonStyle.Link).setURL(primaryUrl),
+    new ButtonBuilder().setLabel('💬 Join Discord').setStyle(ButtonStyle.Link).setURL('https://discord.gg/repmax'),
+  )
 }
 
 function buildInviteUrl(applicationId) {
@@ -271,11 +336,13 @@ client.on(Events.InteractionCreate, async interaction => {
           '`/workout` - quick workout suggestion',
           '`/afk` - set your AFK status',
           '`/warn` - staff warning command',
-          '`/serverinfo` - current server stats',
-          '`/app` - open the REPMAX app',
-          '`/changelog` - publish a changelog update (admin only)',
-          '`/ai` - ask the REPMAX AI about the app or training',
-        ].join('\n'))
+            '`/serverinfo` - current server stats',
+            '`/app` - open the REPMAX app',
+            '`/changelog` - publish a changelog update (admin only)',
+            '`/announce` - publish an announcement post (admin only)',
+            '`/autoupdate` - let AI turn rough notes into a changelog or announcement',
+            '`/ai` - ask the REPMAX AI about the app or training',
+          ].join('\n'))
         .setFooter({ text: 'If commands are missing, re-invite the bot with applications.commands scope.' })
       await interaction.reply({ embeds: [e], ephemeral: true })
     }
@@ -493,10 +560,7 @@ client.on(Events.InteractionCreate, async interaction => {
           authorTag: interaction.user.tag,
         })
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setLabel('📱 Open REPMAX').setStyle(ButtonStyle.Link).setURL('https://www.rep-max.app'),
-          new ButtonBuilder().setLabel('🚀 Open App').setStyle(ButtonStyle.Link).setURL('https://www.rep-max.app/app'),
-        )
+        const row = buildUpdateButtons('changelog')
 
         const sent = await changelogChannel.send({
           content: updatesRole ? `${updatesRole}` : undefined,
@@ -523,6 +587,192 @@ client.on(Events.InteractionCreate, async interaction => {
       } catch (error) {
         await interaction.editReply({
           content: `❌ Changelog failed: ${error.message}`,
+        })
+      }
+    }
+
+    else if (commandName === 'announce') {
+      if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
+        return interaction.reply({ content: '❌ Admin only.', ephemeral: true })
+      }
+
+      await interaction.deferReply({ ephemeral: true })
+
+      try {
+        const title = interaction.options.getString('title', true).trim()
+        const summary = interaction.options.getString('summary', true).trim()
+        const highlights = ['point_1', 'point_2', 'point_3', 'point_4']
+          .map(key => interaction.options.getString(key))
+          .filter(Boolean)
+          .map(item => item.trim())
+        const cta = interaction.options.getString('cta')?.trim() || ''
+        const pingUpdates = interaction.options.getBoolean('ping_updates') ?? false
+
+        if (!title || !summary) {
+          throw new Error('Title and summary are required.')
+        }
+
+        const announcementChannel = getAnnouncementsChannel(interaction.guild)
+        if (!announcementChannel) {
+          throw new Error('Could not find the announcements channel.')
+        }
+
+        const updatesRole = pingUpdates ? getUpdatesRole(interaction.guild) : null
+        const embed = buildAnnouncementEmbed({
+          title,
+          summary,
+          highlights,
+          cta,
+          authorTag: interaction.user.tag,
+        })
+
+        const sent = await announcementChannel.send({
+          content: updatesRole ? `${updatesRole}` : undefined,
+          allowedMentions: updatesRole ? { roles: [updatesRole.id] } : { parse: [] },
+          embeds: [embed],
+          components: [buildUpdateButtons('announcement')],
+        })
+
+        const announcementKey = `${Date.now()}-${slugifyKey(title) || 'announcement'}`
+        botData.announcementPosts[announcementKey] = {
+          title,
+          summary,
+          highlights,
+          cta,
+          postedBy: interaction.user.id,
+          messageId: sent.id,
+          channelId: sent.channelId,
+          postedAt: new Date().toISOString(),
+        }
+        saveData(botData)
+
+        await interaction.editReply({
+          content: `✅ Posted announcement in ${announcementChannel}${updatesRole ? ` and pinged ${updatesRole}` : ''}.\n${sent.url}`,
+        })
+      } catch (error) {
+        await interaction.editReply({
+          content: `❌ Announcement failed: ${error.message}`,
+        })
+      }
+    }
+
+    else if (commandName === 'autoupdate') {
+      if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
+        return interaction.reply({ content: '❌ Admin only.', ephemeral: true })
+      }
+
+      await interaction.deferReply({ ephemeral: true })
+
+      try {
+        const type = interaction.options.getString('type', true)
+        const notes = interaction.options.getString('notes', true).trim()
+        const version = normalizeChangelogVersion(interaction.options.getString('version') || '')
+        const direction = interaction.options.getString('direction')?.trim() || ''
+        const pingUpdates = interaction.options.getBoolean('ping_updates') ?? false
+
+        if ((type === 'changelog' || type === 'both') && !version) {
+          throw new Error('Add a version when the AI needs to post a changelog.')
+        }
+
+        const draft = await generateUpdateDraft({
+          apiKey: GROQ_API_KEY,
+          model: GROQ_MODEL || DEFAULT_MODEL,
+          type,
+          version,
+          notes,
+          headlineHint: direction,
+          username: interaction.user.username,
+        })
+
+        const updatesRole = pingUpdates ? getUpdatesRole(interaction.guild) : null
+        const postedLinks = []
+
+        if (type === 'changelog' || type === 'both') {
+          const versionKey = version.toLowerCase()
+          if (botData.changelogPosts[versionKey]) {
+            throw new Error(`v${version} has already been posted in changelogs.`)
+          }
+
+          const changelogChannel = getChangelogChannel(interaction.guild)
+          if (!changelogChannel) {
+            throw new Error('Could not find the changelog channel.')
+          }
+
+          const changelogEmbed = buildChangelogEmbed({
+            version,
+            headline: draft.headline || `REPMAX v${version} just shipped`,
+            newItems: draft.newItems,
+            fixItems: draft.fixItems,
+            authorTag: `${interaction.user.tag} via AI`,
+          })
+
+          const sent = await changelogChannel.send({
+            content: updatesRole ? `${updatesRole}` : undefined,
+            allowedMentions: updatesRole ? { roles: [updatesRole.id] } : { parse: [] },
+            embeds: [changelogEmbed],
+            components: [buildUpdateButtons('changelog')],
+          })
+
+          botData.changelogPosts[versionKey] = {
+            version,
+            headline: draft.headline,
+            newItems: draft.newItems,
+            fixItems: draft.fixItems,
+            postedBy: interaction.user.id,
+            messageId: sent.id,
+            channelId: sent.channelId,
+            postedAt: new Date().toISOString(),
+            draftedByAI: true,
+            sourceNotes: notes,
+          }
+          postedLinks.push(sent.url)
+        }
+
+        if (type === 'announcement' || type === 'both') {
+          const announcementChannel = getAnnouncementsChannel(interaction.guild)
+          if (!announcementChannel) {
+            throw new Error('Could not find the announcements channel.')
+          }
+
+          const announcementEmbed = buildAnnouncementEmbed({
+            title: draft.title || `REPMAX ${version ? `v${version}` : 'update'} is live`,
+            summary: draft.summary || draft.headline || 'A new REPMAX update just landed.',
+            highlights: draft.highlights.length ? draft.highlights : draft.newItems,
+            cta: draft.cta || 'Jump into the app and check what changed.',
+            authorTag: `${interaction.user.tag} via AI`,
+          })
+
+          const sent = await announcementChannel.send({
+            content: updatesRole ? `${updatesRole}` : undefined,
+            allowedMentions: updatesRole ? { roles: [updatesRole.id] } : { parse: [] },
+            embeds: [announcementEmbed],
+            components: [buildUpdateButtons('announcement')],
+          })
+
+          const announcementKey = `${Date.now()}-${slugifyKey(draft.title || version || 'update') || 'announcement'}`
+          botData.announcementPosts[announcementKey] = {
+            title: draft.title,
+            summary: draft.summary,
+            highlights: draft.highlights,
+            cta: draft.cta,
+            postedBy: interaction.user.id,
+            messageId: sent.id,
+            channelId: sent.channelId,
+            postedAt: new Date().toISOString(),
+            draftedByAI: true,
+            sourceNotes: notes,
+          }
+          postedLinks.push(sent.url)
+        }
+
+        saveData(botData)
+
+        await interaction.editReply({
+          content: `✅ AI update posted${updatesRole ? ` and pinged ${updatesRole}` : ''}.\n${postedLinks.join('\n')}`,
+        })
+      } catch (error) {
+        await interaction.editReply({
+          content: `❌ AI update failed: ${error.message}`,
         })
       }
     }

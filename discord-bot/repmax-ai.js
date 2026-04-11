@@ -44,6 +44,56 @@ Answering style:
 - if the user asks about getting started, tell them to open the app at https://www.rep-max.app and join the Discord community
 `.trim()
 
+const REPMAX_UPDATE_DRAFT_PROMPT = `
+You format REPMAX Discord changelogs and announcements.
+
+Your job:
+- turn rough update notes into sharp Discord-ready release copy
+- sound premium, clean, confident, and energetic without sounding cringe
+- keep things concise and readable inside Discord embeds
+- do not invent fake features, fake bug fixes, or fake dates
+- only use what the user actually provided
+
+Output rules:
+- respond with valid JSON only
+- no markdown code fences
+- no commentary outside the JSON
+
+For type "changelog", return:
+{
+  "headline": "short one-line update summary",
+  "newItems": ["item", "item"],
+  "fixItems": ["item", "item"]
+}
+
+For type "announcement", return:
+{
+  "title": "short announcement title",
+  "summary": "short high-energy summary paragraph",
+  "highlights": ["item", "item", "item"],
+  "cta": "short call to action"
+}
+
+For type "both", return:
+{
+  "headline": "short one-line update summary",
+  "newItems": ["item", "item"],
+  "fixItems": ["item", "item"],
+  "announcementTitle": "short announcement title",
+  "announcementSummary": "short high-energy summary paragraph",
+  "announcementHighlights": ["item", "item", "item"],
+  "cta": "short call to action"
+}
+
+Content guidance:
+- changelogs should be factual and structured
+- announcements should feel bigger and more community-facing
+- highlight shipped value, not internal implementation details
+- when notes are mixed, separate actual new features from bug fixes
+- if there are not enough bug fixes, return an empty array for fixItems
+- if there are not enough highlights, keep it short instead of inventing filler
+`.trim()
+
 function containsSensitiveRequest(input = '') {
   return /\b(api key|apikey|token|secret|env|environment variable|database schema|sql|rls|private repo|source code|system prompt|hidden prompt|internal prompt|admin panel|service role|webhook secret|roadmap)\b/i.test(input)
 }
@@ -102,7 +152,84 @@ async function askRepmaxAI({ apiKey, model = DEFAULT_MODEL, question, username }
   return trimForDiscord(answer)
 }
 
+function normalizeStringArray(value, limit = 5) {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(item => String(item || '').trim())
+    .filter(Boolean)
+    .slice(0, limit)
+}
+
+async function generateUpdateDraft({ apiKey, model = DEFAULT_MODEL, type, version, notes, headlineHint, username }) {
+  if (!apiKey) {
+    throw new Error('The AI update drafting command is not configured yet. Add GROQ_API_KEY to the bot environment.')
+  }
+
+  if (!notes?.trim()) {
+    throw new Error('Add real update notes so I can draft something useful.')
+  }
+
+  const response = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.45,
+      max_completion_tokens: 700,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: REPMAX_UPDATE_DRAFT_PROMPT },
+        {
+          role: 'user',
+          content: [
+            `Type: ${type || 'both'}`,
+            version ? `Version: ${version}` : 'Version: not provided',
+            headlineHint ? `Direction: ${headlineHint}` : 'Direction: none',
+            `Requested by: ${username || 'Unknown'}`,
+            'Raw notes:',
+            notes.trim(),
+          ].join('\n'),
+        },
+      ],
+    }),
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    const message = payload?.error?.message || 'Groq request failed.'
+    throw new Error(message)
+  }
+
+  const raw = payload?.choices?.[0]?.message?.content?.trim()
+
+  if (!raw) {
+    throw new Error('Groq returned an empty update draft.')
+  }
+
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('Groq returned invalid JSON for the update draft.')
+  }
+
+  return {
+    headline: String(parsed.headline || '').trim(),
+    newItems: normalizeStringArray(parsed.newItems, 6),
+    fixItems: normalizeStringArray(parsed.fixItems, 6),
+    title: String(parsed.title || parsed.announcementTitle || '').trim(),
+    summary: String(parsed.summary || parsed.announcementSummary || '').trim(),
+    highlights: normalizeStringArray(parsed.highlights || parsed.announcementHighlights, 6),
+    cta: String(parsed.cta || '').trim(),
+  }
+}
+
 module.exports = {
   askRepmaxAI,
+  generateUpdateDraft,
   DEFAULT_MODEL,
 }
