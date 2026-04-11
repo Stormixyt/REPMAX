@@ -112,12 +112,45 @@ export function AuthProvider({ children }) {
     })
   }
 
+  function getMissingProfileColumn(error) {
+    const message = String(error?.message || '')
+    const match = message.match(/Could not find the '([^']+)' column of 'profiles'/i)
+    return match?.[1] || null
+  }
+
+  async function updateProfileWithFallback(updates) {
+    let nextUpdates = { ...updates, updated_at: new Date().toISOString() }
+    let lastError = null
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(nextUpdates)
+        .eq('id', user.id)
+        .select()
+        .single()
+
+      if (!error) {
+        return { data, error: null }
+      }
+
+      lastError = error
+      const missingColumn = getMissingProfileColumn(error)
+
+      if (error.code !== 'PGRST204' || !missingColumn || !(missingColumn in nextUpdates)) {
+        break
+      }
+
+      console.warn(`[REPMAX] Retrying profile update without missing column: ${missingColumn}`)
+      delete nextUpdates[missingColumn]
+    }
+
+    return { data: null, error: lastError }
+  }
+
   async function updateProfile(updates) {
     if (!user) return { error: 'Not authenticated' }
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', user.id).select().single()
+    const { data, error } = await updateProfileWithFallback(updates)
     if (!error && data) {
       setProfile(data)
       if (updates.username) setNeedsUsername(false)
