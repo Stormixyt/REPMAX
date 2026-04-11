@@ -442,155 +442,6 @@ img {
   font-weight: 400;
 }
 
-/* --- Launch Countdown (campaign hero) --- */
-.launch-countdown {
-  margin-bottom: 28px;
-}
-
-.launch-countdown-label {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 12px;
-  font-weight: 700;
-}
-
-.launch-countdown-grid {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-}
-
-.launch-countdown-item {
-  text-align: center;
-  padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
-    var(--bg-card);
-  min-width: 84px;
-}
-
-.launch-countdown-value {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--accent);
-  line-height: 1;
-  font-family: var(--font-display);
-}
-
-.launch-countdown-unit {
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.42);
-  margin-top: 6px;
-  letter-spacing: 0.14em;
-}
-
-.launch-countdown-sep {
-  font-size: 1.8rem;
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.15);
-  line-height: 1;
-}
-
-/* --- Hero Mockup Device --- */
-.hero-mockup {
-  margin-top: 36px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-}
-
-.hero-device {
-  width: min(460px, 100%);
-  border-radius: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background:
-    radial-gradient(circle at top right, var(--accent-glow), transparent 55%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
-    var(--bg-secondary);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
-  overflow: hidden;
-}
-
-.hero-device-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(7, 7, 7, 0.6);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
-.hero-device-brand {
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
-.hero-device-chip {
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 8px 12px;
-  border-radius: 999px;
-  color: var(--accent);
-  border: 1px solid var(--border-accent);
-  background: var(--accent-glow);
-}
-
-.hero-device-body {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.hero-device-insight {
-  margin-top: 6px;
-  padding: 16px;
-  border-radius: 18px;
-  border: 1px solid var(--border-accent);
-  background:
-    radial-gradient(circle at top right, var(--accent-glow-strong), transparent 55%),
-    var(--bg-card);
-}
-
-.hero-device-insight-kicker {
-  font-size: 0.68rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 8px;
-}
-
-.hero-device-insight-title {
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: -0.4px;
-  margin-bottom: 6px;
-}
-
-.hero-device-insight-body {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  line-height: 1.55;
-}
-
-.hero-mockup-caption {
-  color: var(--text-tertiary);
-  font-size: 0.85rem;
-  text-align: center;
-}
-
 /* --- Waitlist Form --- */
 .waitlist-form {
   display: flex;
@@ -655,7 +506,7 @@ img {
   gap: 8px;
   padding: 20px 22px;
   background:
-    linear-gradient(135deg, var(--accent-glow), rgba(255, 255, 255, 0.02)),
+    linear-gradient(135deg, rgba(204, 255, 0, 0.12), rgba(204, 255, 0, 0.03)),
     var(--bg-card);
   border: 1px solid var(--border-accent);
   border-radius: var(--border-radius-lg);
@@ -666,49 +517,7 @@ img {
 .hero-community-link:hover {
   transform: translateY(-2px);
   border-color: var(--accent);
-  box-shadow: 0 16px 44px var(--accent-glow);
-}
-
-/* Desktop hero layout */
-@media (min-width: 960px) {
-  .hero-content {
-    max-width: var(--container-width);
-    display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
-    gap: clamp(36px, 5vw, 72px);
-    align-items: center;
-    text-align: left;
-  }
-
-  .hero-subtitle {
-    margin: 0 0 40px;
-  }
-
-  .launch-countdown-grid {
-    justify-content: flex-start;
-  }
-
-  .waitlist-form {
-    margin: 0 0 22px;
-  }
-
-  .hero-social-proof {
-    justify-content: flex-start;
-  }
-
-  .hero-community {
-    max-width: none;
-    margin: 18px 0 0;
-  }
-
-  .hero-mockup {
-    margin-top: 0;
-    align-items: flex-end;
-  }
-
-  .hero-mockup-caption {
-    text-align: right;
-  }
+  box-shadow: 0 16px 44px rgba(204, 255, 0, 0.08);
 }
 
 .hero-community-kicker {
