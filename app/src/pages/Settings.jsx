@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { supabase } from '../lib/supabase'
-import { sendNotification } from '../lib/notifications'
+import { triggerPushNotification } from '../lib/notifications'
 import ProBadge from '../components/ProBadge'
 import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine, RiImageFill, RiTranslate2 } from '@remixicon/react'
-import { getPushSupportState, requestNotificationPermission, subscribeToPush } from '../lib/pushNotifications'
+import { getPushSupportState, requestNotificationPermission, showLocalNotification, subscribeToPush } from '../lib/pushNotifications'
 
 export default function Settings() {
-  const { user, profile, signOut, updateProfile, isPro, isAdmin } = useAuth()
+  const { user, profile, signOut, updateProfile, isPro, isUltra, isAdmin, subscriptionTier } = useAuth()
   const { language, setLanguage, t, languageOptions } = useLanguage()
   const navigate = useNavigate()
   const [editName, setEditName] = useState(false)
@@ -29,8 +29,9 @@ export default function Settings() {
   }
 
   async function toggleUnit() {
-    const newUnit = profile?.units === 'kg' ? 'lbs' : 'kg'
-    await updateProfile({ units: newUnit })
+    const currentUnit = profile?.unit_preference || profile?.units || 'kg'
+    const newUnit = currentUnit === 'kg' ? 'lbs' : 'kg'
+    await updateProfile({ units: newUnit, unit_preference: newUnit })
     showToast(`Units changed to ${newUnit}`)
   }
 
@@ -67,18 +68,38 @@ export default function Settings() {
       return
     }
 
-    await subscribeToPush(user.id)
-    const { error } = await sendNotification({
+    const subscription = await subscribeToPush(user.id)
+    if (!subscription) {
+      showToast('This device could not finish push setup')
+      return
+    }
+
+    const pushResult = await triggerPushNotification({
       userId: user.id,
       type: 'session_reminder',
       title: 'REPMAX Test',
       body: 'This phone is locked in for chats, calls, and invites.',
       data: { url: '/app' },
       tag: `test-${Date.now()}`,
-      preferenceKey: 'notify_reminders'
+      ignorePreferences: true
     })
 
-    showToast(error ? 'Could not send test notification' : t('settings_push_sent'))
+    if (pushResult.sent > 0) {
+      showToast(t('settings_push_sent'))
+      return
+    }
+
+    showLocalNotification('REPMAX Test', 'Notifications are enabled on this phone.', {
+      tag: `local-test-${Date.now()}`,
+      data: { url: '/app' }
+    })
+
+    if (pushResult.matched === 0) {
+      showToast('Phone notifications are enabled. Remote push is still syncing to this device.')
+      return
+    }
+
+    showToast(pushResult.error ? 'Local test worked. Remote push still needs attention.' : 'Local test worked. Remote push may take a moment.')
   }
 
   async function exportData() {
@@ -115,7 +136,7 @@ export default function Settings() {
         <div>
           <div className="profile-name">
             {profile?.display_name || 'Athlete'}
-            {isPro && <ProBadge size="md" />}
+            {isPro && <ProBadge size="md" tier={subscriptionTier} />}
           </div>
           <div className="profile-email">{user?.email}</div>
         </div>
@@ -170,10 +191,10 @@ export default function Settings() {
           <div className="settings-icon"><RiScales3Fill size={18} /></div>
           <div>
             <div className="settings-label">Weight Units</div>
-            <div className="settings-value">{profile?.units === 'kg' ? 'Kilograms (kg)' : 'Pounds (lbs)'}</div>
+            <div className="settings-value">{(profile?.unit_preference || profile?.units) === 'kg' ? 'Kilograms (kg)' : 'Pounds (lbs)'}</div>
           </div>
         </div>
-        <div className="settings-toggle">{profile?.units || 'lbs'}</div>
+        <div className="settings-toggle">{profile?.unit_preference || profile?.units || 'lbs'}</div>
       </div>
 
       <div className="settings-item" onClick={() => navigate('/profile')}>
@@ -267,8 +288,12 @@ export default function Settings() {
         <div className="settings-item-left">
           <div className="settings-icon settings-icon-accent"><RiVipCrownFill size={18} /></div>
           <div>
-            <div className="settings-label">{isPro ? 'Manage PRO' : 'Upgrade to PRO'}</div>
-            <div className="settings-value">{isPro ? `$5/week · Active` : 'Unlock all features'}</div>
+            <div className="settings-label">
+              {isUltra ? 'Manage ULTRA' : isPro ? 'Manage PRO' : 'Upgrade Your Plan'}
+            </div>
+            <div className="settings-value">
+              {isUltra ? 'ULTRA active · €5/week' : isPro ? 'PRO active · €3/week' : 'Free, PRO, and ULTRA tiers'}
+            </div>
           </div>
         </div>
         <RiArrowRightSLine size={20} className="settings-chevron" />

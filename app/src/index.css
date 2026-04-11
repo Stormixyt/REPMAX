@@ -1753,6 +1753,17 @@ body.keyboard-open .bottom-nav {
     white-space: nowrap;
 }
 
+.pro-badge.pro {
+    background: linear-gradient(135deg, #ccff00, #a3cc00);
+    color: #070707;
+}
+
+.pro-badge.ultra {
+    background: linear-gradient(135deg, #ff2a85, #ff6b6b);
+    color: #ffffff;
+    box-shadow: 0 8px 26px rgba(255, 42, 133, 0.25);
+}
+
 /* ============================================
    v2.0 — NOTIFICATION BADGE
    ============================================ */
@@ -7802,6 +7813,112 @@ body * {
     font-weight: 800;
 }
 
+.ultra-intelligence-shell {
+    margin: 6px 0 18px;
+    padding: 18px;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 42, 133, 0.22);
+    background:
+        radial-gradient(circle at top right, rgba(255, 42, 133, 0.18), transparent 42%),
+        linear-gradient(180deg, rgba(255, 107, 107, 0.07), rgba(255, 42, 133, 0.02)),
+        var(--bg-card);
+}
+
+.ultra-intelligence-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.ultra-intelligence-kicker {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #ff6ba9;
+}
+
+.ultra-intelligence-title {
+    margin-top: 8px;
+    font-family: var(--font-display);
+    font-size: 1.08rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.ultra-intelligence-chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 107, 169, 0.35);
+    background: rgba(255, 107, 169, 0.12);
+    color: #ff8dbc;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.ultra-intelligence-grid {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.ultra-insight-card {
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    padding: 12px;
+    min-height: 118px;
+    display: flex;
+    flex-direction: column;
+}
+
+.ultra-insight-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ultra-insight-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: rgba(255, 42, 133, 0.16);
+    color: #ff8dbc;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ultra-insight-name {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    line-height: 1.3;
+}
+
+.ultra-insight-value {
+    margin-top: 10px;
+    font-family: var(--font-display);
+    font-size: 1.02rem;
+    font-weight: 800;
+    color: #ffd5e7;
+    letter-spacing: -0.01em;
+}
+
+.ultra-insight-note {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
 .social-crew-panel {
     margin-top: 16px;
     display: flex;
@@ -8071,6 +8188,10 @@ body * {
     .dashboard-boost-grid,
     .run-tracker-stats,
     .social-series-toggle {
+        grid-template-columns: 1fr;
+    }
+
+    .ultra-intelligence-grid {
         grid-template-columns: 1fr;
     }
 

@@ -28,14 +28,17 @@ export async function triggerPushNotification({
   data = {},
   tag,
   preferenceKey,
+  ignorePreferences = false,
   requireInteraction = false,
   renotify = false
 }) {
   const targets = Array.from(new Set([userId, ...userIds].filter(Boolean)))
-  if (targets.length === 0) return { error: null }
+  if (targets.length === 0) {
+    return { error: null, matched: 0, sent: 0, failed: 0 }
+  }
 
   try {
-    await invokeEdgeFunction('send-push', {
+    const data = await invokeEdgeFunction('send-push', {
       notification: {
         userIds: targets,
         type,
@@ -43,19 +46,26 @@ export async function triggerPushNotification({
         body,
         data,
         tag,
-        preferenceKey: resolvePreferenceKey(type, preferenceKey),
+        preferenceKey: ignorePreferences ? null : resolvePreferenceKey(type, preferenceKey),
         requireInteraction,
         renotify
       }
     }, {
       timeoutMs: 12000,
-      requireAuth: false
+      requireAuth: true
     })
 
-    return { error: null }
+    return {
+      error: null,
+      matched: Number(data?.matched || 0),
+      sent: Number(data?.sent || 0),
+      failed: Number(data?.failed || 0),
+      mode: data?.mode || 'notification',
+      ok: data?.ok === true
+    }
   } catch (error) {
     console.warn('[REPMAX] Push dispatch failed:', error)
-    return { error }
+    return { error, matched: 0, sent: 0, failed: 0 }
   }
 }
 
@@ -100,6 +110,7 @@ export async function sendNotification({
   }
 
   let pushError = null
+  let pushSummary = { matched: 0, sent: 0, failed: 0 }
   if (sendPush) {
     const pushResult = await triggerPushNotification({
       userIds: targets,
@@ -117,11 +128,17 @@ export async function sendNotification({
       renotify
     })
     pushError = pushResult.error || null
+    pushSummary = {
+      matched: pushResult.matched || 0,
+      sent: pushResult.sent || 0,
+      failed: pushResult.failed || 0
+    }
   }
 
   return {
     data: targets.length === 1 ? rows[0] || null : rows,
-    error: error || pushError
+    error: error || pushError,
+    push: pushSummary
   }
 }
 

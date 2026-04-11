@@ -41,7 +41,7 @@ const STATUS_OPTIONS = [
 const LIFTS = ['Bench Press', 'Squat', 'Deadlift', 'Overhead Press', 'Pull-Up', 'Barbell Row', 'Dips', 'Romanian Deadlift']
 
 export default function Profile() {
-  const { user, profile, signOut, updateProfile, fetchProfile, isPro } = useAuth()
+  const { user, profile, signOut, updateProfile, fetchProfile, isPro, subscriptionTier } = useAuth()
   const navigate = useNavigate()
   const [regenerating, setRegenerating] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
@@ -147,7 +147,7 @@ export default function Profile() {
         </div>
         <h2 className="profile-display-name">
           {profile?.display_name || 'Athlete'}
-          {isPro && <ProBadge size="md" />}
+          {isPro && <ProBadge size="md" tier={subscriptionTier} />}
         </h2>
         {profile?.username && (
           <p style={{ color: 'var(--accent)', fontSize: '0.88rem', fontWeight: 600, margin: '-4px 0 0', fontFamily: 'var(--font-mono, monospace)' }}>

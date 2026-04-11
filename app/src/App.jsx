@@ -26,7 +26,7 @@ import UsernameModal from './components/UsernameModal'
 import { syncPushSubscription } from './lib/pushNotifications'
 
 export default function App() {
-  const { user, profile, loading, isOnboarded, needsUsername, fetchProfile, isAdmin } = useAuth()
+  const { user, profile, loading, isOnboarded, needsUsername, fetchProfile, isAdmin, isPro, isUltra } = useAuth()
   const { activeCall, clearActiveCall, callMinimized, setCallMinimized, callToast, showCallToast } = useCall()
   const navigate = useNavigate()
   const location = useLocation()
@@ -39,13 +39,21 @@ export default function App() {
   }, [activeCall])
 
   useEffect(() => {
-    document.body.classList.remove('theme-green', 'theme-pink', 'theme-blue', 'theme-gold')
+    document.body.classList.remove('theme-green', 'theme-pink', 'theme-blue', 'theme-gold', 'theme-cherry-red', 'theme-neon-purple', 'theme-cyber-orange', 'tier-free', 'tier-pro', 'tier-ultra')
     if (profile?.theme_color) {
       document.body.classList.add(`theme-${profile.theme_color}`)
     } else {
       document.body.classList.add('theme-green')
     }
-  }, [profile?.theme_color])
+
+    if (isUltra) {
+      document.body.classList.add('tier-ultra')
+    } else if (isPro) {
+      document.body.classList.add('tier-pro')
+    } else {
+      document.body.classList.add('tier-free')
+    }
+  }, [profile?.theme_color, isPro, isUltra])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined

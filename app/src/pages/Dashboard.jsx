@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -21,6 +21,216 @@ const MOTIVATIONS = [
   "Light weight, baby!",
   "Make yourself proud today."
 ]
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+const ULTRA_INSIGHT_ICONS = {
+  readiness: RiSparklingFill,
+  momentum: RiFireFill,
+  adherence: RiScalesFill,
+  efficiency: RiRunFill,
+  window: RiMoonClearFill,
+  balance: RiSwordFill,
+  pr: RiStarFill,
+  load: RiBrainFill,
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function formatSignedPercent(value) {
+  const rounded = Math.round(value)
+  if (rounded > 0) return `+${rounded}%`
+  if (rounded < 0) return `${rounded}%`
+  return '0%'
+}
+
+function buildUltraInsights({ profile, workouts, recentPRs, unit }) {
+  const now = Date.now()
+  const unitName = weightLabel(unit)
+
+  const completedWorkouts = (workouts || [])
+    .map((workout) => {
+      if (!workout?.completed_at) return null
+      const completedAt = new Date(workout.completed_at)
+      if (Number.isNaN(completedAt.getTime())) return null
+
+      const startedAt = workout.started_at ? new Date(workout.started_at) : null
+      const durationMinutes = startedAt && !Number.isNaN(startedAt.getTime())
+        ? Math.max(5, (completedAt.getTime() - startedAt.getTime()) / 60000)
+        : null
+
+      return {
+        completedAt,
+        timestamp: completedAt.getTime(),
+        volume: Number(workout.total_volume) || 0,
+        durationMinutes,
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.timestamp - a.timestamp)
+
+  const inDays = (days) => completedWorkouts.filter((w) => now - w.timestamp <= days * DAY_MS)
+  const betweenDays = (fromDays, toDays) => completedWorkouts.filter((w) => {
+    const ageInDays = (now - w.timestamp) / DAY_MS
+    return ageInDays > fromDays && ageInDays <= toDays
+  })
+
+  const sumVolume = (rows) => rows.reduce((total, row) => total + (row.volume || 0), 0)
+  const sumDuration = (rows) => rows.reduce((total, row) => total + (row.durationMinutes || 0), 0)
+
+  const lastWorkout = completedWorkouts[0] || null
+  const daysSinceLast = lastWorkout ? (now - lastWorkout.timestamp) / DAY_MS : null
+  const last7 = inDays(7)
+  const prev7 = betweenDays(7, 14)
+  const last28 = inDays(28)
+
+  const trainingTarget = Math.max(1, profile?.training_days?.length || 4)
+  const weeklySessions = last7.length
+  const weeklyAdherence = Math.round(clamp((weeklySessions / trainingTarget) * 100, 0, 180))
+  const streak = Number(profile?.current_streak) || 0
+
+  const recoveryShape = daysSinceLast == null ? 60 : clamp(100 - Math.abs(daysSinceLast - 1.5) * 22, 20, 100)
+  const consistencyShape = clamp((weeklySessions / trainingTarget) * 100, 20, 120)
+  const streakShape = clamp(35 + streak * 2.2, 35, 100)
+  const readiness = Math.round(clamp((recoveryShape * 0.45) + (consistencyShape * 0.35) + (streakShape * 0.2), 25, 99))
+
+  let readinessLabel = 'Rebuild'
+  if (readiness >= 82) readinessLabel = 'Prime'
+  else if (readiness >= 68) readinessLabel = 'Ready'
+  else if (readiness >= 52) readinessLabel = 'Steady'
+
+  const last7Volume = sumVolume(last7)
+  const prev7Volume = sumVolume(prev7)
+  const volumeTrend = prev7Volume > 0 ? ((last7Volume - prev7Volume) / prev7Volume) * 100 : (last7Volume > 0 ? 100 : 0)
+
+  const totalDuration = sumDuration(last7)
+  const efficiency = totalDuration > 0 ? last7Volume / totalDuration : 0
+
+  const hourBuckets = new Map([
+    ['early', { label: '05:00-09:00', volume: 0, count: 0 }],
+    ['midday', { label: '09:00-14:00', volume: 0, count: 0 }],
+    ['afternoon', { label: '14:00-19:00', volume: 0, count: 0 }],
+    ['night', { label: '19:00-24:00', volume: 0, count: 0 }],
+    ['late', { label: '00:00-05:00', volume: 0, count: 0 }],
+  ])
+
+  completedWorkouts.forEach((workout) => {
+    const hour = workout.completedAt.getHours()
+    const key = hour >= 5 && hour < 9
+      ? 'early'
+      : hour >= 9 && hour < 14
+        ? 'midday'
+        : hour >= 14 && hour < 19
+          ? 'afternoon'
+          : hour >= 19 && hour < 24
+            ? 'night'
+            : 'late'
+
+    const bucket = hourBuckets.get(key)
+    bucket.volume += workout.volume
+    bucket.count += 1
+  })
+
+  const bestWindow = Array.from(hourBuckets.values()).sort((a, b) => {
+    const aScore = a.count > 0 ? a.volume / a.count : 0
+    const bScore = b.count > 0 ? b.volume / b.count : 0
+    return bScore - aScore
+  })[0]
+
+  const patternScores = { push: 0, pull: 0, lower: 0 }
+  ;(recentPRs || []).forEach((pr) => {
+    const name = String(pr?.exercise_name || '').toLowerCase()
+    if (/squat|deadlift|lunge|leg|calf|hip|quad|hamstring|glute/.test(name)) patternScores.lower += 1
+    else if (/row|pull|curl|rear|lat|trap/.test(name)) patternScores.pull += 1
+    else if (/bench|press|dip|tricep|chest|shoulder/.test(name)) patternScores.push += 1
+  })
+
+  const dominantPattern = Object.entries(patternScores).sort((a, b) => b[1] - a[1])[0]
+  const lowerPattern = Math.min(...Object.values(patternScores))
+  const patternGap = dominantPattern ? dominantPattern[1] - lowerPattern : 0
+  const patternLabelMap = { push: 'Push', pull: 'Pull', lower: 'Lower Body' }
+
+  const latestPrAge = recentPRs?.[0]?.achieved_at
+    ? (now - new Date(recentPRs[0].achieved_at).getTime()) / DAY_MS
+    : null
+
+  const prProbability = Math.round(clamp(
+    38
+      + (volumeTrend * 0.35)
+      + ((readiness - 60) * 0.55)
+      + (latestPrAge != null && latestPrAge < 14 ? 10 : -2)
+      - (daysSinceLast != null && daysSinceLast > 4 ? 10 : 0),
+    12,
+    96,
+  ))
+
+  const acuteLoad = last7Volume / 7
+  const chronicLoad = last28.length > 0 ? sumVolume(last28) / 28 : 0
+  const loadRatio = chronicLoad > 0 ? acuteLoad / chronicLoad : 1
+
+  let loadState = 'Balanced'
+  if (loadRatio > 1.35) loadState = 'Overreach Risk'
+  else if (loadRatio < 0.78) loadState = 'Undershooting'
+
+  return [
+    {
+      id: 'readiness',
+      title: 'Readiness Index',
+      value: `${readiness}/100`,
+      note: `${readinessLabel} state from recovery timing, weekly consistency, and streak pressure.`,
+    },
+    {
+      id: 'momentum',
+      title: 'Volume Momentum',
+      value: formatSignedPercent(volumeTrend),
+      note: `${formatVolume(last7Volume, unit)}${unitName} vs ${formatVolume(prev7Volume, unit)}${unitName} over the last 2 weeks.`,
+    },
+    {
+      id: 'adherence',
+      title: 'Plan Adherence',
+      value: `${weeklyAdherence}%`,
+      note: `${weeklySessions} sessions this week vs your ${trainingTarget}/week target.`,
+    },
+    {
+      id: 'efficiency',
+      title: 'Session Efficiency',
+      value: efficiency > 0 ? `${formatWeight(efficiency, unit, 1)} ${unitName}/min` : 'No data',
+      note: `Based on load moved per minute across your last ${Math.min(last7.length, 7)} sessions.`,
+    },
+    {
+      id: 'window',
+      title: 'Peak Performance Window',
+      value: bestWindow?.count ? bestWindow.label : 'No data',
+      note: bestWindow?.count
+        ? 'Your highest average output appears in this training window.'
+        : 'Complete more sessions to lock your strongest time window.',
+    },
+    {
+      id: 'balance',
+      title: 'Strength Bias Signal',
+      value: dominantPattern && dominantPattern[1] > 0
+        ? `${patternLabelMap[dominantPattern[0]]} +${patternGap}`
+        : 'Neutral',
+      note: dominantPattern && dominantPattern[1] > 0
+        ? 'PR distribution shows where your strength curve is outpacing other patterns.'
+        : 'Log a few PRs to surface your strongest movement pattern.',
+    },
+    {
+      id: 'pr',
+      title: 'Next-Session PR Chance',
+      value: `${prProbability}%`,
+      note: 'Forecast from momentum, readiness, and recency of PR breakthroughs.',
+    },
+    {
+      id: 'load',
+      title: 'Acute Load Ratio',
+      value: `${loadRatio.toFixed(2)}x`,
+      note: `${loadState} profile from your 7-day load compared to your 28-day baseline.`,
+    },
+  ]
+}
 
 function toWorkoutNumber(value, fallback = 0, preference = 'first') {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -57,12 +267,13 @@ function getAuraLevel(streak) {
 }
 
 export default function Dashboard() {
-  const { user, profile, isPro } = useAuth()
+  const { user, profile, isPro, isUltra, subscriptionTier } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
   const [program, setProgram] = useState(null)
   const [todayWorkout, setTodayWorkout] = useState(null)
   const [recentPRs, setRecentPRs] = useState([])
+  const [workoutHistory, setWorkoutHistory] = useState([])
   const [unreadNotifs, setUnreadNotifs] = useState(0)
   const [stats, setStats] = useState({ total: 0, streak: 0, volume: 0 })
   const [loading, setLoading] = useState(true)
@@ -99,7 +310,7 @@ export default function Dashboard() {
       const [progRes, prsRes, workoutsRes, notifsRes] = await Promise.all([
         supabase.from('programs').select('*').eq('user_id', user.id).eq('active', true).order('created_at', { ascending: false }).limit(1).single(),
         supabase.from('personal_records').select('*').eq('user_id', user.id).order('achieved_at', { ascending: false }).limit(3),
-        supabase.from('workouts').select('completed_at, total_volume').eq('user_id', user.id).not('completed_at', 'is', null).order('completed_at', { ascending: false }),
+        supabase.from('workouts').select('started_at, completed_at, total_volume, day_name').eq('user_id', user.id).not('completed_at', 'is', null).order('completed_at', { ascending: false }),
         supabase.from('notifications').select('id', { count: 'exact' }).eq('user_id', user.id).eq('read', false)
       ])
 
@@ -120,6 +331,7 @@ export default function Dashboard() {
 
       if (!mounted.current) return
       setRecentPRs(prsRes.data || [])
+      setWorkoutHistory(workoutsRes.data || [])
       setUnreadNotifs(notifsRes.count || 0)
 
       if (workoutsRes.data) {
@@ -162,11 +374,17 @@ export default function Dashboard() {
 
   const greeting = getGreeting()
   const firstName = profile?.display_name?.split(' ')[0] || 'Athlete'
-  const unit = profile?.units || 'kg'
+  const unit = profile?.unit_preference || profile?.units || 'kg'
   const challenge = generateDailyChallenge(profile)
   const auraLevel = getAuraLevel(stats.streak)
   const avatarSeed = profile?.avatar_seed || user?.id || 'default'
   const avatarUrl = profile?.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
+  const ultraInsights = useMemo(() => buildUltraInsights({
+    profile,
+    workouts: workoutHistory,
+    recentPRs,
+    unit,
+  }), [profile, workoutHistory, recentPRs, unit])
 
   if (loading) {
     return (
@@ -219,7 +437,7 @@ export default function Dashboard() {
             <div>
               <p className="page-greeting">{greeting}</p>
               <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {firstName} {isPro && <ProBadge size="md" />}
+                {firstName} {isPro && <ProBadge size="md" tier={subscriptionTier} />}
               </h1>
             </div>
           </div>
@@ -281,6 +499,34 @@ export default function Dashboard() {
           </div>
         </button>
       </div>
+
+      {isUltra && (
+        <section className="ultra-intelligence-shell">
+          <div className="ultra-intelligence-header">
+            <div>
+              <div className="ultra-intelligence-kicker">ULTRA ANALYTICS</div>
+              <h3 className="ultra-intelligence-title">Personalized Intelligence Layer</h3>
+            </div>
+            <div className="ultra-intelligence-chip">Live model</div>
+          </div>
+
+          <div className="ultra-intelligence-grid">
+            {ultraInsights.map((insight) => {
+              const Icon = ULTRA_INSIGHT_ICONS[insight.id] || RiBrainFill
+              return (
+                <article key={insight.id} className="ultra-insight-card">
+                  <div className="ultra-insight-top">
+                    <span className="ultra-insight-icon"><Icon size={15} /></span>
+                    <span className="ultra-insight-name">{insight.title}</span>
+                  </div>
+                  <div className="ultra-insight-value">{insight.value}</div>
+                  <p className="ultra-insight-note">{insight.note}</p>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Today's Workout */}
       {todayWorkout ? (
@@ -345,7 +591,7 @@ export default function Dashboard() {
           </div>
           <div style={{ flex: 1 }}>
             <div className="dna-name">{profile?.display_name || 'Athlete'}</div>
-            {isPro && <div className="dna-badge">⭐ PRO</div>}
+            {isPro && <div className="dna-badge">{isUltra ? 'ULTRA' : 'PRO'}</div>}
           </div>
           <button
             onClick={handleShareDNA}

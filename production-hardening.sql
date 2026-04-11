@@ -117,7 +117,7 @@ SELECT
   (SELECT count(*) FROM profiles WHERE subscription_tier = 'pro') AS pro_users,
   (SELECT count(*) FROM profiles WHERE subscription_tier = 'ultra') AS ultra_users,
   (SELECT count(*) FROM subscription_requests WHERE status = 'pending') AS pending_requests,
-  (SELECT avg(EXTRACT(EPOCH FROM (w.completed_at - w.created_at))/60) FROM workouts w WHERE w.completed_at IS NOT NULL AND w.completed_at > now() - interval '30 days') AS avg_session_minutes;
+  (SELECT avg(w.duration_seconds / 60.0) FROM workouts w WHERE w.completed_at IS NOT NULL AND w.completed_at > now() - interval '30 days') AS avg_session_minutes;
 
 -- Grant admin view access
 DROP POLICY IF EXISTS "Admin stats access" ON profiles;
