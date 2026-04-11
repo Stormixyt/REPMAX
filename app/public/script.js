@@ -284,108 +284,72 @@ function animateCounter(el) {
   requestAnimationFrame(update);
 }
 
-/* --- ULTRA Scroll Story --- */
+/* --- ULTRA Immersive Scroll Scenes --- */
 function initUltraStory() {
-  const story = document.querySelector('[data-ultra-story]');
-  if (!story) return;
-
-  const chapters = Array.from(story.querySelectorAll('[data-ultra-chapter]'));
-  const panels = Array.from(story.querySelectorAll('[data-ultra-panel]'));
-  const steps = Array.from(story.querySelectorAll('[data-ultra-step]'));
-  const glow1 = story.querySelector('.ultra-glow-1');
-  const glow2 = story.querySelector('.ultra-glow-2');
-  const gridLines = story.querySelector('.ultra-grid-lines');
-  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-  if (!chapters.length || !panels.length || !steps.length) return;
-
-  let activeIndex = -1;
-  let frame = null;
-
-  function setActiveChapter(index) {
-    if (index === activeIndex) return;
-    activeIndex = index;
-
-    chapters.forEach((chapter, chapterIndex) => {
-      chapter.classList.toggle('is-active', chapterIndex === index);
-      chapter.classList.toggle('is-complete', chapterIndex < index);
-    });
-
-    panels.forEach((panel, panelIndex) => {
-      panel.classList.toggle('is-active', panelIndex === index);
-    });
-
-    steps.forEach((step, stepIndex) => {
-      step.classList.toggle('is-current', stepIndex === index);
-      step.classList.toggle('is-complete', stepIndex < index);
-    });
+  // Entry bar animation
+  const entryBars = document.querySelector('[data-ultra-animate-bars]');
+  if (entryBars) {
+    const entryObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.querySelectorAll('.ultra-entry-fill').forEach(fill => {
+            const val = fill.getAttribute('data-fill');
+            fill.style.setProperty('--fill', val);
+            fill.classList.add('is-animated');
+          });
+          entryObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.3 });
+    entryObserver.observe(entryBars);
   }
 
-  function updateUltraStory() {
-    frame = null;
+  // Scene reveal
+  const scenes = document.querySelectorAll('.ultra-scene');
+  if (!scenes.length) return;
 
-    const storyRect = story.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const progressStart = viewportHeight * 0.12;
-    const progressRange = Math.max(storyRect.height - viewportHeight * 0.35, 1);
-    const progress = Math.max(0, Math.min(1, (progressStart - storyRect.top) / progressRange));
+  const sceneObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const section = entry.target;
+        section.querySelectorAll('.ultra-scene-copy, .ultra-scene-panel').forEach(el => {
+          el.classList.add('is-visible');
+        });
 
-    story.style.setProperty('--ultra-story-progress', `${(progress * 100).toFixed(2)}%`);
+        // Animate bars inside scene panels
+        section.querySelectorAll('.ultra-entry-fill').forEach(fill => {
+          const val = fill.getAttribute('data-fill');
+          fill.style.setProperty('--fill', val);
+          fill.classList.add('is-animated');
+        });
 
-    const anchorPoint = viewportHeight * 0.38;
-    let nearestIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    chapters.forEach((chapter, index) => {
-      const chapterRect = chapter.getBoundingClientRect();
-      const chapterAnchor = chapterRect.top + Math.min(chapterRect.height * 0.3, 220);
-      const distance = Math.abs(chapterAnchor - anchorPoint);
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestIndex = index;
+        sceneObserver.unobserve(section);
       }
     });
+  }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
 
-    setActiveChapter(nearestIndex);
+  scenes.forEach(scene => sceneObserver.observe(scene));
 
-    if (reducedMotionQuery.matches) {
-      if (glow1) glow1.style.transform = 'none';
-      if (glow2) glow2.style.transform = 'none';
-      if (gridLines) gridLines.style.transform = 'none';
-      return;
-    }
-
-    if (glow1) {
-      glow1.style.transform = `translate3d(${(progress * 28).toFixed(1)}px, ${(-progress * 92).toFixed(1)}px, 0)`;
-    }
-
-    if (glow2) {
-      glow2.style.transform = `translate3d(${(-progress * 24).toFixed(1)}px, ${(progress * 104).toFixed(1)}px, 0)`;
-    }
-
-    if (gridLines) {
-      gridLines.style.transform = `translate3d(0, ${(progress * 42).toFixed(1)}px, 0)`;
-      gridLines.style.opacity = String(0.42 + progress * 0.26);
-    }
-  }
-
-  function requestUltraUpdate() {
-    if (frame !== null) return;
-    frame = window.requestAnimationFrame(updateUltraStory);
-  }
-
-  setActiveChapter(0);
-  updateUltraStory();
-
-  window.addEventListener('scroll', requestUltraUpdate, { passive: true });
-  window.addEventListener('resize', requestUltraUpdate);
-
-  if (typeof reducedMotionQuery.addEventListener === 'function') {
-    reducedMotionQuery.addEventListener('change', requestUltraUpdate);
-  } else if (typeof reducedMotionQuery.addListener === 'function') {
-    reducedMotionQuery.addListener(requestUltraUpdate);
-  }
+  // Parallax orbs on scroll
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      scenes.forEach(scene => {
+        const rect = scene.getBoundingClientRect();
+        const vh = window.innerHeight;
+        if (rect.top < vh && rect.bottom > 0) {
+          const progress = (vh - rect.top) / (vh + rect.height);
+          const orb = scene.querySelector('.ultra-scene-orb');
+          if (orb) {
+            orb.style.transform = `translate3d(${progress * 30 - 15}px, ${progress * -60 + 30}px, 0)`;
+          }
+        }
+      });
+      ticking = false;
+    });
+  }, { passive: true });
 }
 
 /* --- Dynamic Title Text --- */
