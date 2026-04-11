@@ -309,7 +309,7 @@ export default function Dashboard() {
     try {
       const [progRes, prsRes, workoutsRes, notifsRes] = await Promise.all([
         supabase.from('programs').select('*').eq('user_id', user.id).eq('active', true).order('created_at', { ascending: false }).limit(1).single(),
-        supabase.from('personal_records').select('*').eq('user_id', user.id).order('achieved_at', { ascending: false }).limit(3),
+        supabase.from('personal_records').select('*').eq('user_id', user.id).order('achieved_at', { ascending: false }).limit(18),
         supabase.from('workouts').select('started_at, completed_at, total_volume, day_name').eq('user_id', user.id).not('completed_at', 'is', null).order('completed_at', { ascending: false }),
         supabase.from('notifications').select('id', { count: 'exact' }).eq('user_id', user.id).eq('read', false)
       ])
@@ -478,6 +478,16 @@ export default function Dashboard() {
         </div>
       )}
 
+      {isPro && !isUltra && (
+        <div className="premium-mode-shell">
+          <div className="premium-mode-kicker">PRO MODE</div>
+          <div className="premium-mode-title">Your interface is tuned for the paid tier now.</div>
+          <p className="premium-mode-body">
+            Cleaner glass panels, deeper tracking, smarter AI flows, and a faster path into custom programs and social tools.
+          </p>
+        </div>
+      )}
+
       <div className="dashboard-boost-grid">
         <button type="button" className="dashboard-boost-card dashboard-boost-card-discord" onClick={openDiscord}>
           <div className="dashboard-boost-kicker">COMMUNITY</div>
@@ -634,7 +644,7 @@ export default function Dashboard() {
       {recentPRs.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <h3 className="section-title"><RiTrophyFill size={16} /> {t('dashboard_recent_prs')}</h3>
-          {recentPRs.map(pr => (
+          {recentPRs.slice(0, 3).map(pr => (
             <div key={pr.id} className="pr-item">
               <div className="pr-badge"><RiMedalFill size={18} /></div>
               <div className="pr-info">

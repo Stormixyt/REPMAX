@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { triggerPushNotification } from '../lib/notifications'
 import ProBadge from '../components/ProBadge'
 import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine, RiImageFill, RiTranslate2 } from '@remixicon/react'
-import { getPushSupportState, requestNotificationPermission, showLocalNotification, subscribeToPush } from '../lib/pushNotifications'
+import { getPushDeviceStatus, getPushSupportState, requestNotificationPermission, showLocalNotification, subscribeToPush } from '../lib/pushNotifications'
 
 export default function Settings() {
   const { user, profile, signOut, updateProfile, isPro, isUltra, isAdmin, subscriptionTier } = useAuth()
@@ -16,11 +16,49 @@ export default function Settings() {
   const [nameValue, setNameValue] = useState(profile?.display_name || '')
   const [showDelete, setShowDelete] = useState(false)
   const [toast, setToast] = useState('')
+  const [pushDeviceStatus, setPushDeviceStatus] = useState({ loading: true })
+  const [pushSyncing, setPushSyncing] = useState(false)
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   const pushSupport = getPushSupportState()
   const currentLanguage = languageOptions.find((option) => option.value === language) || languageOptions[0]
+
+  useEffect(() => {
+    refreshPushDeviceStatus()
+  }, [user?.id])
+
+  async function refreshPushDeviceStatus() {
+    const status = await getPushDeviceStatus()
+    setPushDeviceStatus({ loading: false, ...status })
+  }
+
+  function getPushStatusCopy(status) {
+    if (status.loading) return 'Checking whether this phone is actually linked for remote push.'
+    if (!status.supported) return 'This browser does not support REPMAX push notifications.'
+    if (status.requiresInstalledApp) return 'Install REPMAX to your iPhone home screen first, then turn notifications on there.'
+    if (status.permission === 'denied') return 'Notifications are blocked for this browser right now.'
+    if (status.permission !== 'granted') return 'Notifications are available, but this browser has not granted permission yet.'
+    if (!status.hasRegistration) return 'Permission is on, but the REPMAX service worker has not linked this browser yet.'
+    if (!status.subscribed) return 'This phone has permission, but it is not subscribed for remote push yet.'
+    if (!status.lastSyncedAt) return 'This phone is subscribed locally. Server sync has not finished yet.'
+    if (status.error) return 'This phone is close, but the last push status check hit a sync error.'
+    return 'This phone is subscribed and synced with REPMAX remote push.'
+  }
+
+  function formatPushPermission(permission) {
+    if (permission === 'granted') return 'Allowed'
+    if (permission === 'denied') return 'Blocked'
+    if (permission === 'default') return 'Ask first'
+    return 'Unavailable'
+  }
+
+  function formatSyncLabel(value) {
+    if (!value) return 'No server sync yet'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return 'No server sync yet'
+    return `Last synced ${date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
+  }
 
   async function saveName() {
     await updateProfile({ display_name: nameValue })
@@ -42,6 +80,7 @@ export default function Settings() {
       const granted = await requestNotificationPermission()
       if (granted) {
         await subscribeToPush(user.id)
+        await refreshPushDeviceStatus()
       }
     }
   }
@@ -64,12 +103,14 @@ export default function Settings() {
   async function sendTestNotification() {
     const granted = await requestNotificationPermission()
     if (!granted) {
+      await refreshPushDeviceStatus()
       showToast('Notification permission is off')
       return
     }
 
     const subscription = await subscribeToPush(user.id)
     if (!subscription) {
+      await refreshPushDeviceStatus()
       showToast('This device could not finish push setup')
       return
     }
@@ -85,6 +126,7 @@ export default function Settings() {
     })
 
     if (pushResult.sent > 0) {
+      await refreshPushDeviceStatus()
       showToast(t('settings_push_sent'))
       return
     }
@@ -95,11 +137,30 @@ export default function Settings() {
     })
 
     if (pushResult.matched === 0) {
+      await refreshPushDeviceStatus()
       showToast('Phone notifications are enabled. Remote push is still syncing to this device.')
       return
     }
 
+    await refreshPushDeviceStatus()
     showToast(pushResult.error ? 'Local test worked. Remote push still needs attention.' : 'Local test worked. Remote push may take a moment.')
+  }
+
+  async function resyncPushDevice() {
+    setPushSyncing(true)
+    try {
+      const granted = await requestNotificationPermission()
+      if (!granted) {
+        showToast('Notification permission is off')
+        return
+      }
+
+      const subscription = await subscribeToPush(user.id)
+      showToast(subscription ? 'This phone is linked for remote push' : 'Could not sync this device yet')
+    } finally {
+      await refreshPushDeviceStatus()
+      setPushSyncing(false)
+    }
   }
 
   async function exportData() {
@@ -256,6 +317,37 @@ export default function Settings() {
           </div>
         </div>
         <RiArrowRightSLine size={20} className="settings-chevron" />
+      </div>
+
+      <div className="push-status-card">
+        <div className="push-status-header">
+          <div>
+            <div className="push-status-kicker">This phone</div>
+            <div className="push-status-title">Push sync status</div>
+          </div>
+          <button type="button" className="push-status-action" onClick={resyncPushDevice} disabled={pushSyncing}>
+            {pushSyncing ? 'Syncing...' : 'Resync device'}
+          </button>
+        </div>
+
+        <p className="push-status-copy">{getPushStatusCopy(pushDeviceStatus)}</p>
+
+        <div className="push-status-pill-row">
+          <span className={`push-status-pill ${pushDeviceStatus.permission === 'granted' ? 'live' : ''}`}>
+            Permission: {formatPushPermission(pushDeviceStatus.permission)}
+          </span>
+          <span className={`push-status-pill ${pushDeviceStatus.hasRegistration ? 'live' : ''}`}>
+            Service worker: {pushDeviceStatus.hasRegistration ? 'Ready' : 'Not linked'}
+          </span>
+          <span className={`push-status-pill ${pushDeviceStatus.subscribed ? 'live' : ''}`}>
+            Device: {pushDeviceStatus.subscribed ? 'Subscribed' : 'Not subscribed'}
+          </span>
+        </div>
+
+        <div className="push-status-meta">
+          <span>{formatSyncLabel(pushDeviceStatus.lastSyncedAt)}</span>
+          {pushDeviceStatus.endpointPreview && <span>Device tail ...{pushDeviceStatus.endpointPreview}</span>}
+        </div>
       </div>
 
       {pushSupport.requiresInstalledApp && (

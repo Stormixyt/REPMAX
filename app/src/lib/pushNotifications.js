@@ -31,6 +31,14 @@ export function getPushSupportState() {
   }
 }
 
+function readLastPushSync() {
+  try {
+    return localStorage.getItem(PUSH_SYNC_KEY)
+  } catch {
+    return null
+  }
+}
+
 async function getServiceWorkerRegistration() {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
 
@@ -115,6 +123,50 @@ export async function syncPushSubscription(userId = null) {
   if (Notification.permission !== 'granted') return null
 
   return subscribeToPush(userId, { prompt: false })
+}
+
+export async function getPushDeviceStatus() {
+  const support = getPushSupportState()
+  const permission = canUsePushNotifications() ? Notification.permission : 'unsupported'
+  const lastSyncedAt = readLastPushSync()
+
+  if (!support.supported) {
+    return {
+      ...support,
+      permission,
+      hasRegistration: false,
+      subscribed: false,
+      lastSyncedAt,
+      endpointPreview: null,
+      error: null,
+    }
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration('/')
+    const subscription = registration ? await registration.pushManager.getSubscription() : null
+
+    return {
+      ...support,
+      permission,
+      hasRegistration: Boolean(registration),
+      subscribed: Boolean(subscription),
+      lastSyncedAt,
+      endpointPreview: subscription?.endpoint ? subscription.endpoint.slice(-22) : null,
+      error: null,
+    }
+  } catch (error) {
+    console.warn('[REPMAX] Failed to inspect push device status:', error)
+    return {
+      ...support,
+      permission,
+      hasRegistration: false,
+      subscribed: false,
+      lastSyncedAt,
+      endpointPreview: null,
+      error,
+    }
+  }
 }
 
 export function showLocalNotification(title, body, options = {}) {

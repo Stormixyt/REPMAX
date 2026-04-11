@@ -4,20 +4,25 @@ import ProBadge from './ProBadge'
 export default function FriendCard({ friend, onNudge, onInvite, onRemove }) {
   const initials = (friend.display_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   const lastActive = friend.last_workout ? getTimeAgo(friend.last_workout) : 'No workouts yet'
+  const subscriptionTier = friend.subscription_tier === 'ultra'
+    ? 'ultra'
+    : friend.subscription_tier === 'pro' || friend.subscription_status === 'pro'
+      ? 'pro'
+      : null
 
   return (
     <div className="friend-card">
       <div className="friend-card-left">
         <div className="friend-avatar">
           {initials}
-          {friend.subscription_status === 'pro' && (
+          {subscriptionTier && (
             <div className="friend-pro-dot" />
           )}
         </div>
         <div className="friend-info">
           <div className="friend-name">
             {friend.display_name || 'Athlete'}
-            {friend.subscription_status === 'pro' && <ProBadge size="sm" />}
+            {subscriptionTier && <ProBadge size="sm" tier={subscriptionTier} />}
           </div>
           <div className="friend-meta">
             {friend.total_workouts || 0} workouts · {lastActive}

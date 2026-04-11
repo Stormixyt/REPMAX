@@ -92,6 +92,92 @@ body.theme-cyber-orange {
     --border-accent: rgba(255, 94, 0, 0.2);
 }
 
+body.tier-free {
+    background: var(--bg-primary);
+}
+
+body.tier-pro {
+    background:
+        radial-gradient(circle at top right, rgba(255, 196, 0, 0.08), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(204, 255, 0, 0.07), transparent 36%),
+        linear-gradient(180deg, #060606 0%, #090909 100%);
+}
+
+body.tier-ultra {
+    background:
+        radial-gradient(circle at top right, rgba(255, 42, 133, 0.14), transparent 34%),
+        radial-gradient(circle at bottom left, rgba(87, 220, 255, 0.1), transparent 38%),
+        linear-gradient(180deg, #050507 0%, #090510 100%);
+}
+
+body.tier-pro .card,
+body.tier-pro .stat-box,
+body.tier-pro .pr-item,
+body.tier-pro .settings-item,
+body.tier-pro .friend-card,
+body.tier-pro .notif-prompt,
+body.tier-pro .challenge-card,
+body.tier-pro .dashboard-boost-card,
+body.tier-pro .dna-card {
+    border-color: rgba(255, 214, 10, 0.12);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0)),
+        var(--bg-card);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+}
+
+body.tier-pro .bottom-nav {
+    background:
+        linear-gradient(180deg, rgba(14, 14, 10, 0.96), rgba(8, 8, 7, 0.96));
+    border-top-color: rgba(255, 214, 10, 0.12);
+}
+
+body.tier-pro .page-title,
+body.tier-pro .profile-display-name,
+body.tier-pro .card-title {
+    text-shadow: 0 0 24px rgba(255, 214, 10, 0.08);
+}
+
+body.tier-pro .settings-icon,
+body.tier-pro .ultra-insight-icon,
+body.tier-pro .notif-badge {
+    box-shadow: 0 10px 24px rgba(255, 196, 0, 0.08);
+}
+
+body.tier-ultra .card,
+body.tier-ultra .stat-box,
+body.tier-ultra .pr-item,
+body.tier-ultra .settings-item,
+body.tier-ultra .friend-card,
+body.tier-ultra .notif-prompt,
+body.tier-ultra .challenge-card,
+body.tier-ultra .dashboard-boost-card,
+body.tier-ultra .dna-card {
+    border-color: rgba(255, 42, 133, 0.14);
+    background:
+        radial-gradient(circle at top right, rgba(255, 42, 133, 0.08), transparent 40%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+        var(--bg-card);
+    box-shadow: 0 24px 50px rgba(10, 6, 14, 0.3);
+}
+
+body.tier-ultra .bottom-nav {
+    background:
+        linear-gradient(180deg, rgba(18, 10, 18, 0.96), rgba(8, 8, 10, 0.96));
+    border-top-color: rgba(255, 42, 133, 0.18);
+}
+
+body.tier-ultra .page-title,
+body.tier-ultra .profile-display-name,
+body.tier-ultra .card-title {
+    text-shadow: 0 0 26px rgba(255, 42, 133, 0.16);
+}
+
+body.tier-ultra .settings-icon,
+body.tier-ultra .notif-badge {
+    box-shadow: 0 12px 28px rgba(255, 42, 133, 0.12);
+}
+
 :root {
 
     --font-display: "Space Grotesk", sans-serif;
@@ -3100,6 +3186,102 @@ body.coach-route-active.keyboard-open .coach-composer {
 }
 .settings-switch.on .settings-switch-thumb {
     left: 22px;
+}
+
+.push-status-card {
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(204, 255, 0, 0.14);
+    background:
+        radial-gradient(circle at top right, rgba(204, 255, 0, 0.1), transparent 38%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+        var(--bg-card);
+}
+
+.push-status-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.push-status-kicker {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+}
+
+.push-status-title {
+    margin-top: 6px;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.push-status-action {
+    border: 1px solid rgba(204, 255, 0, 0.18);
+    background: rgba(204, 255, 0, 0.08);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 9px 12px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.push-status-action:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: rgba(204, 255, 0, 0.12);
+}
+
+.push-status-action:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+
+.push-status-copy {
+    margin-top: 12px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.push-status-pill-row {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.push-status-pill {
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-tertiary);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.push-status-pill.live {
+    border-color: rgba(204, 255, 0, 0.22);
+    background: rgba(204, 255, 0, 0.1);
+    color: var(--accent);
+}
+
+.push-status-meta {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    color: var(--text-tertiary);
+    font-size: 0.72rem;
 }
 
 /* ============================================
@@ -7811,6 +7993,40 @@ body * {
     color: var(--accent);
     font-size: 0.8rem;
     font-weight: 800;
+}
+
+.premium-mode-shell {
+    margin: 6px 0 18px;
+    padding: 18px;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 214, 10, 0.18);
+    background:
+        radial-gradient(circle at top right, rgba(255, 214, 10, 0.14), transparent 44%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+        var(--bg-card);
+}
+
+.premium-mode-kicker {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+}
+
+.premium-mode-title {
+    margin-top: 8px;
+    font-family: var(--font-display);
+    font-size: 1.04rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.premium-mode-body {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
 }
 
 .ultra-intelligence-shell {
