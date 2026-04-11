@@ -174,6 +174,7 @@ export default function Onboarding() {
       const availableSplits = getAvailableSplits(days)
       const chosenSplit = split || availableSplits[0]?.id || 'full_body'
       const normalizedEquipment = equipment || 'full_gym'
+      const normalizedEquipmentList = [normalizedEquipment]
       const normalizedDays = days.length > 0 ? days : ['Mon', 'Wed', 'Fri']
       const normalizedLevel = level || 'beginner'
       const normalizedGoal = goal || 'general'
@@ -194,7 +195,7 @@ export default function Onboarding() {
         level: normalizedLevel,
         experience_level: normalizedLevel,
         training_days: normalizedDays,
-        equipment: normalizedEquipment,
+        equipment: normalizedEquipmentList,
         focus_muscles: focusMuscles,
         preferred_split: chosenSplit,
         unit_preference: unit,
