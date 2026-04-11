@@ -49,6 +49,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS image_url text;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_config jsonb;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_seed text;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS language text;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS interface_skin text DEFAULT 'default' CHECK (interface_skin IN ('default', 'ultra-signature'));
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_subscription jsonb;
 
 -- Database Webhook for Push Notifications
