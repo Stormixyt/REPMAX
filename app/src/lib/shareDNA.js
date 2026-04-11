@@ -148,7 +148,7 @@ export async function generateDNAImage(profile, stats, theme = 'green') {
 
   ctx.fillStyle = '#555555'
   ctx.font = '500 18px "Inter", sans-serif'
-  ctx.fillText('repmax.vercel.app', 540, 1095)
+  ctx.fillText('www.rep-max.app', 540, 1095)
 
   ctx.fillStyle = '#333333'
   ctx.font = '400 16px "Inter", sans-serif'
@@ -167,7 +167,7 @@ export async function shareDNACard(profile, stats, theme) {
     await navigator.share({
       title: `${profile?.display_name || 'Athlete'}'s REPMAX DNA`,
       text: 'Check out my training stats on REPMAX 💪',
-      url: 'https://repmax.vercel.app',
+      url: 'https://www.rep-max.app',
       files: [file]
     })
     return true

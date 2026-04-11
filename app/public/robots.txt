@@ -1,5 +1,5 @@
 # REPMAX — AI-Powered Training Platform
-# https://repmax.vercel.app
+# https://www.rep-max.app
 
 User-agent: *
 Allow: /
@@ -24,4 +24,4 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
-Sitemap: https://repmax.vercel.app/sitemap.xml
+Sitemap: https://www.rep-max.app/sitemap.xml
