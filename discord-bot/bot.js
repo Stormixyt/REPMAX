@@ -14,6 +14,32 @@ const fs = require('fs')
 const path = require('path')
 const { getBotConfig } = require('./config')
 const { askRepmaxAI, generateUpdateDraft, DEFAULT_MODEL } = require('./repmax-ai')
+const {
+  PROGRESSION_COMMAND_BUILDERS,
+  ensureProgressionDefaults,
+  getLevel,
+  getProgressState,
+  awardXp,
+  isQualifyingMessage,
+  canAwardMessageXp,
+  getDailyState,
+  buildProgressBar,
+  buildRankEmbed,
+  handleProgressionCommand,
+} = require('./leveling')
+const { FUN_COMMAND_BUILDERS, handleFunCommand } = require('./fun-commands')
+const { TRAINING_COMMAND_BUILDERS, handleTrainingCommand } = require('./training-commands')
+const { ADMIN_COMMAND_BUILDERS, handleAdminCommand } = require('./admin-commands')
+const {
+  normalizeChangelogVersion,
+  getChangelogChannel,
+  getAnnouncementsChannel,
+  getUpdatesRole,
+  slugifyKey,
+  buildChangelogEmbed,
+  buildAnnouncementEmbed,
+  buildUpdateButtons,
+} = require('./update-posts')
 
 // ═══════════════════════════════════════════
 //  CONFIG
@@ -31,12 +57,14 @@ const C = {
 const DATA_FILE = path.join(__dirname, 'bot-data.json')
 
 function withDataDefaults(raw = {}) {
+  const progression = ensureProgressionDefaults(raw)
   return {
-    xp: raw.xp || {},
+    xp: progression.xp,
     warnings: raw.warnings || {},
     afk: raw.afk || {},
     changelogPosts: raw.changelogPosts || {},
     announcementPosts: raw.announcementPosts || {},
+    dailyRewards: progression.dailyRewards,
   }
 }
 
@@ -53,21 +81,7 @@ function saveData(data) {
 
 let botData = loadData()
 const aiCooldowns = new Map()
-
-// ═══════════════════════════════════════════
-//  XP / LEVELING SYSTEM
-// ═══════════════════════════════════════════
-function getLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp)) }
-function xpForLevel(level) { return (level / 0.1) ** 2 }
-
-function addXP(userId, amount) {
-  if (!botData.xp[userId]) botData.xp[userId] = 0
-  const oldLevel = getLevel(botData.xp[userId])
-  botData.xp[userId] += amount
-  const newLevel = getLevel(botData.xp[userId])
-  saveData(botData)
-  return newLevel > oldLevel ? newLevel : null
-}
+const xpCooldowns = new Map()
 
 // ═══════════════════════════════════════════
 //  MOTIVATION QUOTES
@@ -112,7 +126,7 @@ const commands = [
   new SlashCommandBuilder().setName('help').setDescription('List all REPMAX bot commands'),
   new SlashCommandBuilder().setName('profile').setDescription('View your REPMAX profile').addUserOption(o => o.setName('user').setDescription('User to view')),
   new SlashCommandBuilder().setName('leaderboard').setDescription('View the XP leaderboard'),
-  new SlashCommandBuilder().setName('streak').setDescription('Check your activity streak'),
+  new SlashCommandBuilder().setName('streak').setDescription('Check your daily streak and progression status'),
   new SlashCommandBuilder().setName('motivation').setDescription('Get a random motivation quote'),
   new SlashCommandBuilder().setName('workout').setDescription('Get a quick workout suggestion').addStringOption(o => o.setName('type').setDescription('Workout type').addChoices(
     { name: 'Push', value: 'push' }, { name: 'Pull', value: 'pull' }, { name: 'Legs', value: 'legs' }, { name: 'Full Body', value: 'full' }, { name: 'Core', value: 'core' },
@@ -163,83 +177,11 @@ const commands = [
     .setDescription('Ask the REPMAX AI about the app, training, or getting started')
     .addStringOption(o => o.setName('question').setDescription('What do you want to ask?').setRequired(true))
     .addBooleanOption(o => o.setName('private').setDescription('Only show the reply to you')),
+  ...PROGRESSION_COMMAND_BUILDERS,
+  ...FUN_COMMAND_BUILDERS,
+  ...TRAINING_COMMAND_BUILDERS,
+  ...ADMIN_COMMAND_BUILDERS,
 ]
-
-function normalizeChangelogVersion(version = '') {
-  return version.trim().replace(/^v/i, '').trim()
-}
-
-function getChangelogChannel(guild) {
-  return guild.channels.cache.find(c => c.type === ChannelType.GuildText && c.name.includes('changelog'))
-}
-
-function getAnnouncementsChannel(guild) {
-  return guild.channels.cache.find(c => c.type === ChannelType.GuildText && c.name.includes('announcement'))
-}
-
-function getUpdatesRole(guild) {
-  return guild.roles.cache.find(r => r.name === NOTIF_MAP.updates || r.name.toLowerCase().includes('app updates'))
-}
-
-function bulletList(items = []) {
-  return items.filter(Boolean).map(item => `• ${item}`).join('\n')
-}
-
-function slugifyKey(value = '') {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-function buildChangelogEmbed({ version, headline, newItems, fixItems, authorTag }) {
-  const embed = new EmbedBuilder()
-    .setColor(C.green)
-    .setTitle(`📰 REPMAX v${version} — Latest Update`)
-    .setDescription(headline)
-    .setTimestamp()
-    .setFooter({ text: `Posted by ${authorTag} • More updates coming soon! 🚀` })
-
-  if (newItems.length) {
-    embed.addFields({ name: '🆕 What\'s New', value: bulletList(newItems), inline: false })
-  }
-
-  if (fixItems.length) {
-    embed.addFields({ name: '🐛 Bug Fixes', value: bulletList(fixItems), inline: false })
-  }
-
-  return embed
-}
-
-function buildAnnouncementEmbed({ title, summary, highlights, cta, authorTag }) {
-  const embed = new EmbedBuilder()
-    .setColor(C.blue)
-    .setTitle(`📣 ${title}`)
-    .setDescription(summary)
-    .setTimestamp()
-    .setFooter({ text: `Posted by ${authorTag} • REPMAX announcements` })
-
-  if (highlights.length) {
-    embed.addFields({ name: '⚡ Highlights', value: bulletList(highlights), inline: false })
-  }
-
-  if (cta) {
-    embed.addFields({ name: '🚀 Next Move', value: cta, inline: false })
-  }
-
-  return embed
-}
-
-function buildUpdateButtons(kind = 'announcement') {
-  const primaryLabel = kind === 'changelog' ? '📱 Open REPMAX' : '🚀 Open App'
-  const primaryUrl = kind === 'changelog' ? 'https://www.rep-max.app' : 'https://www.rep-max.app/app'
-
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setLabel(primaryLabel).setStyle(ButtonStyle.Link).setURL(primaryUrl),
-    new ButtonBuilder().setLabel('💬 Join Discord').setStyle(ButtonStyle.Link).setURL('https://discord.gg/repmax'),
-  )
-}
 
 function buildInviteUrl(applicationId) {
   const params = new URLSearchParams({
@@ -313,7 +255,7 @@ client.once('ready', async () => {
   scheduleDailyMotivation()
 
   log('🤖 All systems operational!')
-  log('   Listening for: tickets, roles, commands, XP, welcome, moderation')
+  log('   Listening for: tickets, roles, commands, progression, fun tools, welcome, moderation')
 })
 
 // ═══════════════════════════════════════════
@@ -323,26 +265,48 @@ client.on(Events.InteractionCreate, async interaction => {
   // ── SLASH COMMANDS ──
   if (interaction.isChatInputCommand()) {
     const { commandName } = interaction
+    const commandContext = {
+      botData,
+      colors: C,
+      getLevel,
+    }
+
+    if (await handleProgressionCommand(interaction, commandContext)) {
+      saveData(botData)
+      return
+    }
+
+    if (await handleFunCommand(interaction, commandContext)) {
+      return
+    }
+
+    if (await handleTrainingCommand(interaction, commandContext)) {
+      return
+    }
+
+    if (await handleAdminCommand(interaction, commandContext)) {
+      return
+    }
 
     if (commandName === 'help') {
       const e = new EmbedBuilder().setColor(C.accent)
         .setTitle('🤖 REPMAX Bot Commands')
         .setDescription([
-          '`/help` - show every command',
-          '`/profile` - view XP, level, warnings, roles',
-          '`/leaderboard` - server XP leaderboard',
-          '`/streak` - quick activity check',
-          '`/motivation` - random motivation quote',
-          '`/workout` - quick workout suggestion',
-          '`/afk` - set your AFK status',
-          '`/warn` - staff warning command',
-            '`/serverinfo` - current server stats',
-            '`/app` - open the REPMAX app',
-            '`/changelog` - publish a changelog update (admin only)',
-            '`/announce` - publish an announcement post (admin only)',
-            '`/autoupdate` - let AI turn rough notes into a changelog or announcement',
-            '`/ai` - ask the REPMAX AI about the app or training',
-          ].join('\n'))
+          '**Progression**',
+          '`/profile` `/rank` `/leaderboard` `/daily` `/streak`',
+          '',
+          '**Community**',
+          '`/motivation` `/workout` `/8ball` `/coinflip` `/choose` `/poll` `/afk`',
+          '',
+          '**Training tools**',
+          '`/repcalc` `/plates` `/splithelp` `/ai`',
+          '',
+          '**Server**',
+          '`/serverinfo` `/app` `/warn` `/serverpulse`',
+          '',
+          '**Broadcasts**',
+          '`/changelog` `/announce` `/autoupdate`',
+        ].join('\n'))
         .setFooter({ text: 'If commands are missing, re-invite the bot with applications.commands scope.' })
       await interaction.reply({ embeds: [e], ephemeral: true })
     }
@@ -350,26 +314,25 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'profile') {
       const user = interaction.options.getUser('user') || interaction.user
       const xp = botData.xp[user.id] || 0
-      const level = getLevel(xp)
-      const nextLevelXP = xpForLevel(level + 1)
-      const progress = Math.floor((xp / nextLevelXP) * 100)
+      const progressState = getProgressState(xp)
       const warnings = (botData.warnings[user.id] || []).length
+      const dailyState = getDailyState(botData, user.id)
       const member = await interaction.guild.members.fetch(user.id).catch(() => null)
-
-      const bar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10))
 
       const e = new EmbedBuilder().setColor(C.accent)
         .setTitle(`${user.username}'s Profile`)
         .setThumbnail(user.displayAvatarURL({ size: 256 }))
         .addFields(
-          { name: '📊 Level', value: `**${level}**`, inline: true },
-          { name: '✨ XP', value: `**${xp}** / ${Math.floor(nextLevelXP)}`, inline: true },
+          { name: '📊 Level', value: `**${progressState.level}**`, inline: true },
+          { name: '✨ XP', value: `**${xp}**`, inline: true },
+          { name: '🎁 Daily', value: dailyState.canClaim ? 'Ready to claim' : `${dailyState.streak} day streak`, inline: true },
           { name: '⚠️ Warnings', value: `${warnings}/3`, inline: true },
-          { name: '📈 Progress', value: `\`${bar}\` ${progress}%`, inline: false },
+          { name: '📈 Progress', value: `\`${buildProgressBar(progressState.progress)}\` ${progressState.progress}%`, inline: false },
+          { name: '🎯 Next milestone', value: `${progressState.remaining} XP to Level ${progressState.level + 1}`, inline: false },
           { name: '📅 Joined', value: member ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>` : 'Unknown', inline: true },
           { name: '🎭 Roles', value: member ? member.roles.cache.filter(r => r.name !== '@everyone').map(r => r.toString()).slice(0, 10).join(' ') || 'None' : 'Unknown', inline: false },
         )
-        .setFooter({ text: 'REPMAX • Train. Track. Dominate.' })
+      .setFooter({ text: 'REPMAX • Train. Track. Dominate.' })
       await interaction.reply({ embeds: [e] })
     }
 
@@ -379,20 +342,34 @@ client.on(Events.InteractionCreate, async interaction => {
       let desc = ''
       for (let i = 0; i < sorted.length; i++) {
         const [userId, xp] = sorted[i]
-        const lvl = getLevel(xp)
-        desc += `${medals[i] || `**${i + 1}.**`} <@${userId}> — Level **${lvl}** (${xp} XP)\n`
+        const progressState = getProgressState(xp)
+        desc += `${medals[i] || `**${i + 1}.**`} <@${userId}> — **L${progressState.level}** · ${xp} XP · ${progressState.remaining} XP left\n`
       }
-      const e = new EmbedBuilder().setColor(C.gold).setTitle('🏆  XP Leaderboard').setDescription(desc || 'No data yet. Start chatting!').setFooter({ text: 'Earn XP by being active!' })
+      const e = new EmbedBuilder()
+        .setColor(C.gold)
+        .setTitle('🏆  XP Leaderboard')
+        .setDescription(desc || 'No data yet. Start chatting!')
+        .setFooter({ text: 'Message, claim /daily, and keep the streak alive.' })
       await interaction.reply({ embeds: [e] })
     }
 
     else if (commandName === 'streak') {
       const xp = botData.xp[interaction.user.id] || 0
-      const level = getLevel(xp)
+      const progressState = getProgressState(xp)
+      const dailyState = getDailyState(botData, interaction.user.id)
       const e = new EmbedBuilder().setColor(C.orange)
-        .setTitle(`🔥 ${interaction.user.username}'s Activity`)
-        .setDescription(`You're at **Level ${level}** with **${xp} XP**.\n\nKeep chatting and sharing workouts to level up! Every message = XP. 💪`)
-        .setFooter({ text: 'Use /profile for full stats' })
+        .setTitle(`🔥 ${interaction.user.username}'s Daily Streak`)
+        .setDescription(
+          dailyState.canClaim
+            ? `Your streak is **${dailyState.streak}** and your next daily reward is ready right now.\n\nClaim it with **/daily** and keep the momentum going.`
+            : `Current streak: **${dailyState.streak}** day${dailyState.streak === 1 ? '' : 's'}.\n\nYou are **${progressState.remaining} XP** away from Level ${progressState.level + 1}.`
+        )
+        .addFields(
+          { name: 'Level', value: `**${progressState.level}**`, inline: true },
+          { name: 'XP', value: `${xp}`, inline: true },
+          { name: 'Progress', value: `\`${buildProgressBar(progressState.progress)}\` ${progressState.progress}%`, inline: true },
+        )
+        .setFooter({ text: dailyState.canClaim ? 'Daily reward ready now.' : 'Claim again when the cooldown ends.' })
       await interaction.reply({ embeds: [e], ephemeral: true })
     }
 
@@ -551,13 +528,14 @@ client.on(Events.InteractionCreate, async interaction => {
           throw new Error('Could not find the changelog channel.')
         }
 
-        const updatesRole = pingUpdates ? getUpdatesRole(interaction.guild) : null
+        const updatesRole = pingUpdates ? getUpdatesRole(interaction.guild, NOTIF_MAP) : null
         const embed = buildChangelogEmbed({
           version,
           headline,
           newItems,
           fixItems,
           authorTag: interaction.user.tag,
+          colors: C,
         })
 
         const row = buildUpdateButtons('changelog')
@@ -617,13 +595,14 @@ client.on(Events.InteractionCreate, async interaction => {
           throw new Error('Could not find the announcements channel.')
         }
 
-        const updatesRole = pingUpdates ? getUpdatesRole(interaction.guild) : null
+        const updatesRole = pingUpdates ? getUpdatesRole(interaction.guild, NOTIF_MAP) : null
         const embed = buildAnnouncementEmbed({
           title,
           summary,
           highlights,
           cta,
           authorTag: interaction.user.tag,
+          colors: C,
         })
 
         const sent = await announcementChannel.send({
@@ -684,7 +663,7 @@ client.on(Events.InteractionCreate, async interaction => {
           username: interaction.user.username,
         })
 
-        const updatesRole = pingUpdates ? getUpdatesRole(interaction.guild) : null
+        const updatesRole = pingUpdates ? getUpdatesRole(interaction.guild, NOTIF_MAP) : null
         const postedLinks = []
 
         if (type === 'changelog' || type === 'both') {
@@ -704,6 +683,7 @@ client.on(Events.InteractionCreate, async interaction => {
             newItems: draft.newItems,
             fixItems: draft.fixItems,
             authorTag: `${interaction.user.tag} via AI`,
+            colors: C,
           })
 
           const sent = await changelogChannel.send({
@@ -740,6 +720,7 @@ client.on(Events.InteractionCreate, async interaction => {
             highlights: draft.highlights.length ? draft.highlights : draft.newItems,
             cta: draft.cta || 'Jump into the app and check what changed.',
             authorTag: `${interaction.user.tag} via AI`,
+            colors: C,
           })
 
           const sent = await announcementChannel.send({
@@ -911,24 +892,33 @@ client.on(Events.MessageCreate, async message => {
   if (message.author.bot) return
 
   // ── XP SYSTEM ──
-  const newLevel = addXP(message.author.id, Math.floor(Math.random() * 5) + 1)
-  if (newLevel) {
-    const e = new EmbedBuilder().setColor(C.accent)
-      .setTitle('🎉  Level Up!')
-      .setDescription(`${message.author} reached **Level ${newLevel}**! 💪`)
-      .setFooter({ text: 'Keep chatting to earn more XP!' })
-    await message.channel.send({ embeds: [e] })
+  if (isQualifyingMessage(message) && canAwardMessageXp(xpCooldowns, message.author.id)) {
+    const xpAward = Math.floor(Math.random() * 7) + 12
+    const xpResult = awardXp(botData, message.author.id, xpAward)
+    saveData(botData)
 
-    // Auto-role upgrades
-    const guild = message.guild
-    const member = message.member
-    if (newLevel >= 5 && !member.roles.cache.find(r => r.name === '💪 Member')) {
-      const role = guild.roles.cache.find(r => r.name === '💪 Member')
-      if (role) try { await member.roles.add(role); await message.channel.send({ content: `🎉 ${member} earned the **💪 Member** role!` }) } catch {}
-    }
-    if (newLevel >= 15 && !member.roles.cache.find(r => r.name === '✅ Verified')) {
-      const role = guild.roles.cache.find(r => r.name === '✅ Verified')
-      if (role) try { await member.roles.add(role); await message.channel.send({ content: `🎉 ${member} earned the **✅ Verified** role!` }) } catch {}
+    if (xpResult.leveledUp) {
+      const newLevel = xpResult.newLevel
+      const e = new EmbedBuilder().setColor(C.accent)
+        .setTitle('🎉  Level Up!')
+        .setDescription(`${message.author} reached **Level ${newLevel}**! 💪`)
+        .addFields({ name: 'Next milestone', value: `${xpResult.progress.remaining} XP to Level ${newLevel + 1}`, inline: false })
+        .setFooter({ text: 'Keep chatting and claim /daily to level faster.' })
+      await message.channel.send({ embeds: [e] })
+
+      // Auto-role upgrades
+      const guild = message.guild
+      const member = message.member
+      if (guild && member) {
+        if (newLevel >= 5 && !member.roles.cache.find(r => r.name === '💪 Member')) {
+          const role = guild.roles.cache.find(r => r.name === '💪 Member')
+          if (role) try { await member.roles.add(role); await message.channel.send({ content: `🎉 ${member} earned the **💪 Member** role!` }) } catch {}
+        }
+        if (newLevel >= 15 && !member.roles.cache.find(r => r.name === '✅ Verified')) {
+          const role = guild.roles.cache.find(r => r.name === '✅ Verified')
+          if (role) try { await member.roles.add(role); await message.channel.send({ content: `🎉 ${member} earned the **✅ Verified** role!` }) } catch {}
+        }
+      }
     }
   }
 

@@ -1565,6 +1565,41 @@ function repairLikelyJson(text = "") {
     .trim();
 }
 
+export function normalizeImportedRoutineText(rawText = "") {
+  const cleanedLines = String(rawText || "")
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line
+      .replace(/\u2022|\u25cf|\u25aa|\u25ab|\u25e6/g, "-")
+      .replace(/^\s*(?:\[\s*[xX ]?\s*\]|[-*]+|>\s*|-?\s*>\s*)\s*/g, "")
+      .replace(/^\s*choose files?\s*$/i, "")
+      .replace(/^\s*drop routine screenshots here\s*$/i, "")
+      .replace(/^\s*png,\s*jpg,\s*heic.*$/i, "")
+      .replace(/^\s*img[_-]?\d+.*\.(?:png|jpe?g|heic)\s*$/i, "")
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter(Boolean);
+
+  const mergedLines = [];
+  for (const line of cleanedLines) {
+    const shouldAttach = mergedLines.length
+      && line.length <= 18
+      && !/^(day\s*\d+|push|pull|legs|upper|lower|rest|recovery|off|cardio)/i.test(line)
+      && !/\d+\s*[xX]\s*\d+/.test(line);
+
+    if (shouldAttach) {
+      mergedLines[mergedLines.length - 1] = `${mergedLines[mergedLines.length - 1]} ${line}`
+        .replace(/\s+/g, " ")
+        .trim();
+      continue;
+    }
+
+    mergedLines.push(line);
+  }
+
+  return mergedLines.join("\n").trim();
+}
+
 function cloneVisionDays(days = []) {
   return (Array.isArray(days) ? days : []).map((day) => ({
     ...day,
@@ -1660,12 +1695,13 @@ Rules:
 - Use sensible defaults for sets, reps, RPE, and rest seconds.`;
 
   try {
+    const cleanedText = normalizeImportedRoutineText(routineText);
     const data = await callGroq({
       messages: [
         { role: "system", content: TEXT_TO_PROGRAM_PROMPT },
         {
           role: "user",
-          content: `Extracted routine text:\n\n${routineText}`,
+          content: `Extracted routine text:\n\n${cleanedText}`,
         },
       ],
       model: MODEL,
@@ -1684,6 +1720,7 @@ Rules:
     return {
       success: true,
       program: normalizeVisionProgramPayload(JSON.parse(content)),
+      cleanedText,
     };
   } catch (error) {
     console.error("Routine text import failed:", error);
@@ -1804,12 +1841,13 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
   }
 
   async function buildProgramFromExtractedText(extractedText) {
+    const cleanedText = normalizeImportedRoutineText(extractedText);
     const data = await callGroq({
       messages: [
         { role: "system", content: TEXT_TO_PROGRAM_PROMPT },
         {
           role: "user",
-          content: `Extracted routine text:\n\n${extractedText}`,
+          content: `Extracted routine text:\n\n${cleanedText}`,
         },
       ],
       model: MODEL,
@@ -1825,17 +1863,21 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
       throw new Error("Routine text conversion returned empty output");
     }
 
-    return JSON.parse(content);
+    return {
+      parsedProgram: JSON.parse(content),
+      cleanedText,
+    };
   }
 
+  let extractedText = "";
   try {
-    const extractedText = await extractRoutineTextFromImages();
+    extractedText = await extractRoutineTextFromImages();
     if (extractedText) {
-      const parsedProgram = await buildProgramFromExtractedText(extractedText);
+      const { parsedProgram, cleanedText } = await buildProgramFromExtractedText(extractedText);
       return {
         success: true,
         program: normalizeVisionProgramPayload(parsedProgram),
-        extractedText,
+        extractedText: cleanedText,
       };
     }
   } catch (err) {
@@ -1876,6 +1918,10 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
     return { success: true, program: normalizeVisionProgramPayload(parsedProgram) };
   } catch(err) {
     console.error("Vision AI failed:", err);
-    return { success: false, error: err };
+    return {
+      success: false,
+      error: err,
+      extractedText: normalizeImportedRoutineText(extractedText),
+    };
   }
 }

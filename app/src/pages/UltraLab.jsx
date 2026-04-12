@@ -3,10 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { buildUltraAnalyticsModel } from '../lib/ultraAnalytics'
-import { generateProgramFromImages, generateProgramFromText } from '../lib/groq'
+import { generateProgramFromImages, generateProgramFromText, normalizeImportedRoutineText } from '../lib/groq'
 import { weightLabel } from '../lib/units'
 import PaywallGate from '../components/PaywallGate'
 import ProBadge from '../components/ProBadge'
+import './ultra-lab.css'
 import {
   RiArrowLeftLine,
   RiArrowDownSLine,
@@ -31,6 +32,7 @@ import {
 } from '@remixicon/react'
 
 const TAB_OPTIONS = [
+  { id: 'overview', label: 'Overview', icon: RiSparklingFill },
   { id: 'intelligence', label: 'Intelligence', icon: RiBrainFill },
   { id: 'import', label: 'Import Studio', icon: RiUploadCloud2Line },
   { id: 'social', label: 'Social Edge', icon: RiTeamLine },
@@ -302,6 +304,130 @@ function fileToDataUrl(file) {
   })
 }
 
+function inferTargetMuscles(label = '') {
+  const normalized = label.toLowerCase()
+  if (/rest|off|recovery/.test(normalized)) return []
+  if (/push|chest|tricep|shoulder/.test(normalized)) return ['chest', 'shoulders', 'triceps']
+  if (/pull|back|bicep/.test(normalized)) return ['back', 'biceps', 'rear delts']
+  if (/leg|lower|quad|hamstring|glute|calf/.test(normalized)) return ['quads', 'hamstrings', 'glutes', 'calves']
+  if (/core|abs/.test(normalized)) return ['core']
+  if (/upper/.test(normalized)) return ['chest', 'back', 'shoulders', 'arms']
+  if (/full/.test(normalized)) return ['full body']
+  return []
+}
+
+function looksLikeDayHeading(line = '') {
+  const value = line.trim()
+  if (!value) return false
+  if (/^(week|notes?|tempo|rest\s+\d)/i.test(value)) return false
+  if (/^(day\s*\d+|day\s*[a-z]+)/i.test(value)) return true
+  if (/^(push|pull|legs|leg day|upper|lower|full body|rest|recovery|off day|cardio|arms|chest|back|shoulders)/i.test(value)) return true
+  return /:$/.test(value) && value.length <= 36
+}
+
+function mergeBrokenLines(lines = []) {
+  const merged = []
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line) continue
+
+    const shouldAttach = merged.length
+      && !looksLikeDayHeading(line)
+      && !/^\d+\s*[xX]/.test(line)
+      && line.length <= 18
+      && !/\b(rest|off|recovery)\b/i.test(line)
+
+    if (shouldAttach) {
+      merged[merged.length - 1] = `${merged[merged.length - 1]} ${line}`.replace(/\s+/g, ' ').trim()
+      continue
+    }
+
+    merged.push(line)
+  }
+
+  return merged
+}
+
+function parseExerciseLine(line = '') {
+  const cleaned = line
+    .replace(/^[\-\*\d.)\s]+/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const match = cleaned.match(/(.+?)(?:\s*[—-]\s*|\s+)(\d+)\s*[xX]\s*(\d+)(?:\s*@?\s*RPE\s*([0-9.]+))?(?:.*?(\d{2,3})\s*(?:s|sec|seconds))?/i)
+
+  if (match) {
+    return {
+      name: match[1].trim(),
+      sets: Number(match[2]) || 3,
+      reps: Number(match[3]) || 10,
+      rpe: Number(match[4]) || 8,
+      rest_seconds: Number(match[5]) || 90,
+      notes: '',
+    }
+  }
+
+  return {
+    ...createEmptyExercise(),
+    name: cleaned,
+  }
+}
+
+function seedProgramFromText(rawText = '') {
+  const lines = mergeBrokenLines(normalizeImportedRoutineText(rawText).split(/\r?\n/))
+  const days = []
+  let currentDay = null
+
+  const pushCurrentDay = () => {
+    if (!currentDay) return
+    if (!currentDay.exercises.length && !isRestDay(currentDay)) {
+      currentDay.exercises = [createEmptyExercise()]
+    }
+    days.push(currentDay)
+  }
+
+  lines.forEach((line) => {
+    if (looksLikeDayHeading(line)) {
+      pushCurrentDay()
+      currentDay = {
+        day_name: line.replace(/:$/, '').trim(),
+        target_muscles: inferTargetMuscles(line),
+        exercises: [],
+      }
+      return
+    }
+
+    if (!currentDay) {
+      currentDay = {
+        day_name: 'Day 1',
+        target_muscles: [],
+        exercises: [],
+      }
+    }
+
+    currentDay.exercises.push(parseExerciseLine(line))
+  })
+
+  pushCurrentDay()
+
+  return buildEditableProgram({
+    name: 'Imported Routine Draft',
+    split_type: 'custom',
+    weeks: [{
+      week_number: 1,
+      is_deload: false,
+      days: days.length ? days : [createEmptyDay(0)],
+    }],
+  })
+}
+
+function confidenceToneLabel(tone = 'low') {
+  if (tone === 'high') return 'strong'
+  if (tone === 'mid') return 'building'
+  return 'early'
+}
+
 export default function UltraLab() {
   const { user, profile, isUltra, subscriptionTier } = useAuth()
   const navigate = useNavigate()
@@ -322,10 +448,12 @@ export default function UltraLab() {
   const [processingImport, setProcessingImport] = useState(false)
   const [savingImport, setSavingImport] = useState(false)
   const [lastExtractedText, setLastExtractedText] = useState('')
+  const [importDiagnostics, setImportDiagnostics] = useState(null)
+  const [expandedDays, setExpandedDays] = useState({})
 
   const activeTab = TAB_OPTIONS.some((tab) => tab.id === searchParams.get('tab'))
     ? searchParams.get('tab')
-    : 'intelligence'
+    : 'overview'
 
   const unit = profile?.unit_preference || profile?.units || 'kg'
 
@@ -428,9 +556,18 @@ export default function UltraLab() {
 
   useEffect(() => {
     if (!TAB_OPTIONS.some((tab) => tab.id === searchParams.get('tab'))) {
-      setSearchParams({ tab: 'intelligence' }, { replace: true })
+      setSearchParams({ tab: 'overview' }, { replace: true })
     }
   }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (!parsedProgram?.weeks?.[0]?.days?.length) return
+    const nextExpanded = {}
+    parsedProgram.weeks[0].days.forEach((_, index) => {
+      nextExpanded[index] = index === 0
+    })
+    setExpandedDays(nextExpanded)
+  }, [parsedProgram?.weeks?.[0]?.days?.length])
 
   const analyticsModel = useMemo(() => buildUltraAnalyticsModel({
     profile,
@@ -455,6 +592,88 @@ export default function UltraLab() {
 
   const importedSummary = useMemo(() => summarizeProgram(parsedProgram), [parsedProgram])
 
+  const importSteps = useMemo(() => {
+    const reviewReady = Boolean(parsedProgram)
+    const saveReady = reviewReady && !savingImport
+    return [
+      { id: 'source', label: 'Choose source', state: importMode ? 'complete' : 'current' },
+      { id: 'parse', label: 'Parse', state: processingImport ? 'current' : (reviewReady || importDiagnostics ? 'complete' : 'idle') },
+      { id: 'review', label: 'Review', state: reviewReady ? 'current' : 'idle' },
+      { id: 'save', label: 'Save live plan', state: savingImport ? 'current' : (saveReady ? 'ready' : 'idle') },
+    ]
+  }, [importMode, processingImport, parsedProgram, importDiagnostics, savingImport])
+
+  const overviewCards = useMemo(() => {
+    const intelligencePreview = isUltra
+      ? analyticsModel.sections[0]?.cards?.slice(0, 2).map((item) => ({
+          label: item.title,
+          value: item.value,
+          note: item.note,
+        })) || []
+      : LOCKED_INTELLIGENCE_PREVIEW.map((item) => ({ label: item.title, value: item.value, note: item.note }))
+
+    const importPreview = isUltra
+      ? [
+          {
+            label: 'Workflow',
+            value: parsedProgram ? 'Review ready' : 'Parse cleanly',
+            note: parsedProgram ? 'Your imported draft is ready for review.' : 'Source, parse, review, and save now live in one flow.',
+          },
+          {
+            label: 'Privacy',
+            value: 'Server-side',
+            note: 'Import parsing stays behind the AI proxy before it touches your active plan.',
+          },
+        ]
+      : LOCKED_IMPORT_STEPS.map((step, index) => ({ label: `Step ${index + 1}`, value: 'Ready', note: step }))
+
+    const socialPreview = isUltra
+      ? [
+          {
+            label: 'Partner fit',
+            value: socialEdge.compatibility[0] ? `${socialEdge.compatibility[0].score}%` : 'Waiting',
+            note: socialEdge.compatibility[0]
+              ? `${socialEdge.compatibility[0].display_name || socialEdge.compatibility[0].username || 'Friend'} is your top current match.`
+              : 'Add more active friends to unlock the best suggestions.',
+          },
+          {
+            label: 'Accountability',
+            value: socialEdge.accountabilityBoard.length ? `${socialEdge.accountabilityBoard.length} loaded` : 'No board yet',
+            note: socialEdge.accountabilityBoard.length
+              ? 'Your current crew is ranked by streak and training volume.'
+              : 'The board appears once your social graph fills in.',
+          },
+        ]
+      : LOCKED_SOCIAL_PREVIEW.map((item) => ({ label: item.title, value: item.value, note: item.note }))
+
+    return [
+      {
+        id: 'intelligence',
+        title: 'Intelligence',
+        kicker: 'Adaptive pattern recognition',
+        description: 'Turn readiness, load pressure, adherence, and timing into something you can act on in seconds.',
+        icon: RiBrainFill,
+        preview: intelligencePreview,
+      },
+      {
+        id: 'import',
+        title: 'Import Studio',
+        kicker: 'Outside routine cleanup',
+        description: 'Bring screenshots or pasted plans into REPMAX with a proper review and save flow instead of a messy text dump.',
+        icon: RiUploadCloud2Line,
+        preview: importPreview,
+      },
+      {
+        id: 'social',
+        title: 'Social Edge',
+        kicker: 'Accountability over noise',
+        description: 'Find the people, sessions, and nudges that actually make your training more consistent.',
+        icon: RiTeamLine,
+        preview: socialPreview,
+      },
+    ]
+  }, [analyticsModel.sections, isUltra, parsedProgram, socialEdge.accountabilityBoard.length, socialEdge.compatibility])
+
   function openTab(tab) {
     setSearchParams({ tab })
   }
@@ -472,20 +691,32 @@ export default function UltraLab() {
     }
 
     setProcessingImport(true)
+    setImportDiagnostics(null)
     try {
       const base64Images = await Promise.all(imageFiles.map((file) => fileToDataUrl(file)))
       const result = await generateProgramFromImages(base64Images)
 
       if (!result?.success || !result.program) {
-        throw new Error(result?.error?.message || 'Image import failed')
+        const importError = new Error(result?.error?.message || 'Image import failed')
+        importError.extractedText = result?.extractedText || ''
+        throw importError
       }
 
       setParsedProgram(buildEditableProgram(result.program))
       setParsedSource('images')
       setLastExtractedText(result.extractedText || '')
+      setImportDiagnostics(null)
       showToast('Routine parsed. Review it before saving.')
     } catch (error) {
       console.error('Image import failed:', error)
+      const cleanedText = normalizeImportedRoutineText(error?.extractedText || '')
+      setLastExtractedText(cleanedText)
+      setImportDiagnostics({
+        source: 'images',
+        cleanedText,
+        error: error.message || 'Could not parse that routine yet.',
+        canContinue: Boolean(cleanedText.trim()),
+      })
       showToast('Could not parse that routine yet.')
     } finally {
       setProcessingImport(false)
@@ -498,7 +729,9 @@ export default function UltraLab() {
       return
     }
 
+    const cleanedText = normalizeImportedRoutineText(routineText)
     setProcessingImport(true)
+    setImportDiagnostics(null)
     try {
       const result = await generateProgramFromText(routineText)
       if (!result?.success || !result.program) {
@@ -507,14 +740,29 @@ export default function UltraLab() {
 
       setParsedProgram(buildEditableProgram(result.program))
       setParsedSource('text')
-      setLastExtractedText(routineText)
+      setLastExtractedText(result.cleanedText || cleanedText)
+      setImportDiagnostics(null)
       showToast('Routine parsed. Review it before saving.')
     } catch (error) {
       console.error('Text import failed:', error)
+      setLastExtractedText(cleanedText)
+      setImportDiagnostics({
+        source: 'text',
+        cleanedText,
+        error: error.message || 'Could not turn that text into a routine yet.',
+        canContinue: Boolean(cleanedText.trim()),
+      })
       showToast('Could not turn that text into a routine yet.')
     } finally {
       setProcessingImport(false)
     }
+  }
+
+  function continueImportManually() {
+    const seededProgram = seedProgramFromText(importDiagnostics?.cleanedText || routineText || lastExtractedText)
+    setParsedProgram(seededProgram)
+    setParsedSource('manual')
+    showToast('Manual draft seeded. Tighten it up before saving.')
   }
 
   function updateTemplateDays(updater) {
@@ -535,6 +783,7 @@ export default function UltraLab() {
 
   function addImportedDay() {
     updateTemplateDays((days) => [...days, createEmptyDay(days.length)])
+    setExpandedDays((current) => ({ ...current, [Object.keys(current).length]: true }))
   }
 
   function removeImportedDay(dayIndex) {
@@ -584,6 +833,7 @@ export default function UltraLab() {
       ...day,
       exercises: [...(day.exercises || []), createEmptyExercise()],
     }))
+    setExpandedDays((current) => ({ ...current, [dayIndex]: true }))
   }
 
   function removeExercise(dayIndex, exerciseIndex) {
@@ -604,8 +854,13 @@ export default function UltraLab() {
     setParsedProgram(null)
     setParsedSource(null)
     setLastExtractedText('')
+    setImportDiagnostics(null)
     setImageFiles([])
     setRoutineText('')
+  }
+
+  function toggleDayExpanded(dayIndex) {
+    setExpandedDays((current) => ({ ...current, [dayIndex]: !current[dayIndex] }))
   }
 
   async function saveImportedProgram() {
@@ -661,8 +916,10 @@ export default function UltraLab() {
       setActiveProgram(activatedProgram)
       setParsedProgram(null)
       setParsedSource(null)
+      setImportDiagnostics(null)
+      setLastExtractedText('')
       showToast('Imported routine saved to your active plan.')
-      openTab('intelligence')
+      openTab('overview')
     } catch (error) {
       console.error('Saving imported program failed:', error)
       showToast('Could not save the imported routine yet.')
@@ -672,20 +929,18 @@ export default function UltraLab() {
   }
 
   const intelligencePreview = (
-    <div className="ultra-preview-grid">
-      <section className="ultra-hero-card ultra-hero-card-preview">
-        <div className="ultra-hero-kicker">ULTRA LAB</div>
-        <h2 className="ultra-hero-title">AI coaching becomes visible here.</h2>
-        <p className="ultra-hero-copy">
-          Intelligence turns your workouts, recovery spacing, and plan adherence into clear next moves instead of noisy numbers.
-        </p>
+    <div className="ultra-preview-shell">
+      <section className="ultra-preview-hero">
+        <div className="ultra-preview-kicker">ULTRA INTELLIGENCE</div>
+        <h2>See your training state instead of reading a text dump.</h2>
+        <p>Readiness, adherence, load pressure, and forecast signals stay grouped and visual so the next move is obvious.</p>
       </section>
-      <div className="ultra-metric-grid">
+      <div className="ultra-preview-grid">
         {LOCKED_INTELLIGENCE_PREVIEW.map((metric) => (
-          <article key={metric.title} className="ultra-metric-card preview">
-            <div className="ultra-metric-title">{metric.title}</div>
-            <div className="ultra-metric-value">{metric.value}</div>
-            <p className="ultra-metric-note">{metric.note}</p>
+          <article key={metric.title} className="ultra-preview-card">
+            <div className="ultra-preview-label">{metric.title}</div>
+            <div className="ultra-preview-value">{metric.value}</div>
+            <p>{metric.note}</p>
           </article>
         ))}
       </div>
@@ -693,13 +948,11 @@ export default function UltraLab() {
   )
 
   const importPreview = (
-    <div className="ultra-preview-grid">
-      <section className="ultra-hero-card ultra-hero-card-preview">
-        <div className="ultra-hero-kicker">IMPORT STUDIO</div>
-        <h2 className="ultra-hero-title">Bring outside routines into REPMAX properly.</h2>
-        <p className="ultra-hero-copy">
-          ULTRA gives you the full parse, compare, edit, and apply flow instead of throwing the routine into onboarding and hoping it sticks.
-        </p>
+    <div className="ultra-preview-shell">
+      <section className="ultra-preview-hero">
+        <div className="ultra-preview-kicker">IMPORT STUDIO</div>
+        <h2>Bring outside routines into REPMAX properly.</h2>
+        <p>ULTRA gives you the full parse, review, edit, and apply flow instead of throwing the routine into onboarding and hoping it sticks.</p>
       </section>
       <div className="ultra-preview-list">
         {LOCKED_IMPORT_STEPS.map((step) => (
@@ -713,20 +966,18 @@ export default function UltraLab() {
   )
 
   const socialPreview = (
-    <div className="ultra-preview-grid">
-      <section className="ultra-hero-card ultra-hero-card-preview">
-        <div className="ultra-hero-kicker">SOCIAL EDGE</div>
-        <h2 className="ultra-hero-title">See who helps you lock in, not just who is online.</h2>
-        <p className="ultra-hero-copy">
-          ULTRA scores compatibility, recurring training series, and who needs a nudge so the social layer becomes useful instead of decorative.
-        </p>
+    <div className="ultra-preview-shell">
+      <section className="ultra-preview-hero">
+        <div className="ultra-preview-kicker">SOCIAL EDGE</div>
+        <h2>See who helps you lock in, not just who is online.</h2>
+        <p>Compatibility, accountability, recurring sessions, and training nudges all live in one premium surface.</p>
       </section>
-      <div className="ultra-metric-grid">
+      <div className="ultra-preview-grid">
         {LOCKED_SOCIAL_PREVIEW.map((card) => (
-          <article key={card.title} className="ultra-metric-card preview">
-            <div className="ultra-metric-title">{card.title}</div>
-            <div className="ultra-metric-value">{card.value}</div>
-            <p className="ultra-metric-note">{card.note}</p>
+          <article key={card.title} className="ultra-preview-card">
+            <div className="ultra-preview-label">{card.title}</div>
+            <div className="ultra-preview-value">{card.value}</div>
+            <p>{card.note}</p>
           </article>
         ))}
       </div>
@@ -765,25 +1016,39 @@ export default function UltraLab() {
         {subscriptionTier !== 'free' && <ProBadge size="md" tier={subscriptionTier} />}
       </div>
 
-      <section className="ultra-entry-card">
-        <div className="ultra-entry-copy">
-          <div className="ultra-entry-kicker">Performance luxury</div>
-          <div className="ultra-entry-title">
-            {isUltra ? 'You have the full ULTRA stack unlocked.' : 'You are previewing the ULTRA stack.'}
+      <section className="ultra-command-card">
+        <div className="ultra-command-ring" style={{ '--ultra-progress': `${analyticsModel.overview.readiness.ringProgress}%` }}>
+          <div className="ultra-command-ring-inner">
+            <div className="ultra-command-ring-label">Readiness</div>
+            <div className="ultra-command-ring-value">{analyticsModel.overview.readiness.display}</div>
           </div>
-          <p className="ultra-entry-body">
-            {isUltra
-              ? `Your analytics are tuned to ${weightLabel(unit)}, your import flow stays server-side, and your social layer prioritizes accountability over noise.`
-              : 'The tabs below stay visible so you can see what ULTRA adds before you upgrade. Nothing breaks or disappears anymore.'}
-          </p>
         </div>
-        {!isUltra && (
-          <button className="btn btn-primary" onClick={() => navigate('/subscribe')}>
-            <RiSparklingFill size={18} />
-            Unlock ULTRA
-          </button>
-        )}
+        <div className="ultra-command-copy">
+          <div className="ultra-command-kicker">Behavior-aware training intelligence</div>
+          <h2>{analyticsModel.overview.title}</h2>
+          <p>{analyticsModel.overview.body}</p>
+          <div className="ultra-command-next">
+            <span>Next move</span>
+            <strong>{analyticsModel.overview.nextMove}</strong>
+          </div>
+          {!isUltra && (
+            <button className="btn btn-primary ultra-lock-cta" onClick={() => navigate('/subscribe')}>
+              <RiSparklingFill size={18} />
+              Unlock ULTRA
+            </button>
+          )}
+        </div>
       </section>
+
+      <div className="ultra-quick-signal-row">
+        {analyticsModel.overview.quickSignals.map((signal) => (
+          <article key={signal.id} className={`ultra-quick-signal tone-${signal.tone}`}>
+            <div className="ultra-quick-label">{signal.label}</div>
+            <div className="ultra-quick-value">{signal.value}</div>
+            <div className="ultra-quick-note">{signal.note}</div>
+          </article>
+        ))}
+      </div>
 
       <div className="ultra-tab-bar">
         {TAB_OPTIONS.map((tab) => {
@@ -803,35 +1068,125 @@ export default function UltraLab() {
         })}
       </div>
 
+      {activeTab === 'overview' && (
+        <div className="ultra-overview-grid">
+          {overviewCards.map((card) => {
+            const Icon = card.icon
+            return (
+              <article key={card.id} className={`ultra-feature-card feature-${card.id}`}>
+                <div className="ultra-feature-top">
+                  <div className="ultra-feature-icon"><Icon size={18} /></div>
+                  <button type="button" className="ultra-open-link" onClick={() => openTab(card.id)}>
+                    Open <RiArrowRightLine size={16} />
+                  </button>
+                </div>
+                <div className="ultra-feature-kicker">{card.kicker}</div>
+                <h3>{card.title}</h3>
+                <p>{card.description}</p>
+                <div className="ultra-feature-preview-list">
+                  {card.preview.map((item) => (
+                    <div key={`${card.id}-${item.label}`} className="ultra-feature-preview">
+                      <div className="ultra-feature-preview-head">
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                      </div>
+                      <div className="ultra-feature-preview-note">{item.note}</div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+
       {activeTab === 'intelligence' && (
         isUltra ? (
           <div className="ultra-page-stack">
-            <section className="ultra-hero-card">
-              <div className="ultra-hero-kicker">INTELLIGENCE</div>
-              <h2 className="ultra-hero-title">{analyticsModel.hero.title}</h2>
-              <p className="ultra-hero-copy">{analyticsModel.hero.body}</p>
-              <div className="ultra-hero-footer">
-                <span className={`ultra-confidence-pill ${getConfidenceClass(analyticsModel.hero.confidence)}`}>
-                  {analyticsModel.hero.confidence.label}
+            <section className="ultra-intelligence-shell">
+              <div className="ultra-section-head">
+                <div>
+                  <div className="ultra-section-kicker">INTELLIGENCE</div>
+                  <h2>Training-state overview</h2>
+                </div>
+                <span className={`ultra-confidence-pill ${getConfidenceClass(analyticsModel.overview.readiness.confidence)}`}>
+                  {analyticsModel.overview.readiness.confidence.label}
                 </span>
-                <span className="ultra-hero-action">{analyticsModel.hero.action}</span>
+              </div>
+
+              <div className="ultra-chart-grid">
+                <article className={`ultra-chart-card tone-${analyticsModel.charts.adherence.tone}`}>
+                  <div className="ultra-chart-label">{analyticsModel.charts.adherence.label}</div>
+                  <div className="ultra-chart-value">{analyticsModel.charts.adherence.value}</div>
+                  <div className="ultra-progress-track">
+                    <div className="ultra-progress-fill" style={{ width: `${analyticsModel.charts.adherence.ratio}%` }} />
+                  </div>
+                  <p>{analyticsModel.charts.adherence.note}</p>
+                </article>
+
+                <article className={`ultra-chart-card tone-${analyticsModel.charts.load.tone}`}>
+                  <div className="ultra-chart-label">{analyticsModel.charts.load.label}</div>
+                  <div className="ultra-chart-value">{analyticsModel.charts.load.value}</div>
+                  <div className="ultra-compare-bars">
+                    <div className="ultra-compare-bar">
+                      <span>7D load</span>
+                      <strong>{analyticsModel.charts.load.sevenDay} {weightLabel(unit)}</strong>
+                    </div>
+                    <div className="ultra-compare-bar">
+                      <span>28D avg/day</span>
+                      <strong>{analyticsModel.charts.load.baseline} {weightLabel(unit)}</strong>
+                    </div>
+                  </div>
+                  <p>{analyticsModel.charts.load.note}</p>
+                </article>
+
+                <article className={`ultra-chart-card tone-${analyticsModel.charts.efficiency.tone}`}>
+                  <div className="ultra-chart-label">{analyticsModel.charts.efficiency.label}</div>
+                  <div className="ultra-chart-value">{analyticsModel.charts.efficiency.value}</div>
+                  <div className="ultra-compare-bars">
+                    <div className="ultra-compare-bar">
+                      <span>Current</span>
+                      <strong>{analyticsModel.charts.efficiency.current} {weightLabel(unit)}/min</strong>
+                    </div>
+                    <div className="ultra-compare-bar">
+                      <span>Previous</span>
+                      <strong>{analyticsModel.charts.efficiency.previous} {weightLabel(unit)}/min</strong>
+                    </div>
+                  </div>
+                  <p>{analyticsModel.charts.efficiency.note}</p>
+                </article>
               </div>
             </section>
 
-            <div className="ultra-metric-grid">
-              {analyticsModel.metrics.map((metric) => (
-                <article key={metric.id} className={`ultra-metric-card accent-${metric.accent}`}>
-                  <div className="ultra-metric-top">
-                    <div className="ultra-metric-title">{metric.title}</div>
-                    <span className={`ultra-confidence-pill ${getConfidenceClass(metric.confidence)}`}>
-                      {metric.confidence.label}
-                    </span>
+            {analyticsModel.sections.map((section) => (
+              <section key={section.id} className="ultra-section-panel">
+                <div className="ultra-section-head">
+                  <div>
+                    <div className="ultra-section-kicker">{section.title.toUpperCase()}</div>
+                    <h3>{section.title}</h3>
                   </div>
-                  <div className="ultra-metric-value">{metric.value}</div>
-                  <p className="ultra-metric-note">{metric.note}</p>
-                </article>
-              ))}
-            </div>
+                </div>
+                <div className="ultra-metric-grid">
+                  {section.cards.map((metric) => (
+                    <article key={metric.id} className={`ultra-metric-card tone-${metric.tone}`}>
+                      <div className="ultra-metric-top">
+                        <div className="ultra-metric-title">{metric.title}</div>
+                        <span className={`ultra-confidence-pill ${getConfidenceClass(metric.confidence)}`}>
+                          {confidenceToneLabel(metric.confidence.tone)}
+                        </span>
+                      </div>
+                      <div className="ultra-metric-value">{metric.value}</div>
+                      {metric.spark != null && (
+                        <div className="ultra-spark-track">
+                          <div className="ultra-spark-fill" style={{ width: `${metric.spark}%` }} />
+                        </div>
+                      )}
+                      <p className="ultra-metric-note">{metric.note}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))}
           </div>
         ) : (
           <PaywallGate
@@ -847,15 +1202,24 @@ export default function UltraLab() {
       {activeTab === 'import' && (
         isUltra ? (
           <div className="ultra-page-stack">
-            <section className="ultra-hero-card">
-              <div className="ultra-hero-kicker">IMPORT STUDIO</div>
-              <h2 className="ultra-hero-title">Bring outside routines into REPMAX without losing the details.</h2>
-              <p className="ultra-hero-copy">
-                Upload screenshots or paste the full routine text. REPMAX parses it through the server-side AI proxy, then lets you clean it up before it touches your active plan.
+            <section className="ultra-import-hero">
+              <div className="ultra-section-kicker">IMPORT STUDIO</div>
+              <h2>Outside routines, cleaned before they touch your live plan.</h2>
+              <p>
+                Upload screenshots or paste full routine text. REPMAX parses it through the server-side AI proxy, then lets you review and fix the structure before it becomes your active program.
               </p>
-              <div className="ultra-hero-footer">
-                <span className="ultra-hero-action">Edits mirror across all 4 weeks by default so the imported plan stays clean.</span>
+              <div className="ultra-step-row">
+                {importSteps.map((step) => (
+                  <div key={step.id} className={`ultra-step-pill state-${step.state}`}>
+                    {step.label}
+                  </div>
+                ))}
               </div>
+              {parsedSource && (
+                <div className="ultra-source-chip">
+                  Source: {parsedSource === 'images' ? 'Screenshots' : parsedSource === 'text' ? 'Pasted text' : 'Manual cleanup'}
+                </div>
+              )}
             </section>
 
             <section className="ultra-import-shell">
@@ -919,6 +1283,36 @@ export default function UltraLab() {
               )}
             </section>
 
+            {(importDiagnostics || lastExtractedText) && (
+              <section className={`ultra-diagnostics-card ${importDiagnostics ? 'has-error' : ''}`}>
+                <div className="ultra-section-head">
+                  <div>
+                    <div className="ultra-section-kicker">PARSE DIAGNOSTICS</div>
+                    <h3>{importDiagnostics ? 'The parse needs help.' : 'Parsed source snapshot'}</h3>
+                  </div>
+                  {importDiagnostics && (
+                    <span className="ultra-diagnostic-badge">Needs cleanup</span>
+                  )}
+                </div>
+                <p className="ultra-diagnostics-copy">
+                  {importDiagnostics
+                    ? importDiagnostics.error
+                    : 'This is the cleaned routine text the import flow is currently working from.'}
+                </p>
+                {lastExtractedText && (
+                  <pre className="ultra-source-text">{lastExtractedText}</pre>
+                )}
+                {importDiagnostics?.canContinue && (
+                  <div className="ultra-diagnostics-actions">
+                    <button className="btn btn-secondary btn-sm" onClick={continueImportManually}>
+                      <RiClipboardLine size={16} />
+                      Continue manually
+                    </button>
+                  </div>
+                )}
+              </section>
+            )}
+
             {parsedProgram && (
               <>
                 <section className="ultra-compare-grid">
@@ -936,19 +1330,11 @@ export default function UltraLab() {
                   </article>
                 </section>
 
-                {lastExtractedText && (
-                  <section className="ultra-source-card">
-                    <div className="ultra-source-kicker">Parsed source</div>
-                    <div className="ultra-source-copy">{parsedSource === 'images' ? 'This is the text the AI saw before it built the routine.' : 'This is the text version you imported.'}</div>
-                    <pre className="ultra-source-text">{lastExtractedText}</pre>
-                  </section>
-                )}
-
                 <section className="ultra-editor-shell">
-                  <div className="ultra-editor-header">
+                  <div className="ultra-section-head">
                     <div>
-                      <div className="ultra-editor-kicker">Manual edit</div>
-                      <div className="ultra-editor-title">Review every day before it becomes active.</div>
+                      <div className="ultra-section-kicker">MANUAL REVIEW</div>
+                      <h3>Review every day before it becomes active.</h3>
                     </div>
                     <button className="btn btn-secondary btn-sm" onClick={resetImportEditor}>
                       <RiResetLeftLine size={16} />
@@ -956,7 +1342,7 @@ export default function UltraLab() {
                     </button>
                   </div>
 
-                  <div className="input-group" style={{ marginBottom: 0 }}>
+                  <div className="input-group ultra-name-field" style={{ marginBottom: 0 }}>
                     <label className="input-label">Routine name</label>
                     <input
                       className="input"
@@ -966,91 +1352,106 @@ export default function UltraLab() {
                   </div>
 
                   <div className="ultra-editor-days">
-                    {(parsedProgram.weeks?.[0]?.days || []).map((day, dayIndex) => (
-                      <article key={`${day.day_name}-${dayIndex}`} className="ultra-day-card">
-                        <div className="ultra-day-header">
-                          <div className="ultra-day-main">
-                            <input
-                              className="input ultra-day-name"
-                              value={day.day_name}
-                              onChange={(event) => renameDay(dayIndex, event.target.value)}
-                            />
-                            <span className={`ultra-day-state ${isRestDay(day) ? 'rest' : 'live'}`}>
-                              {isRestDay(day) ? 'Rest day' : `${day.exercises.length} exercises`}
-                            </span>
-                          </div>
-                          <div className="ultra-day-actions">
-                            <button type="button" className="icon-btn" onClick={() => toggleRestDay(dayIndex)} title="Toggle rest day">
-                              <RiCalendarCheckLine size={16} />
-                            </button>
-                            <button type="button" className="icon-btn" onClick={() => removeImportedDay(dayIndex)} title="Remove day">
-                              <RiDeleteBin6Line size={16} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {!isRestDay(day) && (
-                          <>
-                            <div className="ultra-exercise-list">
-                              {day.exercises.map((exercise, exerciseIndex) => (
-                                <div key={`${exerciseIndex}-${exercise.name}`} className="ultra-exercise-card">
-                                  <div className="ultra-exercise-toolbar">
-                                    <input
-                                      className="input ultra-exercise-name"
-                                      value={exercise.name}
-                                      onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'name', event.target.value)}
-                                      placeholder="Exercise name"
-                                    />
-                                    <div className="ultra-exercise-actions">
-                                      <button type="button" className="icon-btn" onClick={() => moveExercise(dayIndex, exerciseIndex, -1)} title="Move up">
-                                        <RiArrowUpSLine size={16} />
-                                      </button>
-                                      <button type="button" className="icon-btn" onClick={() => moveExercise(dayIndex, exerciseIndex, 1)} title="Move down">
-                                        <RiArrowDownSLine size={16} />
-                                      </button>
-                                      <button type="button" className="icon-btn" onClick={() => removeExercise(dayIndex, exerciseIndex)} title="Remove exercise">
-                                        <RiCloseLine size={16} />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  <div className="ultra-exercise-grid">
-                                    <label className="ultra-micro-field">
-                                      <span>Sets</span>
-                                      <input className="input" type="number" min="1" value={exercise.sets} onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'sets', event.target.value)} />
-                                    </label>
-                                    <label className="ultra-micro-field">
-                                      <span>Reps</span>
-                                      <input className="input" type="number" min="1" value={exercise.reps} onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'reps', event.target.value)} />
-                                    </label>
-                                    <label className="ultra-micro-field">
-                                      <span>RPE</span>
-                                      <input className="input" type="number" min="1" max="10" step="0.5" value={exercise.rpe} onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'rpe', event.target.value)} />
-                                    </label>
-                                    <label className="ultra-micro-field">
-                                      <span>Rest</span>
-                                      <input className="input" type="number" min="0" step="15" value={exercise.rest_seconds} onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'rest_seconds', event.target.value)} />
-                                    </label>
-                                  </div>
-
-                                  <textarea
-                                    className="input ultra-exercise-notes"
-                                    value={exercise.notes}
-                                    onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'notes', event.target.value)}
-                                    placeholder="Notes, tempo, or cues"
-                                  />
-                                </div>
-                              ))}
+                    {(parsedProgram.weeks?.[0]?.days || []).map((day, dayIndex) => {
+                      const expanded = expandedDays[dayIndex]
+                      return (
+                        <article key={`${day.day_name}-${dayIndex}`} className={`ultra-day-card ${expanded ? 'expanded' : ''}`}>
+                          <button type="button" className="ultra-day-header" onClick={() => toggleDayExpanded(dayIndex)}>
+                            <div className="ultra-day-main">
+                              <div className="ultra-day-topline">
+                                <span className="ultra-day-index">Day {dayIndex + 1}</span>
+                                <span className={`ultra-day-state ${isRestDay(day) ? 'rest' : 'live'}`}>
+                                  {isRestDay(day) ? 'Rest day' : `${day.exercises.length} exercises`}
+                                </span>
+                              </div>
+                              <div className="ultra-day-title">{day.day_name || `Day ${dayIndex + 1}`}</div>
                             </div>
+                            {expanded ? <RiArrowUpSLine size={18} /> : <RiArrowDownSLine size={18} />}
+                          </button>
 
-                            <button type="button" className="btn btn-secondary btn-sm" onClick={() => addExercise(dayIndex)}>
-                              <RiCheckLine size={16} />
-                              Add exercise
-                            </button>
-                          </>
-                        )}
-                      </article>
-                    ))}
+                          {expanded && (
+                            <div className="ultra-day-body">
+                              <div className="ultra-day-toolbar">
+                                <input
+                                  className="input ultra-day-name"
+                                  value={day.day_name}
+                                  onChange={(event) => renameDay(dayIndex, event.target.value)}
+                                />
+                                <div className="ultra-day-actions">
+                                  <button type="button" className="icon-btn" onClick={() => toggleRestDay(dayIndex)} title="Toggle rest day">
+                                    <RiCalendarCheckLine size={16} />
+                                  </button>
+                                  <button type="button" className="icon-btn" onClick={() => removeImportedDay(dayIndex)} title="Remove day">
+                                    <RiDeleteBin6Line size={16} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {!isRestDay(day) && (
+                                <>
+                                  <div className="ultra-exercise-list">
+                                    {day.exercises.map((exercise, exerciseIndex) => (
+                                      <div key={`${exerciseIndex}-${exercise.name}`} className="ultra-exercise-card">
+                                        <div className="ultra-exercise-toolbar">
+                                          <input
+                                            className="input ultra-exercise-name"
+                                            value={exercise.name}
+                                            onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'name', event.target.value)}
+                                            placeholder="Exercise name"
+                                          />
+                                          <div className="ultra-exercise-actions">
+                                            <button type="button" className="icon-btn" onClick={() => moveExercise(dayIndex, exerciseIndex, -1)} title="Move up">
+                                              <RiArrowUpSLine size={16} />
+                                            </button>
+                                            <button type="button" className="icon-btn" onClick={() => moveExercise(dayIndex, exerciseIndex, 1)} title="Move down">
+                                              <RiArrowDownSLine size={16} />
+                                            </button>
+                                            <button type="button" className="icon-btn" onClick={() => removeExercise(dayIndex, exerciseIndex)} title="Remove exercise">
+                                              <RiCloseLine size={16} />
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        <div className="ultra-exercise-grid">
+                                          <label className="ultra-micro-field">
+                                            <span>Sets</span>
+                                            <input className="input" type="number" min="1" value={exercise.sets} onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'sets', event.target.value)} />
+                                          </label>
+                                          <label className="ultra-micro-field">
+                                            <span>Reps</span>
+                                            <input className="input" type="number" min="1" value={exercise.reps} onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'reps', event.target.value)} />
+                                          </label>
+                                          <label className="ultra-micro-field">
+                                            <span>RPE</span>
+                                            <input className="input" type="number" min="1" max="10" step="0.5" value={exercise.rpe} onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'rpe', event.target.value)} />
+                                          </label>
+                                          <label className="ultra-micro-field">
+                                            <span>Rest</span>
+                                            <input className="input" type="number" min="0" step="15" value={exercise.rest_seconds} onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'rest_seconds', event.target.value)} />
+                                          </label>
+                                        </div>
+
+                                        <textarea
+                                          className="input ultra-exercise-notes"
+                                          value={exercise.notes}
+                                          onChange={(event) => updateExercise(dayIndex, exerciseIndex, 'notes', event.target.value)}
+                                          placeholder="Notes, tempo, or cues"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => addExercise(dayIndex)}>
+                                    <RiCheckLine size={16} />
+                                    Add exercise
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </article>
+                      )
+                    })}
                   </div>
 
                   <button type="button" className="btn btn-secondary btn-sm" onClick={addImportedDay}>
@@ -1086,18 +1487,18 @@ export default function UltraLab() {
       {activeTab === 'social' && (
         isUltra ? (
           <div className="ultra-page-stack">
-            <section className="ultra-hero-card">
-              <div className="ultra-hero-kicker">SOCIAL EDGE</div>
-              <h2 className="ultra-hero-title">Use the social layer like a training system.</h2>
-              <p className="ultra-hero-copy">
+            <section className="ultra-social-shell">
+              <div className="ultra-section-head">
+                <div>
+                  <div className="ultra-section-kicker">SOCIAL EDGE</div>
+                  <h2>Use the social layer like a training system.</h2>
+                </div>
+              </div>
+              <p className="ultra-social-intro">
                 Compatibility, accountability, and session planning live here so your social graph actually helps you train.
               </p>
-              <div className="ultra-hero-footer">
-                <span className="ultra-hero-action">{friends.length ? `${friends.length} active friend signals loaded` : 'Connect more training partners to unlock better suggestions.'}</span>
-              </div>
-            </section>
 
-            <section className="ultra-social-grid">
+              <section className="ultra-social-grid">
               <article className="ultra-social-card">
                 <div className="ultra-social-title">Best training partner fits</div>
                 {socialEdge.compatibility.length ? (
@@ -1182,6 +1583,7 @@ export default function UltraLab() {
                   <p className="ultra-empty-copy">No new pairing ideas yet. Add more friends or clear more appointment history.</p>
                 )}
               </article>
+              </section>
             </section>
           </div>
         ) : (
@@ -1195,7 +1597,7 @@ export default function UltraLab() {
         )
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast && <div className="ultra-floating-toast">{toast}</div>}
     </div>
   )
 }
