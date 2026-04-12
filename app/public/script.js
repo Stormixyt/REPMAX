@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initMobileMenu();
   initWaitlistForm();
   await hydrateLandingStats();
+  await hydrateTrustpilotReviews();
   initCounterAnimation();
   initUltraStory();
   initDynamicTitle();
@@ -282,6 +283,155 @@ function animateCounter(el) {
   }
 
   requestAnimationFrame(update);
+}
+
+/* --- Trustpilot Reviews --- */
+const TRUSTPILOT_REVIEWS_ENDPOINT = '/api/trustpilot-reviews';
+
+async function hydrateTrustpilotReviews() {
+  const grid = document.getElementById('trustpilot-reviews-grid');
+  const scoreValue = document.getElementById('trustpilot-score-value');
+  const scoreLabel = document.getElementById('trustpilot-score-label');
+  const reviewCount = document.getElementById('trustpilot-review-count');
+  const stars = document.getElementById('trustpilot-stars');
+  const cta = document.getElementById('trustpilot-cta');
+
+  if (!grid || !scoreValue || !scoreLabel || !reviewCount || !stars) return;
+
+  try {
+    const response = await fetch(TRUSTPILOT_REVIEWS_ENDPOINT, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Trustpilot request failed with ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const reviews = Array.isArray(payload.reviews)
+      ? payload.reviews.filter((review) => Number(review?.rating || 0) >= 3.5)
+      : [];
+
+    const trustScore = Number(payload?.business?.trustScore || payload?.business?.score || 0);
+    const totalReviews = Number(payload?.business?.numberOfReviews || 0);
+    const sourceUrl = payload?.sourceUrl || 'https://nl.trustpilot.com/review/rep-max.app';
+
+    scoreValue.textContent = trustScore > 0 ? trustScore.toFixed(1) : '--';
+    scoreLabel.textContent = trustScore > 0 ? 'TrustScore on Trustpilot' : 'Trustpilot public profile';
+    reviewCount.textContent = totalReviews > 0
+      ? `${totalReviews.toLocaleString()} public review${totalReviews === 1 ? '' : 's'}`
+      : 'Waiting for public reviews';
+    stars.innerHTML = buildTrustpilotStars(Math.round(trustScore || 4));
+
+    if (cta) {
+      cta.href = sourceUrl;
+    }
+
+    if (!reviews.length) {
+      grid.innerHTML = `
+        <article class="trustpilot-empty-state">
+          <div class="trustpilot-empty-kicker">No qualifying public reviews yet</div>
+          <h3>The section is live and ready.</h3>
+          <p>
+            As soon as public Trustpilot reviews rated 4 stars and up appear for REPMAX,
+            they will show here automatically.
+          </p>
+        </article>
+      `;
+      return;
+    }
+
+    grid.innerHTML = reviews.slice(0, 6).map((review) => {
+      const title = escapeHtml(review.title || 'Trustpilot review');
+      const text = escapeHtml(truncateReviewText(review.text || '', 220));
+      const name = escapeHtml(review.consumer?.displayName || 'Trustpilot reviewer');
+      const country = escapeHtml(review.consumer?.countryCode || 'Trustpilot');
+      const reviewMeta = review.consumer?.numberOfReviews
+        ? `${Number(review.consumer.numberOfReviews)} review${Number(review.consumer.numberOfReviews) === 1 ? '' : 's'}`
+        : 'New reviewer';
+      const published = formatTrustpilotDate(review.publishedDate);
+      const verified = review.verification?.isVerified
+        ? '<span class="trustpilot-verified-pill">Verified</span>'
+        : '';
+      const avatar = escapeHtml((review.consumer?.displayName || 'T').trim().charAt(0).toUpperCase() || 'T');
+
+      return `
+        <article class="trustpilot-review-card">
+          <div class="trustpilot-review-top">
+            <div class="trustpilot-reviewer-shell">
+              <div class="trustpilot-avatar">${avatar}</div>
+              <div class="trustpilot-reviewer-copy">
+                <div class="trustpilot-reviewer-name">${name}</div>
+                <div class="trustpilot-reviewer-meta">${country} · ${reviewMeta}</div>
+              </div>
+            </div>
+            ${verified}
+          </div>
+
+          <div class="trustpilot-stars compact" aria-label="${review.rating} stars">
+            ${buildTrustpilotStars(review.rating)}
+          </div>
+
+          <h3 class="trustpilot-review-title">${title}</h3>
+          <p class="trustpilot-review-text">${text || 'This reviewer left a rating without extra text.'}</p>
+
+          <div class="trustpilot-review-footer">
+            <span>${published}</span>
+            <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">View on Trustpilot</a>
+          </div>
+        </article>
+      `;
+    }).join('');
+  } catch (error) {
+    console.warn('[REPMAX] Failed to load Trustpilot reviews:', error);
+    scoreValue.textContent = '--';
+    scoreLabel.textContent = 'Trustpilot temporarily unavailable';
+    reviewCount.textContent = 'Could not load public reviews right now';
+    stars.innerHTML = buildTrustpilotStars(4);
+    grid.innerHTML = `
+      <article class="trustpilot-empty-state">
+        <div class="trustpilot-empty-kicker">Could not load Trustpilot right now</div>
+        <h3>The live review feed is temporarily unavailable.</h3>
+        <p>Open the full Trustpilot page directly to read the latest public reviews.</p>
+      </article>
+    `;
+  }
+}
+
+function buildTrustpilotStars(rating = 0) {
+  const normalized = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+  return Array.from({ length: 5 }, (_, index) => {
+    const filled = index < normalized ? 'is-filled' : '';
+    return `<span class="star ${filled}">★</span>`;
+  }).join('');
+}
+
+function formatTrustpilotDate(dateValue) {
+  if (!dateValue) return 'Recent review';
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return 'Recent review';
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
+function truncateReviewText(text, limit = 220) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= limit) return clean;
+  return `${clean.slice(0, limit).trim()}…`;
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /* --- ULTRA Immersive Scroll Scenes --- */

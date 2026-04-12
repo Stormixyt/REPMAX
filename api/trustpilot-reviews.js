@@ -1,5 +1,5 @@
 const TRUSTPILOT_URL = 'https://nl.trustpilot.com/review/rep-max.app'
-const MIN_RATING = 4
+const MIN_RATING = 3.5
 const MAX_REVIEWS = 6
 
 function extractNextData(html) {
