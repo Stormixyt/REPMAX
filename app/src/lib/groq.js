@@ -200,7 +200,15 @@ async function callGroq(body, options = {}) {
       throw edgeError;
     }
 
-    console.warn("[REPMAX] Edge AI proxy failed, trying Vercel API fallback:", message);
+    const isAuthFallbackNoise =
+      status === 401 ||
+      status === 403 ||
+      /missing authentication header|missing session token|unauthorized|authentication|session token/i.test(message);
+
+    if (!isAuthFallbackNoise && typeof console !== "undefined") {
+      console.warn("[REPMAX] Edge AI proxy failed, trying Vercel API fallback:", message);
+    }
+
     return invokeServerApi("/api/ai-proxy", body, {
       timeoutMs,
       requireAuth: true,
