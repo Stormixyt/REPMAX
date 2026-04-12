@@ -7,7 +7,46 @@ import { invokeEdgeFunction, invokeServerApi } from "./supabase";
 
 const MODEL = "meta-llama/llama-3.3-70b-instruct:exacto";
 const VISION_MODEL = "meta-llama/llama-4-scout";
-const COACH_MODEL = MODEL;
+
+export const DEFAULT_COACH_MODEL = MODEL;
+export const COACH_MODEL_OPTIONS = [
+  {
+    id: DEFAULT_COACH_MODEL,
+    shortLabel: "Balanced",
+    label: "Balanced Coach",
+    description: "Best overall coaching quality with the Exacto-routed 70B model.",
+  },
+  {
+    id: "meta-llama/llama-4-maverick",
+    shortLabel: "Deep",
+    label: "Deep Strategy",
+    description: "Longer, more strategic answers when you want deeper thinking.",
+  },
+  {
+    id: "meta-llama/llama-4-scout",
+    shortLabel: "Fast",
+    label: "Fast Replies",
+    description: "Quicker coach answers when you just want the move.",
+  },
+];
+
+export const COACH_RESPONSE_STYLE_OPTIONS = [
+  {
+    id: "quick",
+    label: "Quick",
+    description: "Short answer with the one next move that matters most.",
+  },
+  {
+    id: "balanced",
+    label: "Balanced",
+    description: "Clear answer first, then practical steps when needed.",
+  },
+  {
+    id: "deep",
+    label: "Deep dive",
+    description: "Think through tradeoffs, context, and a smarter plan.",
+  },
+];
 
 const SYSTEM_PROMPT = `You are REPMAX, an expert strength and conditioning coach AI. You create scientifically-backed, periodized workout programs.
 
@@ -90,6 +129,8 @@ COACHING RULES:
 - Personalize every answer using the supplied user context.
 - Be practical, direct, and encouraging. No fluff, no bro-science, no fake certainty.
 - Prefer a short answer first, then clear next steps or bullet points when useful.
+- When the user is asking for a plan, fix, diagnosis of what is going wrong, or help making a decision, think through the tradeoffs and the user's recent context before answering.
+- Use structure when it helps: a short bottom line, then why, then what to do next.
 - Give specific swaps, sets/reps, macro ideas, recovery actions, and in-app steps when relevant.
 - If the user mentions pain, injury, dizziness, chest pain, numbness, traumatic injury, or worsening symptoms, tell them to stop training and seek a qualified medical professional.
 - Do not diagnose injuries. Offer conservative training adjustments and red flags only.
@@ -213,6 +254,124 @@ async function callGroq(body, options = {}) {
       timeoutMs,
       requireAuth: true,
     });
+  }
+}
+
+function resolveCoachModel(modelPreference) {
+  if (!modelPreference) return DEFAULT_COACH_MODEL;
+
+  return COACH_MODEL_OPTIONS.some((option) => option.id === modelPreference)
+    ? modelPreference
+    : DEFAULT_COACH_MODEL;
+}
+
+function buildCoachResponsePrompt(responseStyle = "balanced") {
+  const normalizedStyle = COACH_RESPONSE_STYLE_OPTIONS.some(
+    (option) => option.id === responseStyle
+  )
+    ? responseStyle
+    : "balanced";
+
+  if (normalizedStyle === "quick") {
+    return `RESPONSE STYLE:
+- Keep it sharp and fast.
+- Answer in 2 to 5 sentences or 3 compact bullets.
+- Prioritize the single best move over long explanation.
+- Only add extra detail if it is critical to keep the user safe or accurate.`;
+  }
+
+  if (normalizedStyle === "deep") {
+    return `RESPONSE STYLE:
+- Think like a premium coach, not a generic chatbot.
+- Use the supplied context, history, and current routine when relevant.
+- Start with a direct bottom line.
+- Then explain the key why or tradeoff.
+- Finish with a clear next-step plan the user can actually do today.`;
+  }
+
+  return `RESPONSE STYLE:
+- Lead with the answer.
+- Stay practical and concise.
+- Add short bullets or steps when they make the advice clearer.
+- Avoid bloated paragraphs or filler.`;
+}
+
+function getCoachMaxTokens(responseStyle = "balanced", toneMode = "coach") {
+  const normalizedStyle = COACH_RESPONSE_STYLE_OPTIONS.some(
+    (option) => option.id === responseStyle
+  )
+    ? responseStyle
+    : "balanced";
+
+  if (normalizedStyle === "quick") {
+    return toneMode === "gymbro" ? 220 : 500;
+  }
+
+  if (normalizedStyle === "deep") {
+    return toneMode === "gymbro" ? 700 : 1800;
+  }
+
+  return toneMode === "gymbro" ? 320 : 1200;
+}
+
+function shouldRetryCoachModel(error) {
+  const status = Number(error?.status || 0);
+  const rawMessage = error?.message;
+  let message = "";
+
+  if (typeof rawMessage === "object") {
+    try {
+      message = JSON.stringify(rawMessage);
+    } catch {
+      message = String(rawMessage || "");
+    }
+  } else {
+    message = String(rawMessage || "");
+  }
+
+  return (
+    status === 400 ||
+    status === 404 ||
+    status === 408 ||
+    status === 409 ||
+    status === 429 ||
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    /provider|rate limit|model|timeout|overloaded|temporarily unavailable|bad gateway|service unavailable/i.test(
+      message
+    )
+  );
+}
+
+async function callCoachModel(body, options = {}) {
+  const selectedModel = resolveCoachModel(options.modelPreference);
+  const timeoutMs = options.timeoutMs || 18000;
+
+  try {
+    return await callGroq(
+      {
+        ...body,
+        model: selectedModel,
+      },
+      { timeoutMs }
+    );
+  } catch (error) {
+    if (
+      selectedModel !== DEFAULT_COACH_MODEL &&
+      shouldRetryCoachModel(error)
+    ) {
+      return callGroq(
+        {
+          ...body,
+          model: DEFAULT_COACH_MODEL,
+        },
+        { timeoutMs }
+      );
+    }
+
+    throw error;
   }
 }
 
@@ -991,6 +1150,8 @@ export async function askCoach({
   history = [],
   memory = [],
   toneMode = "coach",
+  responseStyle = "balanced",
+  modelPreference = DEFAULT_COACH_MODEL,
 }) {
   const trimmedQuestion = question?.trim();
   if (!trimmedQuestion) throw new Error("Question is required");
@@ -1000,10 +1161,11 @@ export async function askCoach({
 
   const memoryPrompt = buildCoachMemoryPrompt(memory);
 
-  const data = await callGroq({
+  const data = await callCoachModel({
     messages: [
       { role: "system", content: COACH_SYSTEM_PROMPT },
       { role: "system", content: buildCoachModePrompt(toneMode) },
+      { role: "system", content: buildCoachResponsePrompt(responseStyle) },
       {
         role: "system",
         content: buildCoachContextPrompt(profile, coachContext),
@@ -1012,10 +1174,10 @@ export async function askCoach({
       ...sanitizeCoachHistory(history),
       { role: "user", content: trimmedQuestion },
     ],
-    model: COACH_MODEL,
     temperature: toneMode === "gymbro" ? 0.7 : 0.55,
-    max_tokens: toneMode === "gymbro" ? 260 : 1200,
+    max_tokens: getCoachMaxTokens(responseStyle, toneMode),
   }, {
+    modelPreference,
     timeoutMs: 18000,
   });
 
@@ -1034,6 +1196,7 @@ export async function requestRoutineChange({
   history = [],
   memory = [],
   toneMode = "coach",
+  modelPreference = DEFAULT_COACH_MODEL,
 }) {
   const trimmedQuestion = question?.trim();
   if (!trimmedQuestion) throw new Error("Question is required");
@@ -1051,7 +1214,7 @@ export async function requestRoutineChange({
 
   const memoryPrompt = buildCoachMemoryPrompt(memory);
 
-  const data = await callGroq({
+  const data = await callCoachModel({
     messages: [
       { role: "system", content: ROUTINE_ACTION_SYSTEM_PROMPT },
       { role: "system", content: buildCoachModePrompt(toneMode) },
@@ -1072,11 +1235,11 @@ export async function requestRoutineChange({
         ].join("\n"),
       },
     ],
-    model: COACH_MODEL,
     temperature: toneMode === "gymbro" ? 0.55 : 0.35,
     max_tokens: 8000,
     response_format: { type: "json_object" },
   }, {
+    modelPreference,
     timeoutMs: 25000,
   });
 

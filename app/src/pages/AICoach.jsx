@@ -1,7 +1,14 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import { askCoach, canAttemptRoutineChange, requestRoutineChange } from "../lib/groq";
+import {
+  askCoach,
+  canAttemptRoutineChange,
+  COACH_MODEL_OPTIONS,
+  COACH_RESPONSE_STYLE_OPTIONS,
+  DEFAULT_COACH_MODEL,
+  requestRoutineChange,
+} from "../lib/groq";
 import PaywallGate from "../components/PaywallGate";
 import {
   RiArrowRightSLine,
@@ -17,6 +24,8 @@ import {
 
 const STORAGE_NAMESPACE = "repmax-ai-coach-v3";
 const COACH_MODE_NAMESPACE = "repmax-ai-coach-mode-v1";
+const COACH_MODEL_NAMESPACE = "repmax-ai-coach-model-v1";
+const COACH_STYLE_NAMESPACE = "repmax-ai-coach-style-v1";
 const META_PREFIX = "[[REPMAX_COACH_META:";
 const META_SUFFIX = "]]";
 const MAX_REMOTE_MESSAGES = 200;
@@ -83,6 +92,14 @@ function getStorageKey(userId) {
 
 function getCoachModeKey(userId) {
   return `${COACH_MODE_NAMESPACE}:${userId}`;
+}
+
+function getCoachModelKey(userId) {
+  return `${COACH_MODEL_NAMESPACE}:${userId}`;
+}
+
+function getCoachStyleKey(userId) {
+  return `${COACH_STYLE_NAMESPACE}:${userId}`;
 }
 
 function summarizePreview(content = "") {
@@ -380,6 +397,68 @@ function persistCoachMode(userId, mode) {
   window.localStorage.setItem(
     getCoachModeKey(userId),
     mode === "gymbro" ? "gymbro" : "coach"
+  );
+}
+
+function readCoachModel(userId) {
+  if (!userId || typeof window === "undefined") return DEFAULT_COACH_MODEL;
+
+  try {
+    const value = window.localStorage.getItem(getCoachModelKey(userId));
+    return COACH_MODEL_OPTIONS.some((option) => option.id === value)
+      ? value
+      : DEFAULT_COACH_MODEL;
+  } catch {
+    return DEFAULT_COACH_MODEL;
+  }
+}
+
+function persistCoachModel(userId, modelId) {
+  if (!userId || typeof window === "undefined") return;
+
+  const nextModel = COACH_MODEL_OPTIONS.some((option) => option.id === modelId)
+    ? modelId
+    : DEFAULT_COACH_MODEL;
+
+  window.localStorage.setItem(getCoachModelKey(userId), nextModel);
+}
+
+function readCoachStyle(userId) {
+  if (!userId || typeof window === "undefined") return "balanced";
+
+  try {
+    const value = window.localStorage.getItem(getCoachStyleKey(userId));
+    return COACH_RESPONSE_STYLE_OPTIONS.some((option) => option.id === value)
+      ? value
+      : "balanced";
+  } catch {
+    return "balanced";
+  }
+}
+
+function persistCoachStyle(userId, styleId) {
+  if (!userId || typeof window === "undefined") return;
+
+  const nextStyle = COACH_RESPONSE_STYLE_OPTIONS.some(
+    (option) => option.id === styleId
+  )
+    ? styleId
+    : "balanced";
+
+  window.localStorage.setItem(getCoachStyleKey(userId), nextStyle);
+}
+
+function getCoachModelMeta(modelId) {
+  return (
+    COACH_MODEL_OPTIONS.find((option) => option.id === modelId) ||
+    COACH_MODEL_OPTIONS[0]
+  );
+}
+
+function getCoachStyleMeta(styleId) {
+  return (
+    COACH_RESPONSE_STYLE_OPTIONS.find((option) => option.id === styleId) ||
+    COACH_RESPONSE_STYLE_OPTIONS[1]
   );
 }
 
@@ -715,10 +794,12 @@ function MessageBody({ content }) {
 }
 
 export default function AICoach() {
-  const { user, profile, isPro } = useAuth();
+  const { user, profile, isPro, isUltra } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [coachMode, setCoachMode] = useState("coach");
+  const [coachModel, setCoachModel] = useState(DEFAULT_COACH_MODEL);
+  const [responseStyle, setResponseStyle] = useState("balanced");
   const [coachModeReady, setCoachModeReady] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -733,6 +814,9 @@ export default function AICoach() {
     conversations.find((conversation) => conversation.id === activeConversationId) ||
     conversations[0] ||
     null;
+  const activeCoachModel = isUltra ? coachModel : DEFAULT_COACH_MODEL;
+  const activeCoachModelMeta = getCoachModelMeta(activeCoachModel);
+  const activeCoachStyleMeta = getCoachStyleMeta(responseStyle);
 
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
@@ -752,6 +836,8 @@ export default function AICoach() {
 
     let cancelled = false;
     setCoachMode(readCoachMode(user.id));
+    setCoachModel(readCoachModel(user.id));
+    setResponseStyle(readCoachStyle(user.id));
     setCoachModeReady(true);
 
     async function loadCoachWorkspace() {
@@ -827,6 +913,16 @@ export default function AICoach() {
     if (!user?.id || !coachModeReady) return;
     persistCoachMode(user.id, coachMode);
   }, [user?.id, coachMode, coachModeReady]);
+
+  useEffect(() => {
+    if (!user?.id || !coachModeReady) return;
+    persistCoachModel(user.id, coachModel);
+  }, [user?.id, coachModel, coachModeReady]);
+
+  useEffect(() => {
+    if (!user?.id || !coachModeReady) return;
+    persistCoachStyle(user.id, responseStyle);
+  }, [user?.id, responseStyle, coachModeReady]);
 
   useEffect(() => {
     if (!conversations.length) return;
@@ -1044,6 +1140,7 @@ export default function AICoach() {
           history: previousMessages.slice(-MAX_CONTEXT_MESSAGES),
           memory,
           toneMode: coachMode,
+          modelPreference: activeCoachModel,
         });
 
         assistantContent = routineChange.reply;
@@ -1061,6 +1158,8 @@ export default function AICoach() {
           history: previousMessages.slice(-MAX_CONTEXT_MESSAGES),
           memory,
           toneMode: coachMode,
+          responseStyle,
+          modelPreference: activeCoachModel,
         });
       }
 
@@ -1211,30 +1310,78 @@ export default function AICoach() {
               <div className="coach-hero-mark">
                 <RiBrainFill size={20} />
               </div>
-              <div>
+              <div className="coach-header-copy">
                 <div className="coach-main-title">
                   {activeConversation?.title || "AI Coach"}
                 </div>
                 <div className="coach-main-subtitle">
-                  Fitness guidance, nutrition help, recovery advice, REPMAX app guidance, and memory from your earlier coach chats.
+                  Smarter training answers, routine edits, app guidance, and memory from your earlier coach chats.
                 </div>
-                <div className="coach-mode-toggle" role="tablist" aria-label="Coach tone">
-                  <button
-                    className={`coach-mode-chip ${coachMode === "coach" ? "active" : ""}`}
-                    onClick={() => setCoachMode("coach")}
-                    type="button"
-                    aria-pressed={coachMode === "coach"}
-                  >
-                    coach mode
-                  </button>
-                  <button
-                    className={`coach-mode-chip ${coachMode === "gymbro" ? "active" : ""}`}
-                    onClick={() => setCoachMode("gymbro")}
-                    type="button"
-                    aria-pressed={coachMode === "gymbro"}
-                  >
-                    gymbro mode
-                  </button>
+                <div className="coach-control-stack">
+                  <div className="coach-control-group">
+                    <div className="coach-control-label">Tone</div>
+                    <div className="coach-mode-toggle" role="tablist" aria-label="Coach tone">
+                      <button
+                        className={`coach-mode-chip ${coachMode === "coach" ? "active" : ""}`}
+                        onClick={() => setCoachMode("coach")}
+                        type="button"
+                        aria-pressed={coachMode === "coach"}
+                      >
+                        coach mode
+                      </button>
+                      <button
+                        className={`coach-mode-chip ${coachMode === "gymbro" ? "active" : ""}`}
+                        onClick={() => setCoachMode("gymbro")}
+                        type="button"
+                        aria-pressed={coachMode === "gymbro"}
+                      >
+                        gymbro mode
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="coach-control-group">
+                    <div className="coach-control-label">Answer style</div>
+                    <div className="coach-mode-toggle coach-style-toggle" role="tablist" aria-label="Coach answer style">
+                      {COACH_RESPONSE_STYLE_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          className={`coach-mode-chip ${responseStyle === option.id ? "active" : ""}`}
+                          onClick={() => setResponseStyle(option.id)}
+                          type="button"
+                          aria-pressed={responseStyle === option.id}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {isUltra ? (
+                    <div className="coach-control-group coach-model-group">
+                      <div className="coach-control-label">ULTRA model</div>
+                      <div className="coach-model-toggle" role="tablist" aria-label="Coach model">
+                        {COACH_MODEL_OPTIONS.map((option) => (
+                          <button
+                            key={option.id}
+                            className={`coach-model-chip ${activeCoachModel === option.id ? "active" : ""}`}
+                            onClick={() => setCoachModel(option.id)}
+                            type="button"
+                            aria-pressed={activeCoachModel === option.id}
+                          >
+                            {option.shortLabel}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="coach-control-note">
+                        {activeCoachModelMeta.description}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="coach-control-note">
+                      Coach chats already recover through OpenRouter automatically. ULTRA unlocks model switching.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1298,12 +1445,32 @@ export default function AICoach() {
                   <RiSparklingFill size={16} />
                   REPMAX Coach
                 </div>
-                <h2>Smarter answers, better training, cleaner history.</h2>
+                <h2>A coach that can think through your full week, not just your last message.</h2>
                 <p>
-                  Ask about workouts, nutrition, recovery, pain management basics,
-                  or how to use REPMAX more effectively. Your coach can now pull
-                  useful context from older coach chats too.
+                  Ask about training, nutrition, recovery, pain-management basics,
+                  or how to use REPMAX better. The coach can pull from your current
+                  routine, recent progress, nutrition targets, and older chats so
+                  the answers feel more like a real assistant and less like a reset every time.
                 </p>
+
+                <div className="coach-insights-row coach-insights-row--feature">
+                  <div className="coach-insight-pill">
+                    <span>Memory</span>
+                    <strong>Earlier chats stay in play</strong>
+                  </div>
+                  <div className="coach-insight-pill">
+                    <span>Routine edits</span>
+                    <strong>Can rewrite your live plan</strong>
+                  </div>
+                  <div className="coach-insight-pill">
+                    <span>Answer style</span>
+                    <strong>{activeCoachStyleMeta.label}</strong>
+                  </div>
+                  <div className="coach-insight-pill">
+                    <span>{isUltra ? "ULTRA model" : "Coach model"}</span>
+                    <strong>{activeCoachModelMeta.label}</strong>
+                  </div>
+                </div>
 
                 <div className="coach-suggestions-grid">
                   {SUGGESTED_PROMPTS.map((prompt) => (
@@ -1337,7 +1504,9 @@ export default function AICoach() {
                 <div className="coach-msg-card">
                   <div className="coach-msg-meta">
                     <div className="coach-msg-author">REPMAX Coach</div>
-                    <div className="coach-msg-tools">Thinking...</div>
+                    <div className="coach-msg-tools">
+                      Thinking with {activeCoachModelMeta.shortLabel}...
+                    </div>
                   </div>
                   <div className="coach-msg-bubble assistant">
                     <div className="typing-indicator">
@@ -1375,7 +1544,7 @@ export default function AICoach() {
               </button>
             </div>
             <div className="coach-composer-hint">
-              Enter to send. Shift + Enter for a new line. {coachMode === "gymbro" ? "gymbro mode is on." : "coach mode is on."}
+              Enter to send. Shift + Enter for a new line. {coachMode === "gymbro" ? "gymbro mode" : "coach mode"} • {activeCoachStyleMeta.label} • {activeCoachModelMeta.shortLabel}
             </div>
           </div>
         </section>
