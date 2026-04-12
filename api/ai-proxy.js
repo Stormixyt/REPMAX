@@ -14,11 +14,19 @@ function getUpstreamErrorMessage(payload, fallback) {
 
   if (payload.error && typeof payload.error === 'object') {
     if (typeof payload.error.message === 'string') return payload.error.message
+    if (payload.error.message && typeof payload.error.message === 'object') {
+      try { return JSON.stringify(payload.error.message) } catch { return fallback }
+    }
     if (typeof payload.error.metadata?.raw === 'string') return payload.error.metadata.raw
     if (typeof payload.error.code === 'string') return payload.error.code
+    try { return JSON.stringify(payload.error) } catch { return fallback }
   }
 
-  return fallback
+  try {
+    return JSON.stringify(payload)
+  } catch {
+    return fallback
+  }
 }
 
 function parseBearerToken(headerValue) {

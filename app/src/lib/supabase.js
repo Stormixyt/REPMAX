@@ -51,12 +51,19 @@ function extractApiErrorMessage(payload, fallback) {
     if (typeof payload.error.message === 'string') return payload.error.message
     if (typeof payload.error.error === 'string') return payload.error.error
     if (typeof payload.error.raw === 'string') return payload.error.raw
+    try { return JSON.stringify(payload.error) } catch { return fallback }
   }
 
   if (Array.isArray(payload?.errors) && payload.errors.length) {
     const firstError = payload.errors.find((entry) => typeof entry === 'string' || typeof entry?.message === 'string')
     if (typeof firstError === 'string') return firstError
     if (typeof firstError?.message === 'string') return firstError.message
+    try { return JSON.stringify(payload.errors) } catch { return fallback }
+  }
+
+  // Fallback stringification if object
+  if (payload && typeof payload === 'object') {
+     try { return JSON.stringify(payload) } catch { return fallback }
   }
 
   return fallback

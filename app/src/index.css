@@ -3481,38 +3481,47 @@ body.coach-route-active.keyboard-open .coach-composer {
         padding: 18px 14px 16px;
     }
     .coach-main-header {
-        grid-template-columns: 1fr;
-        gap: 12px;
-        padding: 14px 14px 12px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 10px 14px;
     }
     .coach-main-header-left {
-        width: 100%;
-        gap: 10px;
+        width: auto;
+        flex: 1;
+        gap: 8px;
+        align-items: center;
     }
     .coach-hero-mark {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
+        display: none;
+    }
+    .coach-ghost-btn {
+        padding: 8px 10px;
+        font-size: 0.75rem;
     }
     .coach-main-title {
-        font-size: 1.05rem;
+        font-size: 0.95rem;
+        margin-bottom: 2px;
     }
     .coach-main-subtitle {
         display: none;
     }
     .coach-mode-chip {
-        font-size: 0.68rem;
-        padding: 9px 8px;
-        justify-content: center;
-        width: 100%;
+        font-size: 0.65rem;
+        padding: 4px 10px;
+        width: auto;
     }
     .coach-mode-toggle {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 6px;
-        margin-top: 10px;
-        padding: 5px;
-        border-radius: 18px;
+        display: inline-flex;
+        gap: 2px;
+        margin-top: 0;
+        padding: 2px;
+        background: rgba(255, 255, 255, 0.05);
+        border: none;
+        border-radius: 999px;
+        width: auto;
     }
     .coach-facts-grid {
         gap: 8px;

@@ -32,6 +32,7 @@ function getUpstreamErrorMessage(payload: unknown, fallback: string) {
         const metadata = nested.metadata as Record<string, unknown>;
         if (typeof metadata.raw === "string") return metadata.raw;
       }
+      try { return JSON.stringify(value.error); } catch { return fallback; }
     }
   }
 

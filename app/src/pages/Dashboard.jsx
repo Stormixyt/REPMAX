@@ -373,8 +373,8 @@ export default function Dashboard() {
   }
 
   const greeting = getGreeting()
-  const firstName = profile?.display_name?.split(' ')[0] || 'Athlete'
-  const unit = profile?.unit_preference || profile?.units || 'kg'
+  const firstName = typeof profile?.display_name === 'string' ? profile.display_name.split(' ')[0] : 'Athlete'
+  const unit = typeof profile?.unit_preference === 'string' ? profile.unit_preference : typeof profile?.units === 'string' ? profile.units : 'kg'
   const challenge = generateDailyChallenge(profile)
   const auraLevel = getAuraLevel(stats.streak)
   const avatarSeed = profile?.avatar_seed || user?.id || 'default'
@@ -530,16 +530,16 @@ export default function Dashboard() {
       {todayWorkout ? (
         <div className="card card-accent" style={{ marginBottom: 16, marginTop: !isPro ? 12 : 0 }}>
           <div className="card-label">{t('dashboard_today_workout')}</div>
-          <div className="card-title">{todayWorkout.day_name}</div>
+          <div className="card-title">{String(todayWorkout.day_name)}</div>
           <div className="card-subtitle" style={{ marginBottom: 16 }}>
             {todayWorkout.exercises?.length || 0} exercises · Week {todayWorkout.weekNumber}
-            {todayWorkout.target_muscles && ` · ${todayWorkout.target_muscles.join(', ')}`}
+            {Array.isArray(todayWorkout.target_muscles) && ` · ${todayWorkout.target_muscles.join(', ')}`}
           </div>
           <div style={{ marginBottom: 16 }}>
             {todayWorkout.exercises?.slice(0, 3).map((ex, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{ex.name}</span>
-                <span style={{ color: 'var(--accent)', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '0.8rem' }}>{ex.sets}×{ex.reps}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{String(ex.name)}</span>
+                <span style={{ color: 'var(--accent)', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '0.8rem' }}>{Number(ex.sets) || 0}×{Number(ex.reps) || 0}</span>
               </div>
             ))}
             {todayWorkout.exercises?.length > 3 && (
@@ -568,15 +568,15 @@ export default function Dashboard() {
       {/* Stats */}
       <div className="stat-row">
         <div className="stat-box">
-          <div className="stat-value">{stats.total}</div>
+          <div className="stat-value">{Number(stats.total) || 0}</div>
           <div className="stat-desc">{t('dashboard_workouts')}</div>
         </div>
         <div className="stat-box">
-          <div className="stat-value">{stats.streak}</div>
+          <div className="stat-value">{Number(stats.streak) || 0}</div>
           <div className="stat-desc">{t('dashboard_day_streak')}</div>
         </div>
         <div className="stat-box">
-          <div className="stat-value">{stats.volume > 1000 ? `${(stats.volume / 1000).toFixed(1)}k` : stats.volume}</div>
+          <div className="stat-value">{Number(stats.volume) > 1000 ? `${(Number(stats.volume) / 1000).toFixed(1)}k` : (Number(stats.volume) || 0)}</div>
           <div className="stat-desc">{unit} Lifted</div>
         </div>
       </div>
@@ -601,15 +601,15 @@ export default function Dashboard() {
         </div>
         <div className="dna-stats">
           <div className="dna-stat">
-            <div className="dna-stat-value">{stats.total}</div>
+            <div className="dna-stat-value">{Number(stats.total) || 0}</div>
             <div className="dna-stat-label">Sessions</div>
           </div>
           <div className="dna-stat">
-            <div className="dna-stat-value">{stats.streak}</div>
+            <div className="dna-stat-value">{Number(stats.streak) || 0}</div>
             <div className="dna-stat-label">Streak</div>
           </div>
           <div className="dna-stat">
-            <div className="dna-stat-value">{profile?.preferred_split?.replace('_', '/').toUpperCase() || '—'}</div>
+            <div className="dna-stat-value">{typeof profile?.preferred_split === 'string' ? profile.preferred_split.replace('_', '/').toUpperCase() : '—'}</div>
             <div className="dna-stat-label">Split</div>
           </div>
         </div>
@@ -620,8 +620,8 @@ export default function Dashboard() {
       {program && (
         <div className="card" style={{ marginTop: 16 }}>
           <div className="card-label">{t('dashboard_current_program')}</div>
-          <div className="card-title">{program.name}</div>
-          <div className="card-subtitle">Week {program.current_week || 1} of {program.total_weeks || 4} · {program.split_type?.replace('_', '/').toUpperCase()}</div>
+          <div className="card-title">{String(program.name || 'Custom Program')}</div>
+          <div className="card-subtitle">Week {program.current_week || 1} of {program.total_weeks || 4} · {typeof program.split_type === 'string' ? program.split_type.replace('_', '/').toUpperCase() : 'CUSTOM'}</div>
           <div style={{ marginTop: 12, background: 'var(--bg-elevated)', borderRadius: 'var(--radius-full)', height: 6, overflow: 'hidden' }}>
             <div style={{ width: `${((program.current_week || 1) / (program.total_weeks || 4)) * 100}%`, height: '100%', background: 'var(--accent)', borderRadius: 'var(--radius-full)', transition: 'width 0.5s ease' }} />
           </div>
@@ -636,8 +636,8 @@ export default function Dashboard() {
             <div key={pr.id} className="pr-item">
               <div className="pr-badge"><RiMedalFill size={18} /></div>
               <div className="pr-info">
-                <div className="pr-exercise">{pr.exercise_name}</div>
-                <div className="pr-details">{pr.weight} {unit} × {pr.reps} reps</div>
+                <div className="pr-exercise">{String(pr.exercise_name)}</div>
+                <div className="pr-details">{Number(pr.weight) || 0} {unit} × {Number(pr.reps) || 0} reps</div>
               </div>
               <div className="pr-date">{new Date(pr.achieved_at).toLocaleDateString()}</div>
             </div>

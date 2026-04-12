@@ -177,7 +177,16 @@ async function callGroq(body, options = {}) {
     });
   } catch (edgeError) {
     const status = edgeError?.status;
-    const message = String(edgeError?.message || "");
+    let message = edgeError?.message || "";
+    if (typeof message === "object") {
+      try {
+        message = JSON.stringify(message);
+      } catch {
+        message = String(message);
+      }
+    } else {
+      message = String(message);
+    }
     const shouldFallback =
       status === 404 ||
       status === 500 ||
@@ -1563,6 +1572,13 @@ function describeAiError(error, fallback = "AI request failed.") {
     if (typeof candidate === "string" && candidate.trim()) {
       return candidate.trim();
     }
+    if (typeof candidate === "object" && candidate !== null) {
+      try {
+        return JSON.stringify(candidate);
+      } catch {
+        // ignore
+      }
+    }
   }
 
   return fallback;
@@ -1958,7 +1974,7 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
       parsedProgram = await repairVisionProgramJson(rawOutput);
     }
 
-    return { success: true, program: normalizeVisionProgramPayload(parsedProgram) };
+    return { success: true, program: normalizeVisionProgramPayload(parsedProgram), extractedText: normalizeImportedRoutineText(extractedText) };
   } catch(err) {
     const normalizedError = normalizeAiErrorPayload(
       err,
