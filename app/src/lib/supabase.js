@@ -40,6 +40,28 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 })
 
+function extractApiErrorMessage(payload, fallback) {
+  if (!payload) return fallback
+  if (typeof payload === 'string') return payload
+  if (typeof payload?.error === 'string') return payload.error
+  if (typeof payload?.message === 'string') return payload.message
+  if (typeof payload?.raw === 'string') return payload.raw
+
+  if (payload?.error && typeof payload.error === 'object') {
+    if (typeof payload.error.message === 'string') return payload.error.message
+    if (typeof payload.error.error === 'string') return payload.error.error
+    if (typeof payload.error.raw === 'string') return payload.error.raw
+  }
+
+  if (Array.isArray(payload?.errors) && payload.errors.length) {
+    const firstError = payload.errors.find((entry) => typeof entry === 'string' || typeof entry?.message === 'string')
+    if (typeof firstError === 'string') return firstError
+    if (typeof firstError?.message === 'string') return firstError.message
+  }
+
+  return fallback
+}
+
 export async function invokeEdgeFunction(functionName, body, options = {}) {
   const {
     timeoutMs = 15000,
@@ -86,9 +108,10 @@ export async function invokeEdgeFunction(functionName, body, options = {}) {
 
     if (!response.ok) {
       const error = new Error(
-        data?.error ||
-        data?.message ||
-        `Edge function ${functionName} failed with status ${response.status}.`
+        extractApiErrorMessage(
+          data,
+          `Edge function ${functionName} failed with status ${response.status}.`
+        )
       )
       error.status = response.status
       error.payload = data
@@ -151,9 +174,10 @@ export async function invokeServerApi(path, body, options = {}) {
 
     if (!response.ok) {
       const error = new Error(
-        data?.error ||
-        data?.message ||
-        `Request to ${path} failed with status ${response.status}.`
+        extractApiErrorMessage(
+          data,
+          `Request to ${path} failed with status ${response.status}.`
+        )
       )
       error.status = response.status
       error.payload = data

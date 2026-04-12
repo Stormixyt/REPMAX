@@ -428,6 +428,28 @@ function confidenceToneLabel(tone = 'low') {
   return 'early'
 }
 
+function getImportErrorHint(message = '') {
+  const normalized = String(message || '').toLowerCase()
+
+  if (/too many requests|rate limit|thrott/i.test(normalized)) {
+    return 'The vision request got rate-limited upstream. Give it a minute, then retry or paste the routine as text.'
+  }
+
+  if (/timed out|timeout/i.test(normalized)) {
+    return 'The screenshots took too long to process. Try fewer images, tighter crops, or the text import path.'
+  }
+
+  if (/signed in|session token|unauthorized|missing session/i.test(normalized)) {
+    return 'Your app session needs refreshing before the import can call the AI parser again.'
+  }
+
+  if (/payload too large|too large/i.test(normalized)) {
+    return 'Those screenshots are too heavy for one pass. Try fewer images or lower-resolution crops.'
+  }
+
+  return 'The parser could not turn this into a clean routine yet, but you can continue manually from the cleaned source below.'
+}
+
 export default function UltraLab() {
   const { user, profile, isUltra, subscriptionTier } = useAuth()
   const navigate = useNavigate()
@@ -715,6 +737,7 @@ export default function UltraLab() {
         source: 'images',
         cleanedText,
         error: error.message || 'Could not parse that routine yet.',
+        hint: getImportErrorHint(error.message),
         canContinue: Boolean(cleanedText.trim()),
       })
       showToast('Could not parse that routine yet.')
@@ -750,6 +773,7 @@ export default function UltraLab() {
         source: 'text',
         cleanedText,
         error: error.message || 'Could not turn that text into a routine yet.',
+        hint: getImportErrorHint(error.message),
         canContinue: Boolean(cleanedText.trim()),
       })
       showToast('Could not turn that text into a routine yet.')
@@ -762,6 +786,7 @@ export default function UltraLab() {
     const seededProgram = seedProgramFromText(importDiagnostics?.cleanedText || routineText || lastExtractedText)
     setParsedProgram(seededProgram)
     setParsedSource('manual')
+    setImportDiagnostics(null)
     showToast('Manual draft seeded. Tighten it up before saving.')
   }
 
@@ -1299,6 +1324,9 @@ export default function UltraLab() {
                     ? importDiagnostics.error
                     : 'This is the cleaned routine text the import flow is currently working from.'}
                 </p>
+                {importDiagnostics?.hint && (
+                  <p className="ultra-diagnostics-copy ultra-diagnostics-hint">{importDiagnostics.hint}</p>
+                )}
                 {lastExtractedText && (
                   <pre className="ultra-source-text">{lastExtractedText}</pre>
                 )}

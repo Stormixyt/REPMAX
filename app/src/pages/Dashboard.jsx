@@ -382,8 +382,8 @@ export default function Dashboard() {
   const ultraLabHref = '/ultra-lab?tab=intelligence'
   const ultraLabTitle = isUltra ? 'ULTRA Lab is live inside your app now.' : 'ULTRA Lab keeps the deep analytics off your main dashboard.'
   const ultraLabBody = isUltra
-    ? 'Open Intelligence for readiness, plateau detection, and PR forecasting, then jump into Import Studio or Social Edge from the same premium surface.'
-    : 'Preview the premium analytics, routine import, and social planning layer before you upgrade. The dashboard stays cleaner either way.'
+    ? 'Open Intelligence for readiness and forecasting, bring outside routines through Import Studio, and use Social Edge as a real training layer.'
+    : 'Preview the premium analytics, routine import, and social planning layer before you upgrade, while the main dashboard stays cleaner.'
 
   if (loading) {
     return (

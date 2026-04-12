@@ -1,14 +1,16 @@
-.ultra-lab-page {
-  padding-bottom: 128px;
+.ultra-lab-page.page {
+  max-width: min(1120px, calc(100vw - 48px));
+  padding: 24px clamp(16px, 3vw, 28px) 128px;
 }
 
 .ultra-lab-header {
   margin-bottom: 18px;
+  max-width: 760px;
 }
 
 .ultra-page-stack {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .ultra-lab-kicker,
@@ -429,11 +431,18 @@
 
 .ultra-source-text {
   margin: 0;
+  max-height: 260px;
+  overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: var(--font-mono, monospace);
   font-size: 0.8rem;
   color: #f5ecff;
+}
+
+.ultra-diagnostics-hint {
+  margin-top: -2px;
+  color: #f0d694;
 }
 
 .ultra-day-header {
@@ -534,5 +543,102 @@
   .ultra-save-row {
     grid-template-columns: 1fr auto;
     align-items: center;
+  }
+}
+
+@media (min-width: 1080px) {
+  .ultra-overview-grid,
+  .ultra-chart-grid,
+  .ultra-social-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .ultra-tab-bar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .ultra-tab-btn {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 639px) {
+  .ultra-lab-page.page {
+    max-width: none;
+    padding: 18px 14px 124px;
+  }
+
+  .ultra-command-card {
+    grid-template-columns: 84px 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .ultra-command-ring {
+    width: 84px;
+    height: 84px;
+    padding: 8px;
+  }
+
+  .ultra-command-copy h2,
+  .ultra-section-head h2 {
+    font-size: 1.35rem;
+  }
+
+  .ultra-command-copy p,
+  .ultra-feature-card p,
+  .ultra-social-intro,
+  .ultra-metric-note {
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+
+  .ultra-tab-bar {
+    margin: 14px 0;
+  }
+
+  .ultra-tab-btn,
+  .ultra-import-mode {
+    padding: 9px 12px;
+    font-size: 0.78rem;
+  }
+
+  .ultra-preview-shell,
+  .ultra-import-hero,
+  .ultra-intelligence-shell,
+  .ultra-editor-shell,
+  .ultra-social-shell,
+  .ultra-command-card,
+  .ultra-section-panel {
+    border-radius: 22px;
+  }
+
+  .ultra-quick-signal,
+  .ultra-chart-card,
+  .ultra-metric-card,
+  .ultra-preview-card,
+  .ultra-feature-card,
+  .ultra-social-card,
+  .ultra-compare-card {
+    padding: 14px;
+  }
+
+  .ultra-section-head,
+  .ultra-feature-top,
+  .ultra-social-row {
+    gap: 10px;
+  }
+
+  .ultra-section-head,
+  .ultra-feature-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ultra-save-row {
+    bottom: calc(var(--nav-height) + 10px);
   }
 }

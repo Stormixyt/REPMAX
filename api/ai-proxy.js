@@ -5,6 +5,22 @@ const DEFAULT_TEXT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/l
 const OPENROUTER_SITE_URL = process.env.OPENROUTER_SITE_URL || 'https://www.rep-max.app'
 const OPENROUTER_SITE_NAME = process.env.OPENROUTER_SITE_NAME || 'REPMAX'
 
+function getUpstreamErrorMessage(payload, fallback) {
+  if (!payload) return fallback
+  if (typeof payload === 'string') return payload
+  if (typeof payload.error === 'string') return payload.error
+  if (typeof payload.message === 'string') return payload.message
+  if (typeof payload.raw === 'string') return payload.raw
+
+  if (payload.error && typeof payload.error === 'object') {
+    if (typeof payload.error.message === 'string') return payload.error.message
+    if (typeof payload.error.metadata?.raw === 'string') return payload.error.metadata.raw
+    if (typeof payload.error.code === 'string') return payload.error.code
+  }
+
+  return fallback
+}
+
 function parseBearerToken(headerValue) {
   if (!headerValue || typeof headerValue !== 'string') return null
   if (!headerValue.startsWith('Bearer ')) return null
@@ -91,6 +107,16 @@ module.exports = async (req, res) => {
     data = text ? JSON.parse(text) : {}
   } catch {
     data = { raw: text }
+  }
+
+  if (!upstreamRes.ok) {
+    return res.status(upstreamRes.status).json({
+      error: getUpstreamErrorMessage(
+        data,
+        `OpenRouter request failed with status ${upstreamRes.status}.`
+      ),
+      details: data,
+    })
   }
 
   return res.status(upstreamRes.status).json(data)

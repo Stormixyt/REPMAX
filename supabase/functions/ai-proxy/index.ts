@@ -12,6 +12,32 @@ const DEFAULT_TEXT_MODEL =
   Deno.env.get("OPENROUTER_DEFAULT_MODEL") ||
   "meta-llama/llama-3.3-70b-instruct:exacto";
 
+function getUpstreamErrorMessage(payload: unknown, fallback: string) {
+  if (!payload) return fallback;
+  if (typeof payload === "string") return payload;
+
+  if (typeof payload === "object") {
+    const value = payload as Record<string, unknown>;
+
+    if (typeof value.error === "string") return value.error;
+    if (typeof value.message === "string") return value.message;
+    if (typeof value.raw === "string") return value.raw;
+
+    if (value.error && typeof value.error === "object") {
+      const nested = value.error as Record<string, unknown>;
+      if (typeof nested.message === "string") return nested.message;
+      if (typeof nested.code === "string") return nested.code;
+
+      if (nested.metadata && typeof nested.metadata === "object") {
+        const metadata = nested.metadata as Record<string, unknown>;
+        if (typeof metadata.raw === "string") return metadata.raw;
+      }
+    }
+  }
+
+  return fallback;
+}
+
 // Simple in-memory rate limiting (per isolate)
 // Stores array of timestamps for each user
 // Limit: max 15 requests per minute
@@ -91,6 +117,19 @@ serve(async (req: Request) => {
     });
 
     const data = await upstreamRes.json();
+
+    if (!upstreamRes.ok) {
+      return new Response(JSON.stringify({
+        error: getUpstreamErrorMessage(
+          data,
+          `OpenRouter request failed with status ${upstreamRes.status}.`,
+        ),
+        details: data,
+      }), {
+        status: upstreamRes.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify(data), {
       status: upstreamRes.status,

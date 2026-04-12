@@ -1540,6 +1540,42 @@ Create the program now.`;
 // Exported for use in Nutrition.jsx and other pages
 export { callGroq, VISION_MODEL, MODEL };
 
+function describeAiError(error, fallback = "AI request failed.") {
+  if (!error) return fallback;
+  if (typeof error === "string") return error;
+
+  const candidates = [
+    error?.message,
+    error?.payload?.error,
+    error?.payload?.message,
+    error?.payload?.details?.error,
+    error?.payload?.details?.message,
+    error?.payload?.details?.error?.message,
+    error?.details?.error,
+    error?.details?.message,
+    error?.details?.error?.message,
+    error?.error,
+    error?.error?.message,
+    error?.raw,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return fallback;
+}
+
+function normalizeAiErrorPayload(error, fallback) {
+  return {
+    message: describeAiError(error, fallback),
+    status: error?.status || error?.code || null,
+    details: error?.payload || error?.details || error || null,
+  };
+}
+
 function stripMarkdownFences(text = "") {
   return text
     .replace(/```json/gi, "```")
@@ -1723,8 +1759,12 @@ Rules:
       cleanedText,
     };
   } catch (error) {
-    console.error("Routine text import failed:", error);
-    return { success: false, error };
+    const normalizedError = normalizeAiErrorPayload(
+      error,
+      "Routine text import failed."
+    );
+    console.error("Routine text import failed:", normalizedError.message, normalizedError.details);
+    return { success: false, error: normalizedError };
   }
 }
 
@@ -1881,7 +1921,10 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
       };
     }
   } catch (err) {
-    console.warn("Vision text extraction fallback hit direct JSON mode:", err?.message || err);
+    console.warn(
+      "Vision text extraction fallback hit direct JSON mode:",
+      describeAiError(err, "Vision OCR pass failed.")
+    );
   }
 
   try {
@@ -1917,10 +1960,14 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
 
     return { success: true, program: normalizeVisionProgramPayload(parsedProgram) };
   } catch(err) {
-    console.error("Vision AI failed:", err);
+    const normalizedError = normalizeAiErrorPayload(
+      err,
+      "Vision import failed."
+    );
+    console.error("Vision AI failed:", normalizedError.message, normalizedError.details);
     return {
       success: false,
-      error: err,
+      error: normalizedError,
       extractedText: normalizeImportedRoutineText(extractedText),
     };
   }
