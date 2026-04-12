@@ -210,15 +210,35 @@ Program editor rules:
  */
 async function callGroq(body, options = {}) {
   const timeoutMs = options.timeoutMs || 15000;
+  const preferServerApi = options.preferServerApi === true;
+  const primaryRequest = preferServerApi
+    ? () =>
+        invokeServerApi("/api/ai-proxy", body, {
+          timeoutMs,
+          requireAuth: true,
+        })
+    : () =>
+        invokeEdgeFunction("ai-proxy", body, {
+          timeoutMs,
+          requireAuth: true,
+        });
+  const fallbackRequest = preferServerApi
+    ? () =>
+        invokeEdgeFunction("ai-proxy", body, {
+          timeoutMs,
+          requireAuth: true,
+        })
+    : () =>
+        invokeServerApi("/api/ai-proxy", body, {
+          timeoutMs,
+          requireAuth: true,
+        });
 
   try {
-    return await invokeEdgeFunction("ai-proxy", body, {
-      timeoutMs,
-      requireAuth: true,
-    });
-  } catch (edgeError) {
-    const status = edgeError?.status;
-    let message = edgeError?.message || "";
+    return await primaryRequest();
+  } catch (primaryError) {
+    const status = primaryError?.status;
+    let message = primaryError?.message || "";
     if (typeof message === "object") {
       try {
         message = JSON.stringify(message);
@@ -238,7 +258,7 @@ async function callGroq(body, options = {}) {
       /not configured|not deployed|timed out|function|auth|unauthorized|authentication|session token/i.test(message);
 
     if (!shouldFallback) {
-      throw edgeError;
+      throw primaryError;
     }
 
     const isAuthFallbackNoise =
@@ -247,13 +267,41 @@ async function callGroq(body, options = {}) {
       /missing authentication header|missing session token|unauthorized|authentication|session token/i.test(message);
 
     if (!isAuthFallbackNoise && typeof console !== "undefined") {
-      console.warn("[REPMAX] Edge AI proxy failed, trying Vercel API fallback:", message);
+      console.warn(
+        `[REPMAX] ${preferServerApi ? "Server" : "Edge"} AI proxy failed, trying ${preferServerApi ? "edge" : "Vercel"} fallback:`,
+        message
+      );
     }
 
-    return invokeServerApi("/api/ai-proxy", body, {
-      timeoutMs,
-      requireAuth: true,
-    });
+    try {
+      return await fallbackRequest();
+    } catch (fallbackError) {
+      const fallbackRawMessage = fallbackError?.message;
+      let fallbackMessage = "";
+
+      if (typeof fallbackRawMessage === "object") {
+        try {
+          fallbackMessage = JSON.stringify(fallbackRawMessage);
+        } catch {
+          fallbackMessage = String(fallbackRawMessage || "");
+        }
+      } else {
+        fallbackMessage = String(fallbackRawMessage || "");
+      }
+
+      const fallbackLooksAuthNoise =
+        Number(fallbackError?.status || 0) === 401 ||
+        Number(fallbackError?.status || 0) === 403 ||
+        /missing authentication header|missing session token|unauthorized|authentication|session token/i.test(
+          fallbackMessage
+        );
+
+      if (fallbackLooksAuthNoise && !isAuthFallbackNoise) {
+        throw primaryError;
+      }
+
+      throw fallbackError;
+    }
   }
 }
 
@@ -2121,7 +2169,7 @@ Rules:
   }
 }
 
-export async function generateProgramFromImages(base64Images) {
+export async function generateProgramFromImages(base64Images, options = {}) {
   const OCR_PROMPT = `You are REPMAX Vision OCR.
 
 Read the workout text visible in these images and return plain text only.
@@ -2167,67 +2215,149 @@ Rules:
 - Keep the schedule order from the extracted text.
 - If only one week is available, repeat it until there are 4 weeks.
 - Use sensible defaults for sets, reps, RPE, and rest seconds.`;
+  const reportStage =
+    typeof options?.onStage === "function" ? options.onStage : null;
+  const safeImages = Array.isArray(base64Images)
+    ? base64Images.filter(Boolean)
+    : [];
+  const maxImages = 6;
 
-  const VISION_PROMPT = `You are REPMAX Vision, an expert fitness AI. Your task is to extract the training routine shown in the provided images and output it EXACTLY matching the strict JSON format below.
-
-IF any vital data (like RPE or Rest time) is missing from the images, you MUST invent sensible defaults (e.g. RPE 8, 120s rest).
-IF the image is a calendar or plan that only shows workout themes like "Upper Body", "Core", "Cardio + Core", or "Rest", you MUST still turn every non-rest day into a usable workout by inventing sensible bodyweight exercises that match that theme.
-IF a day clearly lists individual exercises, you MUST preserve all visible exercises for that day instead of summarizing or trimming the list.
-DO NOT reduce a visible 6-exercise day into a 3-exercise day.
-Assume 4 weeks of training (just duplicate week 1 into week 2, 3, and 4 if only 1 week is shown).
-
-OUTPUT FORMAT: You MUST respond with ONLY valid JSON matching this structure exactly (do not wrap in markdown blocks, just raw JSON):
-{
-  "name": "Custom Routine",
-  "split_type": "custom",
-  "weeks": [
-    {
-      "week_number": 1,
-      "is_deload": false,
-      "days": [
-        {
-          "day_name": "Day 1",
-          "target_muscles": ["chest", "shoulders"],
-          "exercises": [
-            {
-              "name": "Barbell Bench Press",
-              "sets": 4,
-              "reps": 8,
-              "rpe": 7.5,
-              "rest_seconds": 180,
-              "notes": "Any notes from the image"
-            }
-          ]
-        }
-      ]
+  function emitStage(stage, meta = {}) {
+    if (!reportStage) return;
+    try {
+      reportStage({ stage, ...meta });
+    } catch {
+      // noop
     }
-  ]
-}
-
-DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
-
-  const userMessageContent = [
-    { type: "text", text: "Read the workout text from these images." }
-  ];
-
-  for (const img of base64Images) {
-    userMessageContent.push({
-      type: "image_url",
-      image_url: { url: img }
-    });
   }
 
-  async function extractRoutineTextFromImages() {
+  function buildVisionImportError(error, stage, extractedText = "", meta = {}) {
+    const normalizedError = normalizeAiErrorPayload(
+      error,
+      stage === "draft"
+        ? "The screenshots were read, but the routine draft could not be built."
+        : "The screenshots could not be read clearly enough."
+    );
+    const message = String(normalizedError.message || "").toLowerCase();
+
+    if (/missing authentication header|missing session token|unauthorized|authentication|signed in/i.test(message)) {
+      return {
+        message:
+          "Your session expired before the screenshot parser could run. Refresh the app and try again.",
+        stage,
+        hint: "Refresh the app or sign in again, then rerun the screenshot import.",
+        status: normalizedError.status,
+        details: normalizedError.details,
+        extractedText: normalizeImportedRoutineText(extractedText),
+      };
+    }
+
+    if (/payload too large|too large/i.test(message)) {
+      return {
+        message:
+          "These screenshots are too heavy for one pass. Try tighter crops or fewer images.",
+        stage,
+        hint: "Crop out unused screen space, then retry with smaller screenshots.",
+        status: normalizedError.status,
+        details: normalizedError.details,
+        extractedText: normalizeImportedRoutineText(extractedText),
+      };
+    }
+
+    if (/timed out|timeout/i.test(message)) {
+      if (stage === "draft") {
+        return {
+          message:
+            "The screenshots were read, but building the routine draft took too long.",
+          stage,
+          hint:
+            "Try the text import path or continue manually from the cleaned source below.",
+          status: normalizedError.status,
+          details: normalizedError.details,
+          extractedText: normalizeImportedRoutineText(extractedText),
+        };
+      }
+
+      return {
+        message: `Screenshot ${meta.current || 1} of ${meta.total || safeImages.length} took too long to read.`,
+        stage,
+        hint: "Try fewer screenshots, tighter crops, or the text import path.",
+        status: normalizedError.status,
+        details: normalizedError.details,
+        extractedText: normalizeImportedRoutineText(extractedText),
+      };
+    }
+
+    return {
+      message:
+        stage === "draft"
+          ? "The screenshots were read, but the routine draft still needs manual cleanup."
+          : "One of the screenshots could not be read cleanly enough yet.",
+      stage,
+      hint:
+        stage === "draft"
+          ? "Continue manually from the cleaned source below or retry with cleaner screenshots."
+          : "Retry with tighter crops or continue manually from the cleaned source below.",
+      status: normalizedError.status,
+      details: normalizedError.details,
+      extractedText: normalizeImportedRoutineText(extractedText),
+    };
+  }
+
+  if (!safeImages.length) {
+    return {
+      success: false,
+      error: {
+        message: "Choose one or more routine screenshots first.",
+        stage: "input",
+        hint: "Upload a screenshot before starting the parser.",
+      },
+      extractedText: "",
+    };
+  }
+
+  if (safeImages.length > maxImages) {
+    return {
+      success: false,
+      error: {
+        message: `Use ${maxImages} screenshots or fewer in one import pass.`,
+        stage: "input",
+        hint: "Split the import into smaller batches or paste the routine as text.",
+      },
+      extractedText: "",
+    };
+  }
+
+  async function extractRoutineTextFromSingleImage(imageUrl, current, total) {
+    emitStage("reading", {
+      current,
+      total,
+      label: `Reading screenshot ${current} of ${total}`,
+    });
+
     const data = await callGroq({
       messages: [
         { role: "system", content: OCR_PROMPT },
-        { role: "user", content: userMessageContent },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Read the workout text from screenshot ${current} of ${total}.`,
+            },
+            {
+              type: "image_url",
+              image_url: { url: imageUrl },
+            },
+          ],
+        },
       ],
       model: VISION_MODEL,
       temperature: 0.1,
-      max_tokens: 4000,
+      max_tokens: 2200,
     }, {
-      timeoutMs: 45000,
+      preferServerApi: true,
+      timeoutMs: 30000,
     });
 
     return data?.choices?.[0]?.message?.content?.trim() || "";
@@ -2235,6 +2365,7 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
 
   async function buildProgramFromExtractedText(extractedText) {
     const cleanedText = normalizeImportedRoutineText(extractedText);
+    emitStage("draft", { label: "Building routine draft" });
     const data = await callGroq({
       messages: [
         { role: "system", content: TEXT_TO_PROGRAM_PROMPT },
@@ -2248,6 +2379,7 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
       max_tokens: 7000,
       response_format: { type: "json_object" },
     }, {
+      preferServerApi: true,
       timeoutMs: 25000,
     });
 
@@ -2262,66 +2394,79 @@ DO NOT OUTPUT ANY OTHER TEXT. ONLY RAW JSON.`;
     };
   }
 
-  let extractedText = "";
-  try {
-    extractedText = await extractRoutineTextFromImages();
-    if (extractedText) {
-      const { parsedProgram, cleanedText } = await buildProgramFromExtractedText(extractedText);
+  emitStage("optimizing", {
+    current: 0,
+    total: safeImages.length,
+    label: "Optimizing screenshots",
+  });
+
+  const extractedChunks = [];
+  for (let index = 0; index < safeImages.length; index += 1) {
+    try {
+      const chunk = await extractRoutineTextFromSingleImage(
+        safeImages[index],
+        index + 1,
+        safeImages.length
+      );
+      if (chunk) extractedChunks.push(chunk);
+    } catch (error) {
+      const importError = buildVisionImportError(
+        error,
+        "ocr",
+        extractedChunks.join("\n\n"),
+        { current: index + 1, total: safeImages.length }
+      );
+
+      console.error("Vision OCR failed:", importError.message, importError.details);
       return {
-        success: true,
-        program: normalizeVisionProgramPayload(parsedProgram),
-        extractedText: cleanedText,
+        success: false,
+        error: {
+          message: importError.message,
+          stage: importError.stage,
+          hint: importError.hint,
+          status: importError.status,
+          details: importError.details,
+        },
+        extractedText: importError.extractedText,
       };
     }
-  } catch (err) {
-    console.warn(
-      "Vision text extraction fallback hit direct JSON mode:",
-      describeAiError(err, "Vision OCR pass failed.")
-    );
+  }
+
+  const extractedText = normalizeImportedRoutineText(extractedChunks.join("\n\n"));
+  if (!extractedText) {
+    return {
+      success: false,
+      error: {
+        message: "The screenshots did not produce enough readable routine text yet.",
+        stage: "ocr",
+        hint: "Try tighter crops with the workout text filling more of the image.",
+      },
+      extractedText: "",
+    };
   }
 
   try {
-    const data = await callGroq({
-      messages: [
-        { role: "system", content: VISION_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Parse the training routines in these images and give me the perfect JSON structure." },
-            ...base64Images.map((img) => ({
-              type: "image_url",
-              image_url: { url: img }
-            }))
-          ]
-        },
-      ],
-      model: VISION_MODEL,
-      temperature: 0.2, // Low temp for extraction tasks
-      max_tokens: 7000,
-    }, {
-      timeoutMs: 45000,
-    });
-
-    const rawOutput = data?.choices?.[0]?.message?.content || "";
-    let parsedProgram = null;
-
-    try {
-      parsedProgram = JSON.parse(repairLikelyJson(rawOutput));
-    } catch {
-      parsedProgram = await repairVisionProgramJson(rawOutput);
-    }
-
-    return { success: true, program: normalizeVisionProgramPayload(parsedProgram), extractedText: normalizeImportedRoutineText(extractedText) };
-  } catch(err) {
-    const normalizedError = normalizeAiErrorPayload(
-      err,
-      "Vision import failed."
+    const { parsedProgram, cleanedText } = await buildProgramFromExtractedText(
+      extractedText
     );
-    console.error("Vision AI failed:", normalizedError.message, normalizedError.details);
+    return {
+      success: true,
+      program: normalizeVisionProgramPayload(parsedProgram),
+      extractedText: cleanedText,
+    };
+  } catch (error) {
+    const importError = buildVisionImportError(error, "draft", extractedText);
+    console.error("Vision draft build failed:", importError.message, importError.details);
     return {
       success: false,
-      error: normalizedError,
-      extractedText: normalizeImportedRoutineText(extractedText),
+      error: {
+        message: importError.message,
+        stage: importError.stage,
+        hint: importError.hint,
+        status: importError.status,
+        details: importError.details,
+      },
+      extractedText: importError.extractedText,
     };
   }
 }

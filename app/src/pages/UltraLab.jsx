@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { buildUltraAnalyticsModel } from '../lib/ultraAnalytics'
 import { generateProgramFromImages, generateProgramFromText, normalizeImportedRoutineText } from '../lib/groq'
+import { optimizeImageForVision } from '../lib/visionImages'
 import { weightLabel } from '../lib/units'
 import PaywallGate from '../components/PaywallGate'
 import ProBadge from '../components/ProBadge'
@@ -295,15 +296,6 @@ function getConfidenceClass(confidence) {
   return 'low'
 }
 
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
 function inferTargetMuscles(label = '') {
   const normalized = label.toLowerCase()
   if (/rest|off|recovery/.test(normalized)) return []
@@ -450,6 +442,41 @@ function getImportErrorHint(message = '') {
   return 'The parser could not turn this into a clean routine yet, but you can continue manually from the cleaned source below.'
 }
 
+function describeImportStage(stagePayload = null) {
+  if (!stagePayload?.stage) return null
+
+  const stage = stagePayload.stage
+  if (stage === 'optimizing') {
+    return {
+      label: 'Optimizing screenshots',
+      copy: 'Compressing the images so the OCR pass stays fast and reliable.',
+    }
+  }
+
+  if (stage === 'reading') {
+    return {
+      label: stagePayload.label || `Reading screenshot ${stagePayload.current || 1} of ${stagePayload.total || 1}`,
+      copy: 'Reading the visible routine text one screenshot at a time before the draft build starts.',
+    }
+  }
+
+  if (stage === 'draft') {
+    return {
+      label: 'Building routine draft',
+      copy: 'Turning the cleaned OCR text into a structured REPMAX routine you can review before saving.',
+    }
+  }
+
+  if (stage === 'review') {
+    return {
+      label: 'Needs review',
+      copy: 'The cleaned source is ready for manual cleanup before it becomes your live plan.',
+    }
+  }
+
+  return null
+}
+
 export default function UltraLab() {
   const { user, profile, isUltra, subscriptionTier } = useAuth()
   const navigate = useNavigate()
@@ -471,6 +498,8 @@ export default function UltraLab() {
   const [savingImport, setSavingImport] = useState(false)
   const [lastExtractedText, setLastExtractedText] = useState('')
   const [importDiagnostics, setImportDiagnostics] = useState(null)
+  const [importStage, setImportStage] = useState(null)
+  const [showSourceText, setShowSourceText] = useState(false)
   const [expandedDays, setExpandedDays] = useState({})
 
   const activeTab = TAB_OPTIONS.some((tab) => tab.id === searchParams.get('tab'))
@@ -714,13 +743,24 @@ export default function UltraLab() {
 
     setProcessingImport(true)
     setImportDiagnostics(null)
+    setImportStage({
+      stage: 'optimizing',
+      label: 'Optimizing screenshots',
+      current: 0,
+      total: imageFiles.length,
+    })
+    setShowSourceText(false)
     try {
-      const base64Images = await Promise.all(imageFiles.map((file) => fileToDataUrl(file)))
-      const result = await generateProgramFromImages(base64Images)
+      const base64Images = await Promise.all(imageFiles.map((file) => optimizeImageForVision(file)))
+      const result = await generateProgramFromImages(base64Images, {
+        onStage: setImportStage,
+      })
 
       if (!result?.success || !result.program) {
         const importError = new Error(result?.error?.message || 'Image import failed')
         importError.extractedText = result?.extractedText || ''
+        importError.hint = result?.error?.hint || ''
+        importError.stage = result?.error?.stage || ''
         throw importError
       }
 
@@ -728,6 +768,10 @@ export default function UltraLab() {
       setParsedSource('images')
       setLastExtractedText(result.extractedText || '')
       setImportDiagnostics(null)
+      setImportStage({
+        stage: 'review',
+        label: 'Needs review',
+      })
       showToast('Routine parsed. Review it before saving.')
     } catch (error) {
       console.error('Image import failed:', error)
@@ -737,8 +781,13 @@ export default function UltraLab() {
         source: 'images',
         cleanedText,
         error: error.message || 'Could not parse that routine yet.',
-        hint: getImportErrorHint(error.message),
+        hint: error?.hint || getImportErrorHint(error.message),
+        stage: error?.stage || 'ocr',
         canContinue: Boolean(cleanedText.trim()),
+      })
+      setImportStage({
+        stage: 'review',
+        label: 'Needs review',
       })
       showToast('Could not parse that routine yet.')
     } finally {
@@ -755,6 +804,11 @@ export default function UltraLab() {
     const cleanedText = normalizeImportedRoutineText(routineText)
     setProcessingImport(true)
     setImportDiagnostics(null)
+    setImportStage({
+      stage: 'draft',
+      label: 'Building routine draft',
+    })
+    setShowSourceText(false)
     try {
       const result = await generateProgramFromText(routineText)
       if (!result?.success || !result.program) {
@@ -765,6 +819,10 @@ export default function UltraLab() {
       setParsedSource('text')
       setLastExtractedText(result.cleanedText || cleanedText)
       setImportDiagnostics(null)
+      setImportStage({
+        stage: 'review',
+        label: 'Needs review',
+      })
       showToast('Routine parsed. Review it before saving.')
     } catch (error) {
       console.error('Text import failed:', error)
@@ -774,7 +832,12 @@ export default function UltraLab() {
         cleanedText,
         error: error.message || 'Could not turn that text into a routine yet.',
         hint: getImportErrorHint(error.message),
+        stage: 'draft',
         canContinue: Boolean(cleanedText.trim()),
+      })
+      setImportStage({
+        stage: 'review',
+        label: 'Needs review',
       })
       showToast('Could not turn that text into a routine yet.')
     } finally {
@@ -787,6 +850,11 @@ export default function UltraLab() {
     setParsedProgram(seededProgram)
     setParsedSource('manual')
     setImportDiagnostics(null)
+    setImportStage({
+      stage: 'review',
+      label: 'Needs review',
+    })
+    setShowSourceText(true)
     showToast('Manual draft seeded. Tighten it up before saving.')
   }
 
@@ -880,6 +948,8 @@ export default function UltraLab() {
     setParsedSource(null)
     setLastExtractedText('')
     setImportDiagnostics(null)
+    setImportStage(null)
+    setShowSourceText(false)
     setImageFiles([])
     setRoutineText('')
   }
@@ -943,6 +1013,8 @@ export default function UltraLab() {
       setParsedSource(null)
       setImportDiagnostics(null)
       setLastExtractedText('')
+      setImportStage(null)
+      setShowSourceText(false)
       showToast('Imported routine saved to your active plan.')
       openTab('overview')
     } catch (error) {
@@ -1009,39 +1081,11 @@ export default function UltraLab() {
     </div>
   )
 
-  if (loading) {
-    return (
-      <div className="page">
-        <button className="back-btn" onClick={() => navigate(-1)}>
-          <RiArrowLeftLine size={20} /> Back
-        </button>
-        <div className="page-header">
-          <h1 className="page-title">ULTRA <span className="accent">Lab</span></h1>
-        </div>
-        <div className="skeleton" style={{ height: 180, borderRadius: 22, marginBottom: 16 }} />
-        <div className="skeleton" style={{ height: 240, borderRadius: 22 }} />
-      </div>
-    )
-  }
+  const importStageMeta = describeImportStage(importStage)
 
-  return (
-    <div className="page ultra-lab-page">
-      <button className="back-btn" onClick={() => navigate(-1)}>
-        <RiArrowLeftLine size={20} /> Back
-      </button>
-
-      <div className="page-header ultra-lab-header">
-        <div>
-          <div className="ultra-lab-kicker">REPMAX ULTRA</div>
-          <h1 className="page-title">ULTRA <span className="accent">Lab</span></h1>
-          <p className="ultra-lab-subtitle">
-            Intelligence, Import Studio, and Social Edge now live in one place so the main app can stay sharp.
-          </p>
-        </div>
-        {subscriptionTier !== 'free' && <ProBadge size="md" tier={subscriptionTier} />}
-      </div>
-
-      <section className="ultra-command-card">
+  const overviewHero = (
+    <div className="ultra-page-stack">
+      <section className="ultra-command-card ultra-focus-hero">
         <div className="ultra-command-ring" style={{ '--ultra-progress': `${analyticsModel.overview.readiness.ringProgress}%` }}>
           <div className="ultra-command-ring-inner">
             <div className="ultra-command-ring-label">Readiness</div>
@@ -1074,6 +1118,72 @@ export default function UltraLab() {
           </article>
         ))}
       </div>
+    </div>
+  )
+
+  const intelligenceHero = (
+    <section className="ultra-intelligence-shell ultra-intelligence-hero">
+      <div className="ultra-intelligence-topline">
+        <div className="ultra-command-ring ultra-hero-ring" style={{ '--ultra-progress': `${analyticsModel.overview.readiness.ringProgress}%` }}>
+          <div className="ultra-command-ring-inner">
+            <div className="ultra-command-ring-label">Readiness</div>
+            <div className="ultra-command-ring-value">{analyticsModel.overview.readiness.display}</div>
+          </div>
+        </div>
+        <div className="ultra-intelligence-copy">
+          <div className="ultra-section-kicker">INTELLIGENCE</div>
+          <h2>{analyticsModel.overview.title}</h2>
+          <p>{analyticsModel.overview.body}</p>
+          <div className="ultra-command-next">
+            <span>Next move</span>
+            <strong>{analyticsModel.overview.nextMove}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="ultra-quick-signal-row ultra-compact-signals">
+        {analyticsModel.overview.quickSignals.map((signal) => (
+          <article key={signal.id} className={`ultra-quick-signal tone-${signal.tone}`}>
+            <div className="ultra-quick-label">{signal.label}</div>
+            <div className="ultra-quick-value">{signal.value}</div>
+            <div className="ultra-quick-note">{signal.note}</div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+
+  if (loading) {
+    return (
+      <div className="page">
+        <button className="back-btn" onClick={() => navigate(-1)}>
+          <RiArrowLeftLine size={20} /> Back
+        </button>
+        <div className="page-header">
+          <h1 className="page-title">ULTRA <span className="accent">Lab</span></h1>
+        </div>
+        <div className="skeleton" style={{ height: 180, borderRadius: 22, marginBottom: 16 }} />
+        <div className="skeleton" style={{ height: 240, borderRadius: 22 }} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="page ultra-lab-page">
+      <button className="back-btn" onClick={() => navigate(-1)}>
+        <RiArrowLeftLine size={20} /> Back
+      </button>
+
+      <div className="page-header ultra-lab-header">
+        <div>
+          <div className="ultra-lab-kicker">REPMAX ULTRA</div>
+          <h1 className="page-title">ULTRA <span className="accent">Lab</span></h1>
+          <p className="ultra-lab-subtitle">
+            Intelligence, Import Studio, and Social Edge now live in one place so the main app can stay sharp.
+          </p>
+        </div>
+        {subscriptionTier !== 'free' && <ProBadge size="md" tier={subscriptionTier} />}
+      </div>
 
       <div className="ultra-tab-bar">
         {TAB_OPTIONS.map((tab) => {
@@ -1094,45 +1204,51 @@ export default function UltraLab() {
       </div>
 
       {activeTab === 'overview' && (
-        <div className="ultra-overview-grid">
-          {overviewCards.map((card) => {
-            const Icon = card.icon
-            return (
-              <article key={card.id} className={`ultra-feature-card feature-${card.id}`}>
-                <div className="ultra-feature-top">
-                  <div className="ultra-feature-icon"><Icon size={18} /></div>
-                  <button type="button" className="ultra-open-link" onClick={() => openTab(card.id)}>
-                    Open <RiArrowRightLine size={16} />
-                  </button>
-                </div>
-                <div className="ultra-feature-kicker">{card.kicker}</div>
-                <h3>{card.title}</h3>
-                <p>{card.description}</p>
-                <div className="ultra-feature-preview-list">
-                  {card.preview.map((item) => (
-                    <div key={`${card.id}-${item.label}`} className="ultra-feature-preview">
-                      <div className="ultra-feature-preview-head">
-                        <span>{item.label}</span>
-                        <strong>{item.value}</strong>
+        <div className="ultra-page-stack">
+          {overviewHero}
+
+          <div className="ultra-overview-grid">
+            {overviewCards.map((card) => {
+              const Icon = card.icon
+              return (
+                <article key={card.id} className={`ultra-feature-card feature-${card.id}`}>
+                  <div className="ultra-feature-top">
+                    <div className="ultra-feature-icon"><Icon size={18} /></div>
+                    <button type="button" className="ultra-open-link" onClick={() => openTab(card.id)}>
+                      Open <RiArrowRightLine size={16} />
+                    </button>
+                  </div>
+                  <div className="ultra-feature-kicker">{card.kicker}</div>
+                  <h3>{card.title}</h3>
+                  <p>{card.description}</p>
+                  <div className="ultra-feature-preview-list">
+                    {card.preview.map((item) => (
+                      <div key={`${card.id}-${item.label}`} className="ultra-feature-preview">
+                        <div className="ultra-feature-preview-head">
+                          <span>{item.label}</span>
+                          <strong>{item.value}</strong>
+                        </div>
+                        <div className="ultra-feature-preview-note">{item.note}</div>
                       </div>
-                      <div className="ultra-feature-preview-note">{item.note}</div>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            )
-          })}
+                    ))}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
         </div>
       )}
 
       {activeTab === 'intelligence' && (
         isUltra ? (
           <div className="ultra-page-stack">
-            <section className="ultra-intelligence-shell">
+            {intelligenceHero}
+
+            <section className="ultra-intelligence-shell ultra-intelligence-details">
               <div className="ultra-section-head">
                 <div>
-                  <div className="ultra-section-kicker">INTELLIGENCE</div>
-                  <h2>Training-state overview</h2>
+                  <div className="ultra-section-kicker">TRAINING-STATE OVERVIEW</div>
+                  <h2>Keep the next decision obvious.</h2>
                 </div>
                 <span className={`ultra-confidence-pill ${getConfidenceClass(analyticsModel.overview.readiness.confidence)}`}>
                   {analyticsModel.overview.readiness.confidence.label}
@@ -1230,9 +1346,7 @@ export default function UltraLab() {
             <section className="ultra-import-hero">
               <div className="ultra-section-kicker">IMPORT STUDIO</div>
               <h2>Outside routines, cleaned before they touch your live plan.</h2>
-              <p>
-                Upload screenshots or paste full routine text. REPMAX parses it through the server-side AI proxy, then lets you review and fix the structure before it becomes your active program.
-              </p>
+              <p>Choose a source, parse it cleanly, then review the structure before anything replaces your active program.</p>
               <div className="ultra-step-row">
                 {importSteps.map((step) => (
                   <div key={step.id} className={`ultra-step-pill state-${step.state}`}>
@@ -1240,11 +1354,23 @@ export default function UltraLab() {
                   </div>
                 ))}
               </div>
-              {parsedSource && (
-                <div className="ultra-source-chip">
-                  Source: {parsedSource === 'images' ? 'Screenshots' : parsedSource === 'text' ? 'Pasted text' : 'Manual cleanup'}
-                </div>
-              )}
+              <div className="ultra-import-hero-meta">
+                {parsedSource && (
+                  <div className="ultra-source-chip">
+                    Source: {parsedSource === 'images' ? 'Screenshots' : parsedSource === 'text' ? 'Pasted text' : 'Manual cleanup'}
+                  </div>
+                )}
+                {lastExtractedText && !processingImport && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm ultra-source-toggle"
+                    onClick={() => setShowSourceText((current) => !current)}
+                  >
+                    <RiClipboardLine size={16} />
+                    {showSourceText ? 'Hide cleaned source' : 'Show cleaned source'}
+                  </button>
+                )}
+              </div>
             </section>
 
             <section className="ultra-import-shell">
@@ -1308,12 +1434,25 @@ export default function UltraLab() {
               )}
             </section>
 
-            {(importDiagnostics || lastExtractedText) && (
+            {processingImport && importStageMeta && (
+              <section className="ultra-status-card">
+                <div className="ultra-section-head">
+                  <div>
+                    <div className="ultra-section-kicker">IMPORT STATUS</div>
+                    <h3>{importStageMeta.label}</h3>
+                  </div>
+                  <RiLoader4Line size={18} className="spin" />
+                </div>
+                <p className="ultra-diagnostics-copy">{importStageMeta.copy}</p>
+              </section>
+            )}
+
+            {(importDiagnostics || showSourceText) && (
               <section className={`ultra-diagnostics-card ${importDiagnostics ? 'has-error' : ''}`}>
                 <div className="ultra-section-head">
                   <div>
-                    <div className="ultra-section-kicker">PARSE DIAGNOSTICS</div>
-                    <h3>{importDiagnostics ? 'The parse needs help.' : 'Parsed source snapshot'}</h3>
+                    <div className="ultra-section-kicker">{importDiagnostics ? 'PARSE DIAGNOSTICS' : 'CLEANED SOURCE'}</div>
+                    <h3>{importDiagnostics ? 'The parse needs help.' : 'Review the cleaned routine text.'}</h3>
                   </div>
                   {importDiagnostics && (
                     <span className="ultra-diagnostic-badge">Needs cleanup</span>
@@ -1327,16 +1466,25 @@ export default function UltraLab() {
                 {importDiagnostics?.hint && (
                   <p className="ultra-diagnostics-copy ultra-diagnostics-hint">{importDiagnostics.hint}</p>
                 )}
-                {lastExtractedText && (
-                  <pre className="ultra-source-text">{lastExtractedText}</pre>
-                )}
-                {importDiagnostics?.canContinue && (
-                  <div className="ultra-diagnostics-actions">
+                <div className="ultra-diagnostics-actions">
+                  {lastExtractedText && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setShowSourceText((current) => !current)}
+                    >
+                      <RiClipboardLine size={16} />
+                      {showSourceText ? 'Hide cleaned source' : 'Show cleaned source'}
+                    </button>
+                  )}
+                  {importDiagnostics?.canContinue && (
                     <button className="btn btn-secondary btn-sm" onClick={continueImportManually}>
                       <RiClipboardLine size={16} />
                       Continue manually
                     </button>
-                  </div>
+                  )}
+                </div>
+                {lastExtractedText && showSourceText && (
+                  <pre className="ultra-source-text">{lastExtractedText}</pre>
                 )}
               </section>
             )}

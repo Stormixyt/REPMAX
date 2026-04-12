@@ -1,16 +1,16 @@
 .ultra-lab-page.page {
-  max-width: min(1120px, calc(100vw - 48px));
-  padding: 24px clamp(16px, 3vw, 28px) 128px;
+  max-width: min(1280px, calc(100vw - 72px));
+  padding: calc(30px + env(safe-area-inset-top, 0px)) clamp(18px, 3vw, 36px) 128px;
 }
 
 .ultra-lab-header {
-  margin-bottom: 18px;
-  max-width: 760px;
+  margin-bottom: 12px;
+  max-width: 780px;
 }
 
 .ultra-page-stack {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .ultra-lab-kicker,
@@ -46,6 +46,7 @@
 .ultra-section-panel,
 .ultra-import-hero,
 .ultra-import-shell,
+.ultra-status-card,
 .ultra-diagnostics-card,
 .ultra-compare-card,
 .ultra-editor-shell,
@@ -65,7 +66,40 @@
   grid-template-columns: 108px 1fr;
   gap: 16px;
   padding: 18px;
-  margin-bottom: 14px;
+  align-items: center;
+}
+
+.ultra-focus-hero {
+  margin-top: 4px;
+}
+
+.ultra-intelligence-topline {
+  display: grid;
+  grid-template-columns: minmax(92px, 116px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.ultra-intelligence-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.ultra-intelligence-copy p {
+  margin: 0;
+}
+
+.ultra-intelligence-hero .ultra-command-next {
+  margin-top: 4px;
+}
+
+.ultra-intelligence-details {
+  display: grid;
+  gap: 18px;
+}
+
+.ultra-compact-signals {
+  margin-top: 2px;
 }
 
 .ultra-command-ring {
@@ -136,6 +170,17 @@
   color: #efff92;
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.ultra-import-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ultra-source-toggle {
+  width: fit-content;
 }
 
 .ultra-quick-signal-row,
@@ -404,6 +449,7 @@
 }
 
 .ultra-upload-dropzone,
+.ultra-status-card,
 .ultra-diagnostics-card,
 .ultra-day-body,
 .ultra-exercise-card {
@@ -438,11 +484,25 @@
   font-family: var(--font-mono, monospace);
   font-size: 0.8rem;
   color: #f5ecff;
+  background: rgba(6, 6, 10, 0.46);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px;
 }
 
 .ultra-diagnostics-hint {
   margin-top: -2px;
   color: #f0d694;
+}
+
+.ultra-status-card,
+.ultra-diagnostics-card {
+  display: grid;
+  gap: 12px;
+}
+
+.ultra-diagnostics-actions {
+  align-items: center;
 }
 
 .ultra-day-header {
@@ -529,13 +589,16 @@
 
   .ultra-overview-grid,
   .ultra-chart-grid,
-  .ultra-social-grid,
   .ultra-compare-grid,
   .ultra-preview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .ultra-metric-grid,
+  .ultra-social-grid,
+  .ultra-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .ultra-quick-signal-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -548,10 +611,13 @@
 
 @media (min-width: 1080px) {
   .ultra-overview-grid,
-  .ultra-chart-grid,
-  .ultra-social-grid {
+  .ultra-chart-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: start;
+  }
+
+  .ultra-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .ultra-tab-bar {
@@ -568,7 +634,7 @@
 @media (max-width: 639px) {
   .ultra-lab-page.page {
     max-width: none;
-    padding: 18px 14px 124px;
+    padding: calc(26px + env(safe-area-inset-top, 0px)) 14px 124px;
   }
 
   .ultra-command-card {
@@ -581,6 +647,12 @@
     width: 84px;
     height: 84px;
     padding: 8px;
+  }
+
+  .ultra-intelligence-topline {
+    grid-template-columns: 84px 1fr;
+    gap: 14px;
+    align-items: start;
   }
 
   .ultra-command-copy h2,
@@ -597,7 +669,7 @@
   }
 
   .ultra-tab-bar {
-    margin: 14px 0;
+    margin: 12px 0 16px;
   }
 
   .ultra-tab-btn,
@@ -634,6 +706,11 @@
 
   .ultra-section-head,
   .ultra-feature-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ultra-import-hero-meta {
     flex-direction: column;
     align-items: flex-start;
   }

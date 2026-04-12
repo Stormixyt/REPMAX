@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import PaywallGate from "../components/PaywallGate";
 import { callGroq, MODEL, scanFoodPhoto } from "../lib/groq";
+import { optimizeImageForVision } from "../lib/visionImages";
 import {
   RiArrowLeftLine,
   RiFireFill,
@@ -234,66 +235,6 @@ function buildDraftNutritionSetup(profile = {}) {
     },
     hasPrefill,
   };
-}
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error || new Error("Could not read the image file."));
-    reader.readAsDataURL(file);
-  });
-}
-
-function loadImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Could not load the selected image."));
-    img.src = url;
-  });
-}
-
-async function optimizeImageForVision(file) {
-  const fallbackDataUrl = await readFileAsDataUrl(file);
-
-  if (typeof document === "undefined" || !file?.type?.startsWith("image/")) {
-    return fallbackDataUrl;
-  }
-
-  let objectUrl = "";
-
-  try {
-    objectUrl = URL.createObjectURL(file);
-    const image = await loadImage(objectUrl);
-    const maxDimension = 1280;
-    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
-    const targetWidth = Math.max(1, Math.round(image.width * scale));
-    const targetHeight = Math.max(1, Math.round(image.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return fallbackDataUrl;
-
-    ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
-
-    const qualitySteps = [0.82, 0.72, 0.62];
-    for (const quality of qualitySteps) {
-      const optimized = canvas.toDataURL("image/jpeg", quality);
-      if (optimized.length <= 1_350_000 || quality === qualitySteps[qualitySteps.length - 1]) {
-        return optimized;
-      }
-    }
-  } catch {
-    return fallbackDataUrl;
-  } finally {
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-  }
-
-  return fallbackDataUrl;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
