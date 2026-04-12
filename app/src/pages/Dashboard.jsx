@@ -266,6 +266,43 @@ function getAuraLevel(streak) {
   return ''
 }
 
+function isRestLikeWorkoutDay(day) {
+  const name = String(day?.day_name || '').toLowerCase()
+  return !Array.isArray(day?.exercises) || day.exercises.length === 0 || /\brest\b|\brecovery\b|\boff\b/.test(name)
+}
+
+function buildSetTemplatesFromExercises(exercises = []) {
+  const setTemplates = []
+
+  ;(Array.isArray(exercises) ? exercises : []).forEach((exercise) => {
+    const setCount = Math.max(1, Math.round(toWorkoutNumber(exercise?.sets, 3)))
+    const targetReps = Math.max(1, Math.round(toWorkoutNumber(exercise?.reps, 8, 'last')))
+    const targetWeight = Math.max(0, toWorkoutNumber(exercise?.weight, 0))
+
+    for (let index = 1; index <= setCount; index += 1) {
+      setTemplates.push({
+        exercise_name: exercise?.name || `Exercise ${index}`,
+        set_number: index,
+        target_reps: targetReps,
+        target_weight: targetWeight,
+        completed: false,
+      })
+    }
+  })
+
+  return setTemplates
+}
+
+function buildSetTemplatesFromLoggedSets(sets = []) {
+  return (Array.isArray(sets) ? sets : []).map((set, index) => ({
+    exercise_name: set?.exercise_name || `Exercise ${index + 1}`,
+    set_number: Number(set?.set_number) || index + 1,
+    target_reps: Math.max(1, Math.round(Number(set?.actual_reps ?? set?.target_reps ?? 8) || 8)),
+    target_weight: Math.max(0, Number(set?.actual_weight ?? set?.target_weight ?? 0) || 0),
+    completed: false,
+  }))
+}
+
 export default function Dashboard() {
   const { user, profile, isPro, isUltra, subscriptionTier } = useAuth()
   const { t } = useLanguage()
@@ -279,6 +316,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [sharing, setSharing] = useState(false)
   const [showNotifPrompt, setShowNotifPrompt] = useState(false)
+  const [showPlanPicker, setShowPlanPicker] = useState(false)
+  const [startingWorkout, setStartingWorkout] = useState('')
+  const [dashboardToast, setDashboardToast] = useState('')
   const [motivation] = useState(() => MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)])
   const mounted = useRef(true)
 
@@ -303,6 +343,11 @@ export default function Dashboard() {
 
   function openDiscord() {
     window.open('https://discord.gg/repmax', '_blank', 'noopener,noreferrer')
+  }
+
+  function showDashboardToastMsg(message) {
+    setDashboardToast(message)
+    window.setTimeout(() => setDashboardToast(''), 3000)
   }
 
   async function loadDashboard() {
@@ -345,22 +390,108 @@ export default function Dashboard() {
     }
   }
 
+  async function launchWorkoutFromTemplate({ dayName, weekNumber = null, programId = null, setTemplates = [] }) {
+    const { data: workout, error } = await supabase
+      .from('workouts')
+      .insert({
+        user_id: user.id,
+        program_id: programId,
+        day_name: dayName,
+        week_number: weekNumber,
+        started_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (error || !workout) {
+      throw error || new Error('Could not start the workout.')
+    }
+
+    if (setTemplates.length > 0) {
+      const { error: setsError } = await supabase.from('sets').insert(
+        setTemplates.map((set) => ({ ...set, workout_id: workout.id }))
+      )
+
+      if (setsError) throw setsError
+    }
+
+    navigate(`/workout/${workout.id}`)
+  }
+
+  async function startPlannedWorkout(day) {
+    if (!day) return
+
+    await launchWorkoutFromTemplate({
+      dayName: day.day_name || 'Workout',
+      weekNumber: day.weekNumber || program?.current_week || 1,
+      programId: program?.id || null,
+      setTemplates: buildSetTemplatesFromExercises(day.exercises),
+    })
+  }
+
   async function startWorkout() {
     if (!todayWorkout || !program) return
-    const { data: workout, error } = await supabase.from('workouts').insert({ user_id: user.id, program_id: program.id, day_name: todayWorkout.day_name, week_number: todayWorkout.weekNumber, started_at: new Date().toISOString() }).select().single()
-    if (!error && workout) {
-      const setInserts = []
-      todayWorkout.exercises?.forEach(ex => {
-        const setCount = Math.max(1, Math.round(toWorkoutNumber(ex.sets, 3)))
-        const targetReps = Math.max(1, Math.round(toWorkoutNumber(ex.reps, 8, 'last')))
-        const targetWeight = Math.max(0, toWorkoutNumber(ex.weight, 0))
+    setStartingWorkout('today')
 
-        for (let i = 1; i <= setCount; i++) {
-          setInserts.push({ workout_id: workout.id, exercise_name: ex.name, set_number: i, target_reps: targetReps, target_weight: targetWeight, completed: false })
+    try {
+      await startPlannedWorkout(todayWorkout)
+    } catch (error) {
+      console.error('Start workout error:', error)
+      showDashboardToastMsg('Could not start today\'s workout. Please try again.')
+    } finally {
+      setStartingWorkout('')
+    }
+  }
+
+  async function startQuickWorkout() {
+    setStartingWorkout('quick')
+
+    try {
+      const { data: recentWorkout, error: recentWorkoutError } = await supabase
+        .from('workouts')
+        .select('id, day_name, program_id, week_number')
+        .eq('user_id', user.id)
+        .not('completed_at', 'is', null)
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (recentWorkoutError) throw recentWorkoutError
+
+      if (recentWorkout?.id) {
+        const { data: recentSets, error: recentSetsError } = await supabase
+          .from('sets')
+          .select('exercise_name, set_number, actual_reps, target_reps, actual_weight, target_weight')
+          .eq('workout_id', recentWorkout.id)
+          .order('exercise_name')
+          .order('set_number')
+
+        if (recentSetsError) throw recentSetsError
+
+        const setTemplates = buildSetTemplatesFromLoggedSets(recentSets)
+        if (setTemplates.length > 0) {
+          await launchWorkoutFromTemplate({
+            dayName: recentWorkout.day_name || 'Quick Workout',
+            weekNumber: program?.current_week || recentWorkout.week_number || 1,
+            programId: program?.id || recentWorkout.program_id || null,
+            setTemplates,
+          })
+          return
         }
-      })
-      if (setInserts.length > 0) await supabase.from('sets').insert(setInserts)
-      navigate(`/workout/${workout.id}`)
+      }
+
+      const fallbackDay = currentWeekWorkoutDays[0]
+      if (fallbackDay) {
+        await startPlannedWorkout(fallbackDay)
+        return
+      }
+
+      showDashboardToastMsg('Set up a program first so REPMAX can build your session.')
+    } catch (error) {
+      console.error('Quick workout error:', error)
+      showDashboardToastMsg('Could not start a quick workout right now.')
+    } finally {
+      setStartingWorkout('')
     }
   }
 
@@ -379,6 +510,18 @@ export default function Dashboard() {
   const auraLevel = getAuraLevel(stats.streak)
   const avatarSeed = profile?.avatar_seed || user?.id || 'default'
   const avatarUrl = profile?.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
+  const currentWeekWorkoutDays = useMemo(() => {
+    const currentWeek = program?.program_data?.weeks?.[(program?.current_week || 1) - 1]
+    if (!currentWeek?.days) return []
+
+    return currentWeek.days
+      .map((day, index) => ({
+        ...day,
+        weekNumber: program?.current_week || 1,
+        dayIndex: index,
+      }))
+      .filter((day) => !isRestLikeWorkoutDay(day))
+  }, [program])
   const ultraLabHref = '/ultra-lab?tab=intelligence'
   const ultraLabTitle = isUltra ? 'ULTRA Lab is live inside your app now.' : 'ULTRA Lab keeps the deep analytics off your main dashboard.'
   const ultraLabBody = isUltra
@@ -462,6 +605,52 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {todayWorkout ? (
+        <div className="card card-accent" style={{ marginBottom: 16, marginTop: 14 }}>
+          <div className="card-label">{t('dashboard_today_workout')}</div>
+          <div className="card-title">{String(todayWorkout.day_name)}</div>
+          <div className="card-subtitle" style={{ marginBottom: 16 }}>
+            {todayWorkout.exercises?.length || 0} exercises · Week {todayWorkout.weekNumber}
+            {Array.isArray(todayWorkout.target_muscles) && ` · ${todayWorkout.target_muscles.join(', ')}`}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            {todayWorkout.exercises?.slice(0, 3).map((ex, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>{String(ex.name)}</span>
+                <span style={{ color: 'var(--accent)', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '0.8rem' }}>{Number(ex.sets) || 0}×{Number(ex.reps) || 0}</span>
+              </div>
+            ))}
+            {todayWorkout.exercises?.length > 3 && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', paddingTop: 8 }}>+{todayWorkout.exercises.length - 3} more exercises</p>
+            )}
+          </div>
+          <button className="btn btn-primary btn-full" onClick={startWorkout} disabled={startingWorkout !== ''}>
+            <RiFlashlightFill size={18} /> {startingWorkout === 'today' ? 'Starting workout…' : t('dashboard_start_workout')}
+          </button>
+        </div>
+      ) : (
+        <div className="card dashboard-train-anyway-card" style={{ marginTop: 14, marginBottom: 16 }}>
+          <div className="card-label">READY WHEN YOU ARE</div>
+          <h3 style={{ margin: '4px 0 8px', fontSize: '1.18rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>
+            Train anyway, or keep today as recovery.
+          </h3>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.84rem', lineHeight: 1.6 }}>
+            If you feel like lifting today, REPMAX should get out of your way. Start a quick session instantly or run one of your planned days anyway.
+          </p>
+          <div className="dashboard-train-anyway-actions">
+            <button className="btn btn-primary" onClick={startQuickWorkout} disabled={startingWorkout !== ''}>
+              {startingWorkout === 'quick' ? 'Starting quick session…' : 'Train anyway'}
+            </button>
+            <button className="btn btn-secondary" onClick={() => setShowPlanPicker(true)} disabled={startingWorkout !== '' || currentWeekWorkoutDays.length === 0}>
+              Run a planned day
+            </button>
+          </div>
+          <button className="dashboard-recovery-link" type="button" onClick={() => navigate('/recovery')}>
+            Recovery Hub still lives here if you want the easier day <RiArrowRightLine size={16} />
+          </button>
+        </div>
+      )}
+
       {/* PRO Promotion — Always visible for free users */}
       {!isPro && (
         <div className="pro-banner" onClick={() => navigate('/subscribe')}>
@@ -525,45 +714,6 @@ export default function Dashboard() {
           <RiArrowRightLine size={18} />
         </div>
       </section>
-
-      {/* Today's Workout */}
-      {todayWorkout ? (
-        <div className="card card-accent" style={{ marginBottom: 16, marginTop: !isPro ? 12 : 0 }}>
-          <div className="card-label">{t('dashboard_today_workout')}</div>
-          <div className="card-title">{String(todayWorkout.day_name)}</div>
-          <div className="card-subtitle" style={{ marginBottom: 16 }}>
-            {todayWorkout.exercises?.length || 0} exercises · Week {todayWorkout.weekNumber}
-            {Array.isArray(todayWorkout.target_muscles) && ` · ${todayWorkout.target_muscles.join(', ')}`}
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            {todayWorkout.exercises?.slice(0, 3).map((ex, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{String(ex.name)}</span>
-                <span style={{ color: 'var(--accent)', fontWeight: 700, fontFamily: 'var(--font-display)', fontSize: '0.8rem' }}>{Number(ex.sets) || 0}×{Number(ex.reps) || 0}</span>
-              </div>
-            ))}
-            {todayWorkout.exercises?.length > 3 && (
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', paddingTop: 8 }}>+{todayWorkout.exercises.length - 3} more exercises</p>
-            )}
-          </div>
-          <button className="btn btn-primary btn-full" onClick={startWorkout}>
-            <RiFlashlightFill size={18} /> {t('dashboard_start_workout')}
-          </button>
-        </div>
-      ) : (
-        <div className="card" style={{ marginTop: !isPro ? 12 : 0, marginBottom: 16, cursor: 'pointer', background: 'var(--bg-elevated)', border: '1px solid var(--border)' }} onClick={() => navigate('/recovery')}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div className="card-label" style={{ margin: 0, color: 'var(--text-tertiary)' }}>{t('dashboard_rest_day')}</div>
-              <h3 style={{ margin: '4px 0 0', fontSize: '1.2rem', fontFamily: 'var(--font-display)', fontWeight: 800, color: 'var(--text-primary)' }}>{t('dashboard_recovery_hub')}</h3>
-              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Stretches, hydration & sleep</p>
-            </div>
-            <div style={{ background: 'var(--accent-glow)', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <RiArrowRightLine size={20} style={{ color: 'var(--accent)' }} />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Stats */}
       <div className="stat-row">
@@ -644,6 +794,61 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+
+      {showPlanPicker && (
+        <div className="modal-overlay" onClick={(event) => {
+          if (event.target === event.currentTarget) setShowPlanPicker(false)
+        }}>
+          <div className="modal" style={{ textAlign: 'left', maxWidth: 420 }}>
+            <div className="modal-title" style={{ marginBottom: 6 }}>Run a planned day anyway</div>
+            <div className="modal-subtitle" style={{ marginBottom: 18 }}>
+              Pick any training day from your active week and REPMAX will open it right away.
+            </div>
+
+            {currentWeekWorkoutDays.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {currentWeekWorkoutDays.map((day) => (
+                  <button
+                    key={`${day.day_name}-${day.dayIndex}`}
+                    className="dashboard-plan-option"
+                    onClick={async () => {
+                      setShowPlanPicker(false)
+                      setStartingWorkout(`planned-${day.dayIndex}`)
+                      try {
+                        await startPlannedWorkout(day)
+                      } catch (error) {
+                        console.error('Planned workout launch error:', error)
+                        showDashboardToastMsg('Could not open that planned day right now.')
+                      } finally {
+                        setStartingWorkout('')
+                      }
+                    }}
+                  >
+                    <div>
+                      <div className="dashboard-plan-option-title">{day.day_name || `Day ${day.dayIndex + 1}`}</div>
+                      <div className="dashboard-plan-option-copy">
+                        {day.exercises?.length || 0} exercises
+                        {Array.isArray(day.target_muscles) && day.target_muscles.length > 0 ? ` · ${day.target_muscles.join(', ')}` : ''}
+                      </div>
+                    </div>
+                    <RiArrowRightLine size={18} />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="dashboard-plan-empty">
+                No training days are ready in your active plan yet.
+              </div>
+            )}
+
+            <button className="btn btn-secondary btn-full" style={{ marginTop: 16 }} onClick={() => setShowPlanPicker(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {dashboardToast && <div className="toast">{dashboardToast}</div>}
     </div>
   )
 }

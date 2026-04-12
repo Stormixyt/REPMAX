@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import PaywallGate from "../components/PaywallGate";
-import { callGroq, MODEL, VISION_MODEL } from "../lib/groq";
+import { callGroq, MODEL, scanFoodPhoto } from "../lib/groq";
 import {
   RiArrowLeftLine,
   RiFireFill,
@@ -207,6 +207,95 @@ Rules:
   }
 }
 
+function inferActivityLevelFromTrainingDays(trainingDays = []) {
+  const count = Array.isArray(trainingDays) ? trainingDays.length : 0;
+  if (count >= 6) return "very_active";
+  if (count >= 4) return "active";
+  if (count >= 3) return "moderate";
+  if (count >= 1) return "light";
+  return "sedentary";
+}
+
+function buildDraftNutritionSetup(profile = {}) {
+  const age = profile?.age ? String(profile.age) : "";
+  const weight = profile?.weight_kg ? String(profile.weight_kg) : "";
+  const height = profile?.height_cm ? String(profile.height_cm) : "";
+  const activityLevel = inferActivityLevelFromTrainingDays(profile?.training_days || []);
+  const hasPrefill = Boolean(age || weight || height);
+
+  return {
+    values: {
+      age,
+      weight,
+      height,
+      gender: "male",
+      activity_level: activityLevel,
+      diet_goal: "maintain",
+    },
+    hasPrefill,
+  };
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("Could not read the image file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Could not load the selected image."));
+    img.src = url;
+  });
+}
+
+async function optimizeImageForVision(file) {
+  const fallbackDataUrl = await readFileAsDataUrl(file);
+
+  if (typeof document === "undefined" || !file?.type?.startsWith("image/")) {
+    return fallbackDataUrl;
+  }
+
+  let objectUrl = "";
+
+  try {
+    objectUrl = URL.createObjectURL(file);
+    const image = await loadImage(objectUrl);
+    const maxDimension = 1280;
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const targetWidth = Math.max(1, Math.round(image.width * scale));
+    const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return fallbackDataUrl;
+
+    ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+    const qualitySteps = [0.82, 0.72, 0.62];
+    for (const quality of qualitySteps) {
+      const optimized = canvas.toDataURL("image/jpeg", quality);
+      if (optimized.length <= 1_350_000 || quality === qualitySteps[qualitySteps.length - 1]) {
+        return optimized;
+      }
+    }
+  } catch {
+    return fallbackDataUrl;
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
+
+  return fallbackDataUrl;
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Nutrition() {
   const { user, profile, isPro } = useAuth();
@@ -228,6 +317,7 @@ export default function Nutrition() {
   const [toast, setToast] = useState("");
   const [waterGlasses, setWaterGlasses] = useState(0);
   const [savedMeals, setSavedMeals] = useState([]);
+  const [setupSource, setSetupSource] = useState("manual");
   const mounted = useRef(true);
 
   const [setupForm, setSetupForm] = useState({
@@ -244,6 +334,14 @@ export default function Nutrition() {
     loadNutrition();
     return () => { mounted.current = false; };
   }, []);
+
+  useEffect(() => {
+    if (nutProfile || !showSetup || setupSource !== "manual") return;
+    const draft = buildDraftNutritionSetup(profile);
+    if (!draft.hasPrefill) return;
+    setSetupForm(draft.values);
+    setSetupSource("profile");
+  }, [nutProfile, profile, setupSource, showSetup]);
 
   function showToastMsg(msg) {
     setToast(msg);
@@ -269,6 +367,7 @@ export default function Nutrition() {
       if (!mounted.current) return;
       if (npRes.data) {
         setNutProfile(npRes.data);
+        setSetupSource("saved");
         setSetupForm({
           age: npRes.data.age || "",
           weight: npRes.data.weight || "",
@@ -278,6 +377,9 @@ export default function Nutrition() {
           diet_goal: npRes.data.diet_goal || "maintain",
         });
       } else {
+        const draft = buildDraftNutritionSetup(profile);
+        setSetupForm(draft.values);
+        setSetupSource(draft.hasPrefill ? "profile" : "manual");
         setShowSetup(true);
       }
       setTodayLogs(logsRes.data || []);
@@ -370,15 +472,15 @@ export default function Nutrition() {
     }
   }
 
-  async function searchFoods() {
-    if (!searchQuery.trim()) return;
+  async function runFoodSearch(rawQuery) {
+    const query = String(rawQuery || "").trim();
+    if (!query) return;
     setSearching(true);
     setSearchResults([]);
     setAiResult(null);
     setAiMultiplier(1);
     setDetectedLang(null);
-
-    const query = searchQuery.trim();
+    setSearchQuery(query);
 
     try {
       // Run translation + AI lookup in parallel — AI always returns in user's language
@@ -406,6 +508,10 @@ export default function Nutrition() {
     }
 
     setSearching(false);
+  }
+
+  async function searchFoods() {
+    await runFoodSearch(searchQuery);
   }
 
   async function addFoodLog(food, source = "search") {
@@ -548,8 +654,16 @@ export default function Nutrition() {
               Nutrition Setup
             </h2>
             <p className="modal-subtitle">
-              We'll calculate your perfect daily targets
+              {setupSource === "profile"
+                ? "We prefilled this from your REPMAX profile so you can review it instead of starting over."
+                : "We'll calculate your daily targets and keep them easy to adjust."}
             </p>
+
+            {setupSource === "profile" && (
+              <div className="nutrition-setup-note">
+                Your age, height, weight, and activity level were pulled from the profile you already filled out.
+              </div>
+            )}
 
             {/* Basic stats */}
             <div className="setup-grid">
@@ -1130,8 +1244,10 @@ export default function Nutrition() {
                       // Normalize the selected food serving to 100g if it isn't already, for the gram selector
                       // (OpenFoodFacts results are mostly already per 100g in our mapping)
                       setAiResult(food);
-                      setAiGrams(100);
-                      window.scrollTo(0, 0); // scroll to top modal
+                      document.querySelector(".food-modal")?.scrollTo({
+                        top: 0,
+                        behavior: "smooth",
+                      });
                     }}
                   >
                     <div className="search-result-left">
@@ -1157,7 +1273,10 @@ export default function Nutrition() {
             {/* ── AI Photo Scan (PRO only) ── */}
             <div style={{ marginTop: 20 }}>
               <PaywallGate feature="AI Photo Scan">
-                <AIPhotoScan onResult={(food) => addFoodLog(food, "photo")} />
+                <AIPhotoScan
+                  onResult={(food) => addFoodLog(food, "photo")}
+                  onManualPrefill={runFoodSearch}
+                />
               </PaywallGate>
             </div>
           </div>
@@ -1170,70 +1289,80 @@ export default function Nutrition() {
 }
 
 // ─── AI Photo Scan component (PRO) ───────────────────────────────────────────
-function AIPhotoScan({ onResult }) {
+function AIPhotoScan({ onResult, onManualPrefill }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [preview, setPreview] = useState(null);
-  const [scanError, setScanError] = useState("");
+  const [scanState, setScanState] = useState("idle");
+  const [scanMessage, setScanMessage] = useState("");
+  const [scanPrefill, setScanPrefill] = useState("");
   const fileRef = useRef(null);
 
-  function handleFileSelect(e) {
+  function resetDiagnostics() {
+    setScanState("idle");
+    setScanMessage("");
+    setScanPrefill("");
+  }
+
+  async function handleFileSelect(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setScanError("");
 
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const dataUrl = ev.target.result;
-      setPreview(dataUrl);
-      await analyzePhoto(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    resetDiagnostics();
+    setAnalyzing(true);
+    setScanState("analyzing");
+    setScanMessage("Compressing the photo and checking the meal...");
+
+    try {
+      const optimizedDataUrl = await optimizeImageForVision(file);
+      setPreview(optimizedDataUrl);
+      await analyzePhoto(optimizedDataUrl);
+    } catch (error) {
+      setScanState("error");
+      setScanMessage(error?.message || "Could not prepare the selected image.");
+      setAnalyzing(false);
+    }
+
     // Reset input so the same file can be re-selected
     e.target.value = "";
   }
 
   async function analyzePhoto(dataUrl) {
-    setAnalyzing(true);
-    setScanError("");
     try {
-      const data = await callGroq({
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: { url: dataUrl },
-              },
-              {
-                type: "text",
-                text: `You are a professional nutritionist. Carefully analyze this food photo.
-- Identify every food item visible
-- Estimate realistic portion sizes based on the plate/container
-- Calculate total combined nutritional values
-Return ONLY valid JSON, no extra text:
-{"food_name":"full description of the meal","serving_size":"estimated total portion","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"items":["item 1","item 2"]}`,
-              },
-            ],
-          },
-        ],
-        model: VISION_MODEL,
-        temperature: 0.2,
-        max_tokens: 700,
-        response_format: { type: "json_object" },
-      });
+      const result = await scanFoodPhoto(dataUrl);
 
-      const result = JSON.parse(data.choices[0].message.content);
-      onResult(result);
-      setPreview(null);
-    } catch (err) {
-      console.error("Vision error:", err);
-      setScanError(
-        "Could not analyze the photo. Try again or describe the food manually.",
-      );
+      if (result.success && result.food) {
+        onResult(result.food);
+        setPreview(null);
+        resetDiagnostics();
+        return;
+      }
+
+      const nextPrefill = String(result?.suggestedQuery || "").trim();
+      setScanPrefill(nextPrefill);
+
+      if (result?.error?.status === "needs_review") {
+        setScanState("review");
+        setScanMessage(result.error.message || "The scan needs a quick manual review.");
+      } else {
+        setScanState("error");
+        setScanMessage(result?.error?.message || "Could not analyze the photo right now.");
+      }
+    } catch (error) {
+      setScanState("error");
+      setScanMessage(error?.message || "Could not analyze the photo right now.");
+    } finally {
+      setAnalyzing(false);
     }
-    setAnalyzing(false);
   }
+
+  async function continueManually() {
+    if (!scanPrefill || typeof onManualPrefill !== "function") return;
+    await onManualPrefill(scanPrefill);
+    setPreview(null);
+    resetDiagnostics();
+  }
+
+  const showDiagnostics = scanState === "review" || scanState === "error";
 
   return (
     <div className="photo-scan-section">
@@ -1251,13 +1380,11 @@ Return ONLY valid JSON, no extra text:
               marginTop: 2,
             }}
           >
-            Take a photo of your meal — AI calculates the full nutrition
-            breakdown
+            Snap a meal and REPMAX estimates the full nutrition breakdown without leaving the food logger.
           </p>
         </div>
       </div>
 
-      {/* Photo preview */}
       {preview ? (
         <div className="photo-preview-wrap">
           <img src={preview} alt="Food preview" className="photo-preview-img" />
@@ -1280,14 +1407,54 @@ Return ONLY valid JSON, no extra text:
         </button>
       )}
 
-      {/* Retake button */}
-      {preview && !analyzing && (
+      {scanState === "analyzing" && (
+        <div className="scan-diagnostic-card analyzing">
+          <div className="scan-diagnostic-label">Analyzing</div>
+          <div className="scan-diagnostic-copy">{scanMessage}</div>
+        </div>
+      )}
+
+      {showDiagnostics && (
+        <div className={`scan-diagnostic-card ${scanState}`}>
+          <div className="scan-diagnostic-label">
+            {scanState === "review" ? "Needs review" : "Scan failed"}
+          </div>
+          <div className="scan-diagnostic-copy">{scanMessage}</div>
+          {scanPrefill && (
+            <div className="scan-diagnostic-prefill">
+              Best guess: <strong>{scanPrefill}</strong>
+            </div>
+          )}
+          <div className="scan-diagnostic-actions">
+            {scanPrefill && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={continueManually}
+              >
+                Use description manually
+              </button>
+            )}
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setPreview(null);
+                resetDiagnostics();
+                fileRef.current?.click();
+              }}
+            >
+              <RiRefreshLine size={15} /> Try another photo
+            </button>
+          </div>
+        </div>
+      )}
+
+      {preview && !analyzing && !showDiagnostics && (
         <button
           className="btn btn-secondary btn-sm btn-full"
           style={{ marginTop: 8 }}
           onClick={() => {
             setPreview(null);
-            setScanError("");
+            resetDiagnostics();
             fileRef.current?.click();
           }}
         >
@@ -1295,20 +1462,6 @@ Return ONLY valid JSON, no extra text:
         </button>
       )}
 
-      {scanError && (
-        <p
-          style={{
-            fontSize: "0.8rem",
-            color: "#ef4444",
-            marginTop: 8,
-            textAlign: "center",
-          }}
-        >
-          {scanError}
-        </p>
-      )}
-
-      {/* Hidden file input — capture="environment" opens rear camera on mobile */}
       <input
         ref={fileRef}
         type="file"

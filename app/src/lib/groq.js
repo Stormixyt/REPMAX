@@ -1617,6 +1617,45 @@ function repairLikelyJson(text = "") {
     .trim();
 }
 
+function normalizeFoodScanPayload(payload = {}) {
+  const foodName = String(payload?.food_name || payload?.meal_name || "").trim();
+  const servingSize = String(payload?.serving_size || payload?.portion || "1 serving").trim();
+  const items = Array.isArray(payload?.items)
+    ? payload.items.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+
+  const toRoundedNumber = (value) => {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return 0;
+    return Math.max(0, Math.round(numeric));
+  };
+
+  return {
+    food_name: foodName,
+    serving_size: servingSize || "1 serving",
+    calories: toRoundedNumber(payload?.calories),
+    protein: toRoundedNumber(payload?.protein),
+    carbs: toRoundedNumber(payload?.carbs),
+    fat: toRoundedNumber(payload?.fat),
+    fiber: toRoundedNumber(payload?.fiber),
+    sugar: toRoundedNumber(payload?.sugar),
+    items,
+  };
+}
+
+function buildFoodFallbackQuery(payload = {}, rawOutput = "") {
+  const normalized = normalizeFoodScanPayload(payload);
+  if (normalized.food_name) return normalized.food_name;
+
+  const candidate = extractJsonCandidate(rawOutput)
+    .replace(/[{}[\]"]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!candidate) return "";
+  return candidate.split(".")[0].slice(0, 80).trim();
+}
+
 export function normalizeImportedRoutineText(rawText = "") {
   const cleanedLines = String(rawText || "")
     .replace(/\r/g, "")
@@ -1720,6 +1759,131 @@ async function repairVisionProgramJson(rawOutput) {
   }
 
   return JSON.parse(repairedContent);
+}
+
+async function repairFoodScanJson(rawOutput) {
+  const repaired = await callGroq({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You repair malformed JSON for nutrition photo scans. Return ONLY valid JSON with keys food_name, serving_size, calories, protein, carbs, fat, fiber, sugar, items.",
+      },
+      {
+        role: "user",
+        content: `Fix this into valid JSON only:\n\n${extractJsonCandidate(rawOutput)}`,
+      },
+    ],
+    model: MODEL,
+    temperature: 0.1,
+    max_tokens: 800,
+    response_format: { type: "json_object" },
+  }, {
+    timeoutMs: 20000,
+  });
+
+  const repairedContent = repaired?.choices?.[0]?.message?.content?.trim();
+  if (!repairedContent) {
+    throw new Error("Food scan JSON repair returned empty output");
+  }
+
+  return JSON.parse(repairedContent);
+}
+
+export async function scanFoodPhoto(dataUrl) {
+  const prompt = `You are a professional nutritionist analyzing a meal photo.
+
+Rules:
+- Identify every visible food item
+- Estimate realistic total portion size based on the plate/container
+- Calculate the total nutrition for the full meal
+- Return ONLY valid JSON
+
+Use this exact schema:
+{"food_name":"full description of the meal","serving_size":"estimated total portion","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"items":["item 1","item 2"]}`;
+
+  let rawContent = "";
+
+  try {
+    const data = await callGroq({
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: prompt,
+            },
+            {
+              type: "image_url",
+              image_url: { url: dataUrl },
+            },
+          ],
+        },
+      ],
+      model: VISION_MODEL,
+      temperature: 0.1,
+      max_tokens: 700,
+      response_format: { type: "json_object" },
+    }, {
+      timeoutMs: 45000,
+    });
+
+    rawContent = data?.choices?.[0]?.message?.content?.trim() || "";
+    if (!rawContent) {
+      throw new Error("The meal scan returned empty output.");
+    }
+
+    let parsed = null;
+
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch {
+      try {
+        parsed = JSON.parse(repairLikelyJson(rawContent));
+      } catch {
+        parsed = await repairFoodScanJson(rawContent);
+      }
+    }
+
+    const normalized = normalizeFoodScanPayload(parsed);
+
+    const hasUsefulNutrition =
+      normalized.calories > 0
+      || normalized.protein > 0
+      || normalized.carbs > 0
+      || normalized.fat > 0
+      || normalized.items.length > 0;
+
+    if (!normalized.food_name || !hasUsefulNutrition) {
+      return {
+        success: false,
+        error: {
+          message: "The photo scan needs a quick manual review before it can be logged.",
+          status: "needs_review",
+          details: parsed,
+        },
+        suggestedQuery: buildFoodFallbackQuery(parsed, rawContent),
+      };
+    }
+
+    return {
+      success: true,
+      food: normalized,
+      suggestedQuery: buildFoodFallbackQuery(parsed, rawContent),
+    };
+  } catch (error) {
+    const normalizedError = normalizeAiErrorPayload(
+      error,
+      "Could not analyze the photo right now."
+    );
+
+    return {
+      success: false,
+      error: normalizedError,
+      suggestedQuery: buildFoodFallbackQuery({}, rawContent),
+    };
+  }
 }
 
 export async function generateProgramFromText(routineText) {

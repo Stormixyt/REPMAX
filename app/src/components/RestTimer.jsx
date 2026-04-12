@@ -4,6 +4,44 @@ export default function RestTimer({ duration, onClose, onDurationChange }) {
   const [timeLeft, setTimeLeft] = useState(duration)
   const [running, setRunning] = useState(true)
   const intervalRef = useRef(null)
+  const audioContextRef = useRef(null)
+
+  const playTimerDoneTone = useCallback(() => {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext
+      if (!AudioContextClass) return
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContextClass()
+      }
+
+      const ctx = audioContextRef.current
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {})
+      }
+
+      const tones = [
+        { frequency: 880, start: 0, duration: 0.12 },
+        { frequency: 660, start: 0.16, duration: 0.14 },
+      ]
+
+      tones.forEach((tone) => {
+        const oscillator = ctx.createOscillator()
+        const gain = ctx.createGain()
+        oscillator.type = 'sine'
+        oscillator.frequency.value = tone.frequency
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + tone.start)
+        gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + tone.start + 0.01)
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + tone.start + tone.duration)
+        oscillator.connect(gain)
+        gain.connect(ctx.destination)
+        oscillator.start(ctx.currentTime + tone.start)
+        oscillator.stop(ctx.currentTime + tone.start + tone.duration)
+      })
+    } catch {
+      // Ignore audio failures and keep the rest timer running.
+    }
+  }, [])
 
   useEffect(() => {
     if (running && timeLeft > 0) {
@@ -11,6 +49,7 @@ export default function RestTimer({ duration, onClose, onDurationChange }) {
         setTimeLeft(prev => {
           if (prev <= 1) {
             clearInterval(intervalRef.current)
+            playTimerDoneTone()
             // Vibrate on timer complete
             if (navigator.vibrate) navigator.vibrate([200, 100, 200])
             return 0
@@ -21,7 +60,11 @@ export default function RestTimer({ duration, onClose, onDurationChange }) {
     }
 
     return () => clearInterval(intervalRef.current)
-  }, [running, timeLeft])
+  }, [playTimerDoneTone, running, timeLeft])
+
+  useEffect(() => () => {
+    audioContextRef.current?.close?.().catch?.(() => {})
+  }, [])
 
   function toggleTimer() {
     if (timeLeft === 0) {
