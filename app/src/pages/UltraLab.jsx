@@ -776,6 +776,22 @@ export default function UltraLab() {
     } catch (error) {
       console.error('Image import failed:', error)
       const cleanedText = normalizeImportedRoutineText(error?.extractedText || '')
+      const shouldAutoSeedManualDraft = error?.stage === 'draft' && Boolean(cleanedText.trim())
+
+      if (shouldAutoSeedManualDraft) {
+        setParsedProgram(seedProgramFromText(cleanedText))
+        setParsedSource('manual')
+        setLastExtractedText(cleanedText)
+        setImportDiagnostics(null)
+        setImportStage({
+          stage: 'review',
+          label: 'Needs review',
+        })
+        setShowSourceText(false)
+        showToast('Screenshots read. A manual draft is ready so you can keep going.')
+        return
+      }
+
       setLastExtractedText(cleanedText)
       setImportDiagnostics({
         source: 'images',

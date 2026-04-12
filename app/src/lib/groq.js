@@ -2376,11 +2376,11 @@ Rules:
       ],
       model: MODEL,
       temperature: 0.35,
-      max_tokens: 7000,
+      max_tokens: 5200,
       response_format: { type: "json_object" },
     }, {
       preferServerApi: true,
-      timeoutMs: 25000,
+      timeoutMs: 35000,
     });
 
     const content = data?.choices?.[0]?.message?.content?.trim();
