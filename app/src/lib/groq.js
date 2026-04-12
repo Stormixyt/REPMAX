@@ -188,11 +188,13 @@ async function callGroq(body, options = {}) {
       message = String(message);
     }
     const shouldFallback =
+      status === 401 ||
+      status === 403 ||
       status === 404 ||
       status === 500 ||
       status === 503 ||
       status === 504 ||
-      /not configured|not deployed|timed out|function/i.test(message);
+      /not configured|not deployed|timed out|function|auth|unauthorized|authentication|session token/i.test(message);
 
     if (!shouldFallback) {
       throw edgeError;

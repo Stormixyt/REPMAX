@@ -69,6 +69,23 @@ function extractApiErrorMessage(payload, fallback) {
   return fallback
 }
 
+async function getValidAccessToken() {
+  const {
+    data: { session }
+  } = await supabase.auth.getSession()
+
+  if (session?.access_token) {
+    return session.access_token
+  }
+
+  const recoveredSession = await ensureSession()
+  if (recoveredSession?.access_token) {
+    return recoveredSession.access_token
+  }
+
+  return null
+}
+
 export async function invokeEdgeFunction(functionName, body, options = {}) {
   const {
     timeoutMs = 15000,
@@ -85,12 +102,10 @@ export async function invokeEdgeFunction(functionName, body, options = {}) {
       'x-client-info': 'repmax-app/4.0'
     }
 
-    const {
-      data: { session }
-    } = await supabase.auth.getSession()
+    const accessToken = await getValidAccessToken()
 
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`
     } else if (requireAuth) {
       throw new Error('You need to be signed in to use this feature.')
     }
@@ -151,12 +166,10 @@ export async function invokeServerApi(path, body, options = {}) {
       'x-client-info': 'repmax-app/4.0'
     }
 
-    const {
-      data: { session }
-    } = await supabase.auth.getSession()
+    const accessToken = await getValidAccessToken()
 
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`
     } else if (requireAuth) {
       throw new Error('You need to be signed in to use this feature.')
     }
