@@ -367,7 +367,7 @@
   <section class="section trustpilot-section" id="reviews">
     <div class="container">
       <div class="trustpilot-heading reveal">
-        <div>
+        <div class="trustpilot-copy">
           <p class="section-label trustpilot-label">Trustpilot</p>
           <h2 class="section-title">Real reviews.<br>No fake hype.</h2>
           <p class="section-subtitle">
@@ -402,72 +402,92 @@
         </div>
       </div>
 
-      <div class="trustpilot-grid reveal reveal-delay-1" id="trustpilot-reviews-grid">
-        <article class="trustpilot-review-card trustpilot-review-card--placeholder">
-          <div class="trustpilot-review-top">
-            <div class="trustpilot-reviewer-shell">
-              <div class="trustpilot-avatar-skeleton"></div>
-              <div>
-                <div class="trustpilot-line-skeleton short"></div>
-                <div class="trustpilot-line-skeleton mini"></div>
-              </div>
-            </div>
-            <div class="trustpilot-stars compact">
-              <span class="star is-filled">★</span>
-              <span class="star is-filled">★</span>
-              <span class="star is-filled">★</span>
-              <span class="star is-filled">★</span>
-              <span class="star">★</span>
-            </div>
+      <div class="trustpilot-carousel reveal reveal-delay-1">
+        <div class="trustpilot-carousel-head">
+          <div class="trustpilot-carousel-copy">
+            <div class="trustpilot-carousel-kicker">Top public reviews</div>
+            <div class="trustpilot-carousel-subtitle">Swipe or use the arrows to move through the review wall.</div>
           </div>
-          <div class="trustpilot-line-skeleton long"></div>
-          <div class="trustpilot-line-skeleton long"></div>
-          <div class="trustpilot-line-skeleton medium"></div>
-        </article>
 
-        <article class="trustpilot-review-card trustpilot-review-card--placeholder">
-          <div class="trustpilot-review-top">
-            <div class="trustpilot-reviewer-shell">
-              <div class="trustpilot-avatar-skeleton"></div>
-              <div>
-                <div class="trustpilot-line-skeleton short"></div>
-                <div class="trustpilot-line-skeleton mini"></div>
-              </div>
-            </div>
-            <div class="trustpilot-stars compact">
-              <span class="star is-filled">★</span>
-              <span class="star is-filled">★</span>
-              <span class="star is-filled">★</span>
-              <span class="star is-filled">★</span>
-              <span class="star">★</span>
-            </div>
+          <div class="trustpilot-carousel-controls" id="trustpilot-carousel-controls">
+            <button type="button" class="trustpilot-arrow" id="trustpilot-prev" aria-label="Previous reviews">
+              <span>←</span>
+            </button>
+            <button type="button" class="trustpilot-arrow" id="trustpilot-next" aria-label="Next reviews">
+              <span>→</span>
+            </button>
           </div>
-          <div class="trustpilot-line-skeleton long"></div>
-          <div class="trustpilot-line-skeleton long"></div>
-          <div class="trustpilot-line-skeleton medium"></div>
-        </article>
+        </div>
 
-        <article class="trustpilot-review-card trustpilot-review-card--placeholder">
-          <div class="trustpilot-review-top">
-            <div class="trustpilot-reviewer-shell">
-              <div class="trustpilot-avatar-skeleton"></div>
-              <div>
-                <div class="trustpilot-line-skeleton short"></div>
-                <div class="trustpilot-line-skeleton mini"></div>
+        <div class="trustpilot-carousel-viewport">
+          <div class="trustpilot-track" id="trustpilot-reviews-grid">
+            <article class="trustpilot-review-card trustpilot-review-card--placeholder">
+              <div class="trustpilot-review-top">
+                <div class="trustpilot-reviewer-shell">
+                  <div class="trustpilot-avatar-skeleton"></div>
+                  <div>
+                    <div class="trustpilot-line-skeleton short"></div>
+                    <div class="trustpilot-line-skeleton mini"></div>
+                  </div>
+                </div>
+                <div class="trustpilot-stars compact">
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star">★</span>
+                </div>
               </div>
-            </div>
-            <div class="trustpilot-stars compact">
-              <span class="star is-filled">★</span>
-              <span class="star is-filled">★</span>
-              <span class="star is-filled">★</span>
-              <span class="star is-filled">★</span>
-              <span class="star">★</span>
-            </div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton medium"></div>
+            </article>
+
+            <article class="trustpilot-review-card trustpilot-review-card--placeholder">
+              <div class="trustpilot-review-top">
+                <div class="trustpilot-reviewer-shell">
+                  <div class="trustpilot-avatar-skeleton"></div>
+                  <div>
+                    <div class="trustpilot-line-skeleton short"></div>
+                    <div class="trustpilot-line-skeleton mini"></div>
+                  </div>
+                </div>
+                <div class="trustpilot-stars compact">
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star">★</span>
+                </div>
+              </div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton medium"></div>
+            </article>
+
+            <article class="trustpilot-review-card trustpilot-review-card--placeholder">
+              <div class="trustpilot-review-top">
+                <div class="trustpilot-reviewer-shell">
+                  <div class="trustpilot-avatar-skeleton"></div>
+                  <div>
+                    <div class="trustpilot-line-skeleton short"></div>
+                    <div class="trustpilot-line-skeleton mini"></div>
+                  </div>
+                </div>
+                <div class="trustpilot-stars compact">
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star">★</span>
+                </div>
+              </div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton medium"></div>
+            </article>
           </div>
-          <div class="trustpilot-line-skeleton long"></div>
-          <div class="trustpilot-line-skeleton long"></div>
-          <div class="trustpilot-line-skeleton medium"></div>
-        </article>
+        </div>
       </div>
 
       <div class="trustpilot-footer reveal reveal-delay-2">

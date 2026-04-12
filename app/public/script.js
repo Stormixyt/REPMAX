@@ -290,6 +290,9 @@ const TRUSTPILOT_REVIEWS_ENDPOINT = '/api/trustpilot-reviews';
 
 async function hydrateTrustpilotReviews() {
   const grid = document.getElementById('trustpilot-reviews-grid');
+  const controls = document.getElementById('trustpilot-carousel-controls');
+  const prevBtn = document.getElementById('trustpilot-prev');
+  const nextBtn = document.getElementById('trustpilot-next');
   const scoreValue = document.getElementById('trustpilot-score-value');
   const scoreLabel = document.getElementById('trustpilot-score-label');
   const reviewCount = document.getElementById('trustpilot-review-count');
@@ -328,13 +331,13 @@ async function hydrateTrustpilotReviews() {
     }
 
     if (!reviews.length) {
+      if (controls) controls.hidden = true;
       grid.innerHTML = `
         <article class="trustpilot-empty-state">
           <div class="trustpilot-empty-kicker">No qualifying public reviews yet</div>
           <h3>The section is live and ready.</h3>
           <p>
-            As soon as public Trustpilot reviews rated 4 stars and up appear for REPMAX,
-            they will show here automatically.
+            As soon as more public Trustpilot reviews appear for REPMAX, they will show here automatically.
           </p>
         </article>
       `;
@@ -382,12 +385,15 @@ async function hydrateTrustpilotReviews() {
         </article>
       `;
     }).join('');
+
+    initTrustpilotCarousel(grid, prevBtn, nextBtn, controls);
   } catch (error) {
     console.warn('[REPMAX] Failed to load Trustpilot reviews:', error);
     scoreValue.textContent = '--';
     scoreLabel.textContent = 'Trustpilot temporarily unavailable';
     reviewCount.textContent = 'Could not load public reviews right now';
     stars.innerHTML = buildTrustpilotStars(4);
+    if (controls) controls.hidden = true;
     grid.innerHTML = `
       <article class="trustpilot-empty-state">
         <div class="trustpilot-empty-kicker">Could not load Trustpilot right now</div>
@@ -396,6 +402,49 @@ async function hydrateTrustpilotReviews() {
       </article>
     `;
   }
+}
+
+function initTrustpilotCarousel(track, prevBtn, nextBtn, controls) {
+  if (!track || !prevBtn || !nextBtn || !controls) return;
+
+  const card = track.querySelector('.trustpilot-review-card');
+  if (!card) {
+    controls.hidden = true;
+    return;
+  }
+
+  const updateButtons = () => {
+    const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+    const hasOverflow = maxScroll > 8;
+    controls.hidden = !hasOverflow;
+
+    if (!hasOverflow) {
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      return;
+    }
+
+    prevBtn.disabled = track.scrollLeft <= 8;
+    nextBtn.disabled = track.scrollLeft >= maxScroll - 8;
+  };
+
+  const getStep = () => {
+    const styles = window.getComputedStyle(track);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap || '16') || 16;
+    return card.getBoundingClientRect().width + gap;
+  };
+
+  prevBtn.onclick = () => {
+    track.scrollBy({ left: -getStep(), behavior: 'smooth' });
+  };
+
+  nextBtn.onclick = () => {
+    track.scrollBy({ left: getStep(), behavior: 'smooth' });
+  };
+
+  track.addEventListener('scroll', updateButtons, { passive: true });
+  window.addEventListener('resize', updateButtons, { passive: true });
+  updateButtons();
 }
 
 function buildTrustpilotStars(rating = 0) {

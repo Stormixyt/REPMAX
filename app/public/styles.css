@@ -1172,6 +1172,22 @@ img {
   margin-bottom: 32px;
 }
 
+.trustpilot-copy {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  max-width: 560px;
+}
+
+.trustpilot-copy .section-title,
+.trustpilot-copy .section-subtitle {
+  margin: 0;
+}
+
+.trustpilot-copy .section-subtitle {
+  max-width: 520px;
+}
+
 .trustpilot-label {
   color: #00b67a;
 }
@@ -1291,10 +1307,87 @@ img {
   color: #00b67a;
 }
 
-.trustpilot-grid {
+.trustpilot-carousel {
   display: grid;
+  gap: 18px;
+}
+
+.trustpilot-carousel-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
   gap: 16px;
-  grid-template-columns: 1fr;
+}
+
+.trustpilot-carousel-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.trustpilot-carousel-kicker {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.trustpilot-carousel-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.trustpilot-carousel-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trustpilot-carousel-controls[hidden] {
+  display: none;
+}
+
+.trustpilot-arrow {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.trustpilot-arrow:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(0, 182, 122, 0.26);
+  background: rgba(0, 182, 122, 0.08);
+}
+
+.trustpilot-arrow:disabled {
+  opacity: 0.34;
+  cursor: default;
+}
+
+.trustpilot-carousel-viewport {
+  overflow: hidden;
+}
+
+.trustpilot-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(280px, 1fr);
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding-bottom: 6px;
+}
+
+.trustpilot-track::-webkit-scrollbar {
+  display: none;
 }
 
 .trustpilot-review-card,
@@ -1311,6 +1404,7 @@ img {
   display: grid;
   gap: 14px;
   min-height: 100%;
+  scroll-snap-align: start;
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -1420,6 +1514,7 @@ img {
   text-align: center;
   display: grid;
   gap: 10px;
+  min-height: 100%;
 }
 
 .trustpilot-empty-state h3 {
@@ -2412,6 +2507,11 @@ img {
     align-items: flex-start;
   }
 
+  .trustpilot-carousel-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .features-grid {
     grid-template-columns: 1fr;
   }
@@ -2548,8 +2648,8 @@ img {
     align-items: end;
   }
 
-  .trustpilot-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .trustpilot-track {
+    grid-auto-columns: calc((100% - 32px) / 3);
   }
 }
 
