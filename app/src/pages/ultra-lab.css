@@ -1,16 +1,16 @@
 .ultra-lab-page.page {
-  max-width: min(1280px, calc(100vw - 72px));
-  padding: calc(30px + env(safe-area-inset-top, 0px)) clamp(18px, 3vw, 36px) 128px;
+  max-width: min(1400px, calc(100vw - 64px));
+  padding: calc(42px + env(safe-area-inset-top, 0px)) clamp(18px, 3vw, 40px) 132px;
 }
 
 .ultra-lab-header {
-  margin-bottom: 12px;
-  max-width: 780px;
+  margin-bottom: 16px;
+  max-width: 860px;
 }
 
 .ultra-page-stack {
   display: grid;
-  gap: 18px;
+  gap: 22px;
 }
 
 .ultra-lab-kicker,
@@ -62,15 +62,18 @@
 }
 
 .ultra-command-card {
-  display: grid;
-  grid-template-columns: 108px 1fr;
-  gap: 16px;
-  padding: 18px;
-  align-items: center;
+  padding: 20px;
 }
 
 .ultra-focus-hero {
   margin-top: 4px;
+}
+
+.ultra-focus-hero-main {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(96px, 112px) minmax(0, 1fr);
+  align-items: start;
 }
 
 .ultra-intelligence-topline {
@@ -100,6 +103,43 @@
 
 .ultra-compact-signals {
   margin-top: 2px;
+}
+
+.ultra-command-rail,
+.ultra-feature-preview-list,
+.ultra-analysis-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.ultra-command-rail {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ultra-command-rail-card {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ultra-analysis-group {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ultra-analysis-group-head {
+  display: grid;
+  gap: 4px;
+}
+
+.ultra-analysis-group-head h4 {
+  font-size: 1.02rem;
+  margin: 0;
 }
 
 .ultra-command-ring {
@@ -206,6 +246,7 @@
 .ultra-quick-signal,
 .ultra-chart-card,
 .ultra-metric-card,
+.ultra-command-rail-card,
 .ultra-preview-card,
 .ultra-feature-preview,
 .ultra-social-row,
@@ -305,6 +346,8 @@
 
 .ultra-feature-card {
   padding: 18px;
+  display: grid;
+  gap: 14px;
 }
 
 .ultra-feature-top,
@@ -366,6 +409,10 @@
 .ultra-social-name {
   font-weight: 800;
   color: var(--text-primary);
+}
+
+.ultra-social-grid-compact .ultra-social-card {
+  min-height: 0;
 }
 
 .ultra-social-title {
@@ -463,6 +510,11 @@
   display: grid;
   gap: 8px;
   cursor: pointer;
+}
+
+.ultra-upload-dropzone:hover {
+  border-color: rgba(215, 255, 0, 0.28);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .ultra-upload-dropzone input {
@@ -583,8 +635,8 @@
     font-size: 1.95rem;
   }
 
-  .ultra-command-card {
-    grid-template-columns: 132px 1fr;
+  .ultra-focus-hero-main {
+    grid-template-columns: minmax(112px, 132px) minmax(0, 1fr);
   }
 
   .ultra-overview-grid,
@@ -599,6 +651,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .ultra-command-rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .ultra-quick-signal-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -610,6 +666,10 @@
 }
 
 @media (min-width: 1080px) {
+  .ultra-focus-hero-main {
+    gap: 22px;
+  }
+
   .ultra-overview-grid,
   .ultra-chart-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -618,6 +678,15 @@
 
   .ultra-metric-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ultra-analysis-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .ultra-social-grid-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ultra-tab-bar {
@@ -634,12 +703,20 @@
 @media (max-width: 639px) {
   .ultra-lab-page.page {
     max-width: none;
-    padding: calc(26px + env(safe-area-inset-top, 0px)) 14px 124px;
+    padding: calc(34px + env(safe-area-inset-top, 0px)) 14px 126px;
+  }
+
+  .ultra-lab-header {
+    margin-bottom: 18px;
+  }
+
+  .ultra-focus-hero-main,
+  .ultra-intelligence-topline {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .ultra-command-card {
-    grid-template-columns: 84px 1fr;
-    gap: 14px;
     padding: 16px;
   }
 
@@ -647,12 +724,11 @@
     width: 84px;
     height: 84px;
     padding: 8px;
+    margin-top: 4px;
   }
 
-  .ultra-intelligence-topline {
-    grid-template-columns: 84px 1fr;
-    gap: 14px;
-    align-items: start;
+  .ultra-command-rail {
+    grid-template-columns: 1fr;
   }
 
   .ultra-command-copy h2,

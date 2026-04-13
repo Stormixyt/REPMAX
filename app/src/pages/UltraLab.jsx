@@ -453,24 +453,24 @@ function describeImportStage(stagePayload = null) {
     }
   }
 
-  if (stage === 'reading') {
+  if (stage === 'interpreting') {
     return {
-      label: stagePayload.label || `Reading screenshot ${stagePayload.current || 1} of ${stagePayload.total || 1}`,
-      copy: 'Reading the visible routine text one screenshot at a time before the draft build starts.',
+      label: stagePayload.label || `Interpreting screenshot ${stagePayload.current || 1} of ${stagePayload.total || 1}`,
+      copy: 'Using the AI vision pass to turn each screenshot into structured day and exercise candidates.',
     }
   }
 
   if (stage === 'draft') {
     return {
-      label: 'Building routine draft',
-      copy: 'Turning the cleaned OCR text into a structured REPMAX routine you can review before saving.',
+      label: 'Building structured routine',
+      copy: 'Merging the interpreted screenshot candidates into one clean REPMAX routine draft.',
     }
   }
 
   if (stage === 'review') {
     return {
       label: 'Needs review',
-      copy: 'The cleaned source is ready for manual cleanup before it becomes your live plan.',
+      copy: 'A structured draft is ready for final cleanup before it becomes your live plan.',
     }
   }
 
@@ -733,6 +733,8 @@ export default function UltraLab() {
     const files = Array.from(event.target.files || [])
     if (!files.length) return
     setImageFiles(files)
+    setImportDiagnostics(null)
+    setImportStage(null)
   }
 
   async function runImageImport() {
@@ -742,6 +744,8 @@ export default function UltraLab() {
     }
 
     setProcessingImport(true)
+    setParsedProgram(null)
+    setParsedSource(null)
     setImportDiagnostics(null)
     setImportStage({
       stage: 'optimizing',
@@ -761,6 +765,7 @@ export default function UltraLab() {
         importError.extractedText = result?.extractedText || ''
         importError.hint = result?.error?.hint || ''
         importError.stage = result?.error?.stage || ''
+        importError.fallbackProgram = result?.error?.fallbackProgram || null
         throw importError
       }
 
@@ -776,11 +781,12 @@ export default function UltraLab() {
     } catch (error) {
       console.error('Image import failed:', error)
       const cleanedText = normalizeImportedRoutineText(error?.extractedText || '')
-      const shouldAutoSeedManualDraft = error?.stage === 'draft' && Boolean(cleanedText.trim())
+      const fallbackProgram = error?.fallbackProgram || null
+      const shouldAutoSeedManualDraft = error?.stage === 'draft' && Boolean(fallbackProgram || cleanedText.trim())
 
       if (shouldAutoSeedManualDraft) {
-        setParsedProgram(seedProgramFromText(cleanedText))
-        setParsedSource('manual')
+        setParsedProgram(fallbackProgram ? buildEditableProgram(fallbackProgram) : seedProgramFromText(cleanedText))
+        setParsedSource(fallbackProgram ? 'images' : 'manual')
         setLastExtractedText(cleanedText)
         setImportDiagnostics(null)
         setImportStage({
@@ -788,7 +794,7 @@ export default function UltraLab() {
           label: 'Needs review',
         })
         setShowSourceText(false)
-        showToast('Screenshots read. A manual draft is ready so you can keep going.')
+        showToast('The screenshots were interpreted. Review the drafted routine before saving.')
         return
       }
 
@@ -799,7 +805,8 @@ export default function UltraLab() {
         error: error.message || 'Could not parse that routine yet.',
         hint: error?.hint || getImportErrorHint(error.message),
         stage: error?.stage || 'ocr',
-        canContinue: Boolean(cleanedText.trim()),
+        fallbackProgram,
+        canContinue: Boolean(fallbackProgram || cleanedText.trim()),
       })
       setImportStage({
         stage: 'review',
@@ -819,6 +826,8 @@ export default function UltraLab() {
 
     const cleanedText = normalizeImportedRoutineText(routineText)
     setProcessingImport(true)
+    setParsedProgram(null)
+    setParsedSource(null)
     setImportDiagnostics(null)
     setImportStage({
       stage: 'draft',
@@ -862,7 +871,9 @@ export default function UltraLab() {
   }
 
   function continueImportManually() {
-    const seededProgram = seedProgramFromText(importDiagnostics?.cleanedText || routineText || lastExtractedText)
+    const seededProgram = importDiagnostics?.fallbackProgram
+      ? buildEditableProgram(importDiagnostics.fallbackProgram)
+      : seedProgramFromText(importDiagnostics?.cleanedText || routineText || lastExtractedText)
     setParsedProgram(seededProgram)
     setParsedSource('manual')
     setImportDiagnostics(null)
@@ -870,8 +881,10 @@ export default function UltraLab() {
       stage: 'review',
       label: 'Needs review',
     })
-    setShowSourceText(true)
-    showToast('Manual draft seeded. Tighten it up before saving.')
+    setShowSourceText(!importDiagnostics?.fallbackProgram)
+    showToast(importDiagnostics?.fallbackProgram
+      ? 'Structured draft opened. Tighten it up before saving.'
+      : 'Manual draft seeded. Tighten it up before saving.')
   }
 
   function updateTemplateDays(updater) {
@@ -1100,8 +1113,8 @@ export default function UltraLab() {
   const importStageMeta = describeImportStage(importStage)
 
   const overviewHero = (
-    <div className="ultra-page-stack">
-      <section className="ultra-command-card ultra-focus-hero">
+    <section className="ultra-command-card ultra-focus-hero">
+      <div className="ultra-focus-hero-main">
         <div className="ultra-command-ring" style={{ '--ultra-progress': `${analyticsModel.overview.readiness.ringProgress}%` }}>
           <div className="ultra-command-ring-inner">
             <div className="ultra-command-ring-label">Readiness</div>
@@ -1123,18 +1136,17 @@ export default function UltraLab() {
             </button>
           )}
         </div>
-      </section>
-
-      <div className="ultra-quick-signal-row">
-        {analyticsModel.overview.quickSignals.map((signal) => (
-          <article key={signal.id} className={`ultra-quick-signal tone-${signal.tone}`}>
-            <div className="ultra-quick-label">{signal.label}</div>
-            <div className="ultra-quick-value">{signal.value}</div>
-            <div className="ultra-quick-note">{signal.note}</div>
-          </article>
-        ))}
+        <div className="ultra-command-rail">
+          {analyticsModel.overview.quickSignals.map((signal) => (
+            <article key={signal.id} className={`ultra-command-rail-card tone-${signal.tone}`}>
+              <div className="ultra-quick-label">{signal.label}</div>
+              <div className="ultra-quick-value">{signal.value}</div>
+              <div className="ultra-quick-note">{signal.note}</div>
+            </article>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
   )
 
   const intelligenceHero = (
@@ -1264,7 +1276,7 @@ export default function UltraLab() {
               <div className="ultra-section-head">
                 <div>
                   <div className="ultra-section-kicker">TRAINING-STATE OVERVIEW</div>
-                  <h2>Keep the next decision obvious.</h2>
+                  <h2>See the next decision faster.</h2>
                 </div>
                 <span className={`ultra-confidence-pill ${getConfidenceClass(analyticsModel.overview.readiness.confidence)}`}>
                   {analyticsModel.overview.readiness.confidence.label}
@@ -1315,35 +1327,43 @@ export default function UltraLab() {
               </div>
             </section>
 
-            {analyticsModel.sections.map((section) => (
-              <section key={section.id} className="ultra-section-panel">
-                <div className="ultra-section-head">
-                  <div>
-                    <div className="ultra-section-kicker">{section.title.toUpperCase()}</div>
-                    <h3>{section.title}</h3>
-                  </div>
+            <section className="ultra-section-panel ultra-analysis-shell">
+              <div className="ultra-section-head">
+                <div>
+                  <div className="ultra-section-kicker">GROUPED ANALYSIS</div>
+                  <h3>Pattern map</h3>
                 </div>
-                <div className="ultra-metric-grid">
-                  {section.cards.map((metric) => (
-                    <article key={metric.id} className={`ultra-metric-card tone-${metric.tone}`}>
-                      <div className="ultra-metric-top">
-                        <div className="ultra-metric-title">{metric.title}</div>
-                        <span className={`ultra-confidence-pill ${getConfidenceClass(metric.confidence)}`}>
-                          {confidenceToneLabel(metric.confidence.tone)}
-                        </span>
-                      </div>
-                      <div className="ultra-metric-value">{metric.value}</div>
-                      {metric.spark != null && (
-                        <div className="ultra-spark-track">
-                          <div className="ultra-spark-fill" style={{ width: `${metric.spark}%` }} />
-                        </div>
-                      )}
-                      <p className="ultra-metric-note">{metric.note}</p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ))}
+              </div>
+              <div className="ultra-analysis-groups">
+                {analyticsModel.sections.map((section) => (
+                  <article key={section.id} className="ultra-analysis-group">
+                    <div className="ultra-analysis-group-head">
+                      <div className="ultra-section-kicker">{section.title.toUpperCase()}</div>
+                      <h4>{section.title}</h4>
+                    </div>
+                    <div className="ultra-metric-grid ultra-metric-grid-compact">
+                      {section.cards.map((metric) => (
+                        <article key={metric.id} className={`ultra-metric-card tone-${metric.tone}`}>
+                          <div className="ultra-metric-top">
+                            <div className="ultra-metric-title">{metric.title}</div>
+                            <span className={`ultra-confidence-pill ${getConfidenceClass(metric.confidence)}`}>
+                              {confidenceToneLabel(metric.confidence.tone)}
+                            </span>
+                          </div>
+                          <div className="ultra-metric-value">{metric.value}</div>
+                          {metric.spark != null && (
+                            <div className="ultra-spark-track">
+                              <div className="ultra-spark-fill" style={{ width: `${metric.spark}%` }} />
+                            </div>
+                          )}
+                          <p className="ultra-metric-note">{metric.note}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
           </div>
         ) : (
           <PaywallGate
@@ -1361,8 +1381,8 @@ export default function UltraLab() {
           <div className="ultra-page-stack">
             <section className="ultra-import-hero">
               <div className="ultra-section-kicker">IMPORT STUDIO</div>
-              <h2>Outside routines, cleaned before they touch your live plan.</h2>
-              <p>Choose a source, parse it cleanly, then review the structure before anything replaces your active program.</p>
+              <h2>Turn screenshots into a real routine draft.</h2>
+              <p>Choose a source, let the AI build a structured routine, then review it before anything replaces your live plan.</p>
               <div className="ultra-step-row">
                 {importSteps.map((step) => (
                   <div key={step.id} className={`ultra-step-pill state-${step.state}`}>
@@ -1415,7 +1435,7 @@ export default function UltraLab() {
                     <input type="file" accept="image/*" multiple onChange={handleImageFilesChange} />
                     <RiImageAddLine size={20} />
                     <div className="ultra-upload-title">Drop routine screenshots here</div>
-                    <div className="ultra-upload-copy">PNG, JPG, HEIC. Upload multiple images if the routine spans several pages.</div>
+                    <div className="ultra-upload-copy">PNG, JPG, HEIC. The images are optimized first, then interpreted one by one into a structured routine draft.</div>
                   </label>
 
                   {imageFiles.length > 0 && (
@@ -1468,16 +1488,18 @@ export default function UltraLab() {
                 <div className="ultra-section-head">
                   <div>
                     <div className="ultra-section-kicker">{importDiagnostics ? 'PARSE DIAGNOSTICS' : 'CLEANED SOURCE'}</div>
-                    <h3>{importDiagnostics ? 'The parse needs help.' : 'Review the cleaned routine text.'}</h3>
+                    <h3>{importDiagnostics ? 'The draft needs a little help.' : 'Review the interpreted routine source.'}</h3>
                   </div>
                   {importDiagnostics && (
-                    <span className="ultra-diagnostic-badge">Needs cleanup</span>
+                    <span className="ultra-diagnostic-badge">
+                      {importDiagnostics?.fallbackProgram ? 'Structured fallback ready' : 'Needs cleanup'}
+                    </span>
                   )}
                 </div>
                 <p className="ultra-diagnostics-copy">
                   {importDiagnostics
                     ? importDiagnostics.error
-                    : 'This is the cleaned routine text the import flow is currently working from.'}
+                    : 'This is the interpreted routine source the import flow is currently working from.'}
                 </p>
                 {importDiagnostics?.hint && (
                   <p className="ultra-diagnostics-copy ultra-diagnostics-hint">{importDiagnostics.hint}</p>
@@ -1495,7 +1517,7 @@ export default function UltraLab() {
                   {importDiagnostics?.canContinue && (
                     <button className="btn btn-secondary btn-sm" onClick={continueImportManually}>
                       <RiClipboardLine size={16} />
-                      Continue manually
+                      {importDiagnostics?.fallbackProgram ? 'Open structured draft' : 'Continue manually'}
                     </button>
                   )}
                 </div>
@@ -1687,10 +1709,10 @@ export default function UltraLab() {
                 </div>
               </div>
               <p className="ultra-social-intro">
-                Compatibility, accountability, and session planning live here so your social graph actually helps you train.
+                Compatibility, accountability, and session planning stay compact here so your social graph helps you train instead of adding noise.
               </p>
 
-              <section className="ultra-social-grid">
+              <section className="ultra-social-grid ultra-social-grid-compact">
               <article className="ultra-social-card">
                 <div className="ultra-social-title">Best training partner fits</div>
                 {socialEdge.compatibility.length ? (
@@ -1726,40 +1748,6 @@ export default function UltraLab() {
               </article>
 
               <article className="ultra-social-card">
-                <div className="ultra-social-title">Lock-in series summary</div>
-                {socialEdge.recurringSeries.length ? (
-                  socialEdge.recurringSeries.map((series) => (
-                    <div key={`${series.counterpart?.id}-${series.gym_name}`} className="ultra-social-row">
-                      <div>
-                        <div className="ultra-social-name">{series.counterpart?.display_name || 'Training partner'}</div>
-                        <div className="ultra-social-copy">{series.gym_name || 'Gym'} · next {formatDateTime(series.nextDate)}</div>
-                      </div>
-                      <div className="ultra-social-score">{series.count}x</div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="ultra-empty-copy">Recurring appointment series will show up here once you lock in more than one session with the same person.</p>
-                )}
-              </article>
-
-              <article className="ultra-social-card">
-                <div className="ultra-social-title">Who needs a push this week</div>
-                {socialEdge.nudges.length ? (
-                  socialEdge.nudges.map((friend) => (
-                    <div key={friend.id} className="ultra-social-row">
-                      <div>
-                        <div className="ultra-social-name">{friend.display_name || friend.username || 'Friend'}</div>
-                        <div className="ultra-social-copy">{friend.current_streak || 0} day streak · no upcoming lock-in yet</div>
-                      </div>
-                      <div className="ultra-social-score"><RiFlashlightFill size={16} /></div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="ultra-empty-copy">Your crew is already booked or streaking. Nice.</p>
-                )}
-              </article>
-
-              <article className="ultra-social-card">
                 <div className="ultra-social-title">Session planner</div>
                 {socialEdge.planner.length ? (
                   socialEdge.planner.map((friend) => (
@@ -1773,6 +1761,33 @@ export default function UltraLab() {
                   ))
                 ) : (
                   <p className="ultra-empty-copy">No new pairing ideas yet. Add more friends or clear more appointment history.</p>
+                )}
+              </article>
+
+              <article className="ultra-social-card">
+                <div className="ultra-social-title">Series and nudges</div>
+                {socialEdge.recurringSeries.length ? (
+                  socialEdge.recurringSeries.map((series) => (
+                    <div key={`${series.counterpart?.id}-${series.gym_name}`} className="ultra-social-row">
+                      <div>
+                        <div className="ultra-social-name">{series.counterpart?.display_name || 'Training partner'}</div>
+                        <div className="ultra-social-copy">{series.gym_name || 'Gym'} · next {formatDateTime(series.nextDate)}</div>
+                      </div>
+                      <div className="ultra-social-score">{series.count}x</div>
+                    </div>
+                  ))
+                ) : socialEdge.nudges.length ? (
+                  socialEdge.nudges.map((friend) => (
+                    <div key={friend.id} className="ultra-social-row">
+                      <div>
+                        <div className="ultra-social-name">{friend.display_name || friend.username || 'Friend'}</div>
+                        <div className="ultra-social-copy">{friend.current_streak || 0} day streak · no upcoming lock-in yet</div>
+                      </div>
+                      <div className="ultra-social-score"><RiFlashlightFill size={16} /></div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="ultra-empty-copy">Recurring appointment series and nudges appear once your schedule starts to repeat.</p>
                 )}
               </article>
               </section>

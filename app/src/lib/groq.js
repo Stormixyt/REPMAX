@@ -1913,18 +1913,320 @@ export function normalizeImportedRoutineText(rawText = "") {
 }
 
 function cloneVisionDays(days = []) {
-  return (Array.isArray(days) ? days : []).map((day) => ({
-    ...day,
-    target_muscles: Array.isArray(day?.target_muscles) ? day.target_muscles : [],
-    exercises: Array.isArray(day?.exercises)
-      ? day.exercises.map((exercise) => ({
-          ...exercise,
-          rpe: exercise?.rpe ?? 8,
-          rest_seconds: exercise?.rest_seconds ?? 120,
-          notes: exercise?.notes || "",
-        }))
-      : [],
-  }));
+  return (Array.isArray(days) ? days : []).map((day) => {
+    const dayName = String(day?.day_name || "Training Day").trim();
+    const focusSummary = String(day?.focus_summary || "").trim();
+    const targetMuscles = Array.isArray(day?.target_muscles)
+      ? day.target_muscles.filter(Boolean)
+      : [];
+    const isRestDay =
+      Boolean(day?.is_rest_day) || /\brest\b|\brecovery\b|\boff\b/i.test(dayName);
+
+    const explicitExercises = (Array.isArray(day?.exercises) ? day.exercises : [])
+      .map((exercise) => ({
+        ...exercise,
+        name: String(exercise?.name || "").trim(),
+        sets: exercise?.sets ?? 3,
+        reps: exercise?.reps ?? 10,
+        rpe: exercise?.rpe ?? 8,
+        rest_seconds: exercise?.rest_seconds ?? 120,
+        notes: exercise?.notes || "",
+      }))
+      .filter((exercise) => exercise.name && !isGenericVisionExerciseName(exercise.name));
+
+    const dedupedExercises = [];
+    explicitExercises.forEach((exercise) => {
+      if (!dedupedExercises.some((item) => item.name.toLowerCase() === exercise.name.toLowerCase())) {
+        dedupedExercises.push(exercise);
+      }
+    });
+
+    if (!isRestDay && dedupedExercises.length < 3) {
+      inferVisionExercises(dayName, `${focusSummary} ${targetMuscles.join(" ")}`)
+        .forEach((exercise) => {
+          if (!dedupedExercises.some((item) => item.name.toLowerCase() === exercise.name.toLowerCase())) {
+            dedupedExercises.push(exercise);
+          }
+        });
+    }
+
+    return {
+      ...day,
+      day_name: dayName,
+      focus_summary: focusSummary,
+      target_muscles: targetMuscles,
+      is_rest_day: isRestDay,
+      exercises: isRestDay ? [] : dedupedExercises.slice(0, 6),
+    };
+  });
+}
+
+const VISION_THEME_EXERCISE_BANK = {
+  push: [
+    ["Barbell Bench Press", 4, 8, 8, 150],
+    ["Incline Dumbbell Press", 3, 10, 8, 120],
+    ["Machine Chest Press", 3, 12, 8, 90],
+    ["Cable Fly", 3, 15, 8, 75],
+    ["Tricep Pushdown", 3, 12, 8, 75],
+  ],
+  pull: [
+    ["Barbell Row", 4, 8, 8, 150],
+    ["Lat Pulldown", 3, 10, 8, 105],
+    ["Seated Cable Row", 3, 12, 8, 90],
+    ["Hammer Curl", 3, 12, 8, 75],
+    ["Face Pull", 3, 15, 7.5, 60],
+  ],
+  legs: [
+    ["Back Squat", 4, 6, 8, 180],
+    ["Romanian Deadlift", 3, 8, 8, 150],
+    ["Leg Press", 3, 12, 8, 120],
+    ["Leg Curl", 3, 12, 8, 75],
+    ["Standing Calf Raise", 4, 15, 8, 60],
+  ],
+  upper: [
+    ["Bench Press", 4, 8, 8, 150],
+    ["Barbell Row", 4, 8, 8, 150],
+    ["Overhead Press", 3, 8, 8, 120],
+    ["Lat Pulldown", 3, 10, 8, 90],
+    ["Cable Curl", 3, 12, 8, 60],
+  ],
+  lower: [
+    ["Back Squat", 4, 6, 8, 180],
+    ["Romanian Deadlift", 3, 8, 8, 150],
+    ["Leg Press", 3, 12, 8, 120],
+    ["Walking Lunge", 3, 10, 8, 90],
+    ["Seated Calf Raise", 4, 15, 8, 60],
+  ],
+  shoulders: [
+    ["Overhead Press", 4, 8, 8, 135],
+    ["Dumbbell Lateral Raise", 3, 15, 8, 60],
+    ["Rear Delt Fly", 3, 15, 8, 60],
+    ["Cable Upright Row", 3, 12, 8, 75],
+  ],
+  arms: [
+    ["EZ Bar Curl", 3, 10, 8, 75],
+    ["Incline Dumbbell Curl", 3, 12, 8, 60],
+    ["Skull Crusher", 3, 10, 8, 75],
+    ["Rope Pushdown", 3, 12, 8, 60],
+  ],
+  core: [
+    ["Cable Crunch", 3, 15, 8, 60],
+    ["Hanging Knee Raise", 3, 12, 8, 60],
+    ["Weighted Plank", 3, 45, 8, 60],
+    ["Ab Wheel Rollout", 3, 10, 8, 75],
+  ],
+  cardio: [
+    ["Incline Walk", 1, 20, 7, 0],
+    ["Bike Intervals", 1, 15, 8, 0],
+    ["Row Erg", 1, 12, 8, 0],
+  ],
+  full: [
+    ["Back Squat", 4, 6, 8, 180],
+    ["Bench Press", 4, 8, 8, 150],
+    ["Barbell Row", 3, 8, 8, 135],
+    ["Romanian Deadlift", 3, 8, 8, 150],
+    ["Cable Crunch", 3, 15, 8, 60],
+  ],
+};
+
+function getVisionThemeKeys(dayName = "", focusSummary = "") {
+  const normalized = `${dayName} ${focusSummary}`.toLowerCase();
+  const keys = [];
+
+  if (/\brest\b|\brecovery\b|\boff\b/.test(normalized)) return ["rest"];
+  if (/\bpush\b|\bchest\b|\btricep/.test(normalized)) keys.push("push");
+  if (/\bpull\b|\bback\b|\bbicep|\bforearm/.test(normalized)) keys.push("pull");
+  if (/\bleg\b|\blower\b|\bquad|\bhamstring|\bglute|\bcalf/.test(normalized)) keys.push("legs");
+  if (/\bupper\b/.test(normalized)) keys.push("upper");
+  if (/\blower\b/.test(normalized)) keys.push("lower");
+  if (/\bshoulder|\bdelt/.test(normalized)) keys.push("shoulders");
+  if (/\barm\b|\bbicep|\btricep|\bforearm/.test(normalized)) keys.push("arms");
+  if (/\bcore\b|\babs?\b/.test(normalized)) keys.push("core");
+  if (/\bcardio\b|\bconditioning\b|\brun\b|\bbike\b/.test(normalized)) keys.push("cardio");
+  if (/\bfull\b/.test(normalized)) keys.push("full");
+
+  return [...new Set(keys)].filter(Boolean);
+}
+
+function isGenericVisionExerciseName(name = "") {
+  const normalized = String(name || "").trim().toLowerCase();
+  if (!normalized) return true;
+
+  return /^(gym routine|routine|workout|session|training|exercise|day\s*\d+|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/i.test(
+    normalized
+  );
+}
+
+function createVisionExerciseFromTuple(tuple = []) {
+  return {
+    name: tuple[0] || "Exercise",
+    sets: Number(tuple[1]) || 3,
+    reps: Number(tuple[2]) || 10,
+    rpe: Number(tuple[3]) || 8,
+    rest_seconds: Number(tuple[4]) || 90,
+    notes: "",
+  };
+}
+
+function inferVisionExercises(dayName = "", focusSummary = "") {
+  const themeKeys = getVisionThemeKeys(dayName, focusSummary).filter(
+    (key) => key !== "rest"
+  );
+
+  if (!themeKeys.length) {
+    return VISION_THEME_EXERCISE_BANK.full.slice(0, 4).map(createVisionExerciseFromTuple);
+  }
+
+  const merged = [];
+  themeKeys.forEach((key) => {
+    (VISION_THEME_EXERCISE_BANK[key] || []).forEach((tuple) => {
+      if (!merged.some((item) => item[0] === tuple[0])) {
+        merged.push(tuple);
+      }
+    });
+  });
+
+  return merged.slice(0, 5).map(createVisionExerciseFromTuple);
+}
+
+function normalizeVisionExerciseCandidate(exercise = {}) {
+  const normalizedName = String(exercise?.name || "").trim();
+
+  return {
+    name: normalizedName,
+    sets: Number(exercise?.sets) || 3,
+    reps: Number(exercise?.reps) || 10,
+    rpe: Number(exercise?.rpe) || 8,
+    rest_seconds: Number(exercise?.rest_seconds) || 90,
+    notes: String(exercise?.notes || "").trim(),
+  };
+}
+
+function normalizeVisionInterpretationPayload(payload = {}) {
+  const routineName = String(
+    payload?.routine_name || payload?.name || "Imported Routine Draft"
+  ).trim();
+
+  const days = (Array.isArray(payload?.days) ? payload.days : [])
+    .map((day, index) => {
+      const dayName = String(day?.day_name || `Day ${index + 1}`).trim();
+      const focusSummary = String(day?.focus_summary || "").trim();
+      const isRestDay = Boolean(day?.is_rest_day) || /\brest\b|\brecovery\b|\boff\b/i.test(dayName);
+      const exercises = (Array.isArray(day?.exercises) ? day.exercises : [])
+        .map(normalizeVisionExerciseCandidate)
+        .filter((exercise) => !isGenericVisionExerciseName(exercise.name));
+
+      return {
+        day_name: dayName,
+        focus_summary: focusSummary,
+        target_muscles: Array.isArray(day?.target_muscles) ? day.target_muscles.filter(Boolean) : [],
+        is_rest_day: isRestDay,
+        exercises,
+      };
+    })
+    .filter((day) => day.day_name);
+
+  return {
+    routine_name: routineName || "Imported Routine Draft",
+    days,
+  };
+}
+
+function mergeVisionInterpretations(candidates = []) {
+  const mergedDays = [];
+  const seenDayKeys = new Map();
+  let routineName = "Imported Routine Draft";
+
+  candidates.forEach((candidate) => {
+    if (candidate?.routine_name && routineName === "Imported Routine Draft") {
+      routineName = candidate.routine_name;
+    }
+
+    (candidate?.days || []).forEach((day) => {
+      const key = String(day?.day_name || "").trim().toLowerCase();
+      if (!key) return;
+
+      if (!seenDayKeys.has(key)) {
+        seenDayKeys.set(key, mergedDays.length);
+        mergedDays.push({
+          day_name: day.day_name,
+          focus_summary: day.focus_summary || "",
+          target_muscles: Array.isArray(day.target_muscles) ? [...day.target_muscles] : [],
+          is_rest_day: Boolean(day.is_rest_day),
+          exercises: Array.isArray(day.exercises) ? [...day.exercises] : [],
+        });
+        return;
+      }
+
+      const existing = mergedDays[seenDayKeys.get(key)];
+      existing.focus_summary = existing.focus_summary || day.focus_summary || "";
+      existing.target_muscles = [...new Set([...(existing.target_muscles || []), ...(day.target_muscles || [])].filter(Boolean))];
+      existing.is_rest_day = existing.is_rest_day || Boolean(day.is_rest_day);
+
+      (day.exercises || []).forEach((exercise) => {
+        if (!existing.exercises.some((item) => item.name.toLowerCase() === exercise.name.toLowerCase())) {
+          existing.exercises.push(exercise);
+        }
+      });
+    });
+  });
+
+  return {
+    routine_name: routineName,
+    days: mergedDays,
+  };
+}
+
+function buildFallbackProgramFromVisionInterpretation(candidate = {}) {
+  const days = (candidate?.days || []).map((day) => {
+    if (day.is_rest_day) {
+      return {
+        day_name: day.day_name || "Rest Day",
+        target_muscles: [],
+        exercises: [],
+      };
+    }
+
+    const exercises = Array.isArray(day.exercises) && day.exercises.length
+      ? day.exercises
+      : inferVisionExercises(day.day_name, day.focus_summary);
+
+    return {
+      day_name: day.day_name || "Training Day",
+      target_muscles: Array.isArray(day.target_muscles) && day.target_muscles.length
+        ? day.target_muscles
+        : getVisionThemeKeys(day.day_name, day.focus_summary).filter((key) => key !== "rest"),
+      exercises,
+    };
+  });
+
+  return normalizeVisionProgramPayload({
+    name: candidate?.routine_name || "Imported Routine Draft",
+    days,
+  });
+}
+
+function stringifyVisionInterpretation(candidate = {}) {
+  return (candidate?.days || [])
+    .map((day) => {
+      if (day.is_rest_day) {
+        return `${day.day_name}\n- Rest day`;
+      }
+
+      const lines = [`${day.day_name}${day.focus_summary ? ` — ${day.focus_summary}` : ""}`];
+      if (Array.isArray(day.exercises) && day.exercises.length) {
+        day.exercises.forEach((exercise) => {
+          lines.push(
+            `- ${exercise.name} — ${exercise.sets} x ${exercise.reps}${exercise.notes ? ` — ${exercise.notes}` : ""}`
+          );
+        });
+      } else {
+        lines.push("- Theme only — exercises still need to be inferred");
+      }
+      return lines.join("\n");
+    })
+    .join("\n\n")
+    .trim();
 }
 
 function normalizeVisionProgramPayload(program = {}) {
@@ -1977,6 +2279,35 @@ async function repairVisionProgramJson(rawOutput) {
   const repairedContent = repaired?.choices?.[0]?.message?.content?.trim();
   if (!repairedContent) {
     throw new Error("Vision JSON repair returned empty output");
+  }
+
+  return JSON.parse(repairedContent);
+}
+
+async function repairVisionInterpretationJson(rawOutput) {
+  const repaired = await callGroq({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You repair malformed JSON for workout screenshot interpretation. Return ONLY valid JSON with keys routine_name and days[]. Each day may contain day_name, focus_summary, target_muscles, is_rest_day, and exercises[].",
+      },
+      {
+        role: "user",
+        content: `Fix this into valid JSON only:\n\n${extractJsonCandidate(rawOutput)}`,
+      },
+    ],
+    model: MODEL,
+    temperature: 0.1,
+    max_tokens: 2400,
+    response_format: { type: "json_object" },
+  }, {
+    timeoutMs: 20000,
+  });
+
+  const repairedContent = repaired?.choices?.[0]?.message?.content?.trim();
+  if (!repairedContent) {
+    throw new Error("Vision interpretation repair returned empty output");
   }
 
   return JSON.parse(repairedContent);
@@ -2170,32 +2501,44 @@ Rules:
 }
 
 export async function generateProgramFromImages(base64Images, options = {}) {
-  const OCR_PROMPT = `You are REPMAX Vision OCR.
+  const INTERPRET_SCREENSHOT_PROMPT = `You are REPMAX Vision Interpreter.
 
-Read the workout text visible in these images and return plain text only.
+Read ONE workout routine screenshot and return ONLY valid JSON in this shape:
+{
+  "routine_name": "Optional routine name",
+  "days": [
+    {
+      "day_name": "Friday: Bicep, Back, Forearm, Cardio",
+      "focus_summary": "biceps, back, forearms, cardio",
+      "target_muscles": ["back", "biceps", "forearms"],
+      "is_rest_day": false,
+      "exercises": [
+        {
+          "name": "Barbell Row",
+          "sets": 4,
+          "reps": 8,
+          "rpe": 8,
+          "rest_seconds": 120,
+          "notes": ""
+        }
+      ]
+    }
+  ]
+}
 
 Rules:
-- Preserve the visible routine name if there is one.
-- Preserve the schedule order exactly as shown.
-- For each visible workout day, keep the day heading exactly as shown.
-- If exercises are listed under a day, include EVERY visible exercise line under that day.
-- If sets, reps, tempos, supersets, rest times, notes, or intensity cues are visible, preserve them on the same line.
-- Use a readable structure like:
-  Day 1 - Upper Body
-  - Push-Up — 3 x 12
-  - Pike Push-Up — 3 x 10
-  Day 2 - Lower Body
-  - Bodyweight Squat — 4 x 15
-- Keep "Rest" days as rest.
-- Keep any visible notes like "Try an advanced move".
-- If multiple exercises are clearly visible, do NOT summarize the day as just "Upper Body" or "Leg Day".
-- Do NOT output JSON.
-- Do NOT invent exercises yet.
-- Do NOT explain anything. Return only the extracted routine text.`;
+- Ignore app chrome, buttons, counters, progress, and timer UI.
+- Keep only actual routine information.
+- Preserve clearly visible exercise names, sets, reps, rest, and notes when they are readable.
+- If the screenshot only shows a day heading or a body-part theme, still create the day entry.
+- In that case leave exercises empty and fill focus_summary instead of inventing generic names like "Gym routine" or "Workout".
+- Keep rest days as rest days.
+- Do not explain anything.
+- Return JSON only.`;
 
-  const TEXT_TO_PROGRAM_PROMPT = `You are REPMAX Program Builder.
+  const INTERPRETATION_TO_PROGRAM_PROMPT = `You are REPMAX Program Builder.
 
-Turn the extracted workout text below into a valid JSON program for the REPMAX app.
+Turn the interpreted screenshot data below into a valid JSON program for the REPMAX app.
 
 Rules:
 - Output ONLY valid JSON.
@@ -2205,16 +2548,15 @@ Rules:
     "split_type": "custom",
     "weeks": [...]
   }
-- If the extracted text clearly lists exercises for a day, preserve ALL of those visible exercises in the JSON.
-- Do NOT compress a detailed day into a generic theme day.
-- If the text only gives workout themes like "Upper Body", "Lower Body", "Core", "Cardio + Core", or "Upper Body + Lower Body", invent sensible bodyweight or minimal-equipment exercises for that theme.
+- Preserve explicit exercises when the screenshots clearly show them.
+- If a day only has a theme or focus summary, infer a realistic set of exercises for that day instead of keeping vague labels.
+- Never use generic exercise names like "Gym routine", "Workout", or "Routine" as final exercises.
 - Rest days should remain in the schedule but may have zero exercises.
 - Every non-rest day must have at least 3 useful exercises.
-- If a day clearly shows more than 3 exercises, keep the full list instead of trimming it down.
-- Preserve the visible order of exercises within each day whenever possible.
-- Keep the schedule order from the extracted text.
+- Keep the visible schedule order.
 - If only one week is available, repeat it until there are 4 weeks.
-- Use sensible defaults for sets, reps, RPE, and rest seconds.`;
+- Use sensible defaults for sets, reps, RPE, and rest seconds.
+- Keep the plan realistic and clean enough to use immediately.`;
   const reportStage =
     typeof options?.onStage === "function" ? options.onStage : null;
   const safeImages = Array.isArray(base64Images)
@@ -2235,8 +2577,8 @@ Rules:
     const normalizedError = normalizeAiErrorPayload(
       error,
       stage === "draft"
-        ? "The screenshots were read, but the routine draft could not be built."
-        : "The screenshots could not be read clearly enough."
+        ? "The screenshots were interpreted, but the structured routine draft could not be built."
+        : "One of the screenshots could not be interpreted clearly enough."
     );
     const message = String(normalizedError.message || "").toLowerCase();
 
@@ -2268,10 +2610,10 @@ Rules:
       if (stage === "draft") {
         return {
           message:
-            "The screenshots were read, but building the routine draft took too long.",
+            "The screenshots were interpreted, but building the structured routine took too long.",
           stage,
           hint:
-            "Try the text import path or continue manually from the cleaned source below.",
+            "Try fewer screenshots, tighter crops, or continue from the interpreted draft below.",
           status: normalizedError.status,
           details: normalizedError.details,
           extractedText: normalizeImportedRoutineText(extractedText),
@@ -2279,7 +2621,7 @@ Rules:
       }
 
       return {
-        message: `Screenshot ${meta.current || 1} of ${meta.total || safeImages.length} took too long to read.`,
+        message: `Screenshot ${meta.current || 1} of ${meta.total || safeImages.length} took too long to interpret.`,
         stage,
         hint: "Try fewer screenshots, tighter crops, or the text import path.",
         status: normalizedError.status,
@@ -2288,16 +2630,16 @@ Rules:
       };
     }
 
-    return {
-      message:
-        stage === "draft"
-          ? "The screenshots were read, but the routine draft still needs manual cleanup."
-          : "One of the screenshots could not be read cleanly enough yet.",
+      return {
+        message:
+          stage === "draft"
+          ? "The screenshots were interpreted, but the final routine draft still needs help."
+          : "One of the screenshots could not be interpreted cleanly enough yet.",
       stage,
       hint:
         stage === "draft"
-          ? "Continue manually from the cleaned source below or retry with cleaner screenshots."
-          : "Retry with tighter crops or continue manually from the cleaned source below.",
+          ? "Continue manually from the interpreted structure below or retry with cleaner screenshots."
+          : "Retry with tighter crops or continue manually from the interpreted structure below.",
       status: normalizedError.status,
       details: normalizedError.details,
       extractedText: normalizeImportedRoutineText(extractedText),
@@ -2328,22 +2670,22 @@ Rules:
     };
   }
 
-  async function extractRoutineTextFromSingleImage(imageUrl, current, total) {
-    emitStage("reading", {
+  async function interpretSingleRoutineScreenshot(imageUrl, current, total) {
+    emitStage("interpreting", {
       current,
       total,
-      label: `Reading screenshot ${current} of ${total}`,
+      label: `Interpreting screenshot ${current} of ${total}`,
     });
 
     const data = await callGroq({
       messages: [
-        { role: "system", content: OCR_PROMPT },
+        { role: "system", content: INTERPRET_SCREENSHOT_PROMPT },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: `Read the workout text from screenshot ${current} of ${total}.`,
+              text: `Interpret screenshot ${current} of ${total} into structured day data.`,
             },
             {
               type: "image_url",
@@ -2354,24 +2696,34 @@ Rules:
       ],
       model: VISION_MODEL,
       temperature: 0.1,
-      max_tokens: 2200,
+      max_tokens: 2600,
+      response_format: { type: "json_object" },
     }, {
       preferServerApi: true,
       timeoutMs: 30000,
     });
 
-    return data?.choices?.[0]?.message?.content?.trim() || "";
+    const content = data?.choices?.[0]?.message?.content?.trim();
+    if (!content) {
+      throw new Error("Vision interpretation returned empty output");
+    }
+
+    try {
+      return normalizeVisionInterpretationPayload(JSON.parse(content));
+    } catch {
+      const repaired = await repairVisionInterpretationJson(content);
+      return normalizeVisionInterpretationPayload(repaired);
+    }
   }
 
-  async function buildProgramFromExtractedText(extractedText) {
-    const cleanedText = normalizeImportedRoutineText(extractedText);
+  async function buildProgramFromVisionInterpretation(interpretedRoutine) {
     emitStage("draft", { label: "Building routine draft" });
     const data = await callGroq({
       messages: [
-        { role: "system", content: TEXT_TO_PROGRAM_PROMPT },
+        { role: "system", content: INTERPRETATION_TO_PROGRAM_PROMPT },
         {
           role: "user",
-          content: `Extracted routine text:\n\n${cleanedText}`,
+          content: `Interpreted screenshot data:\n\n${JSON.stringify(interpretedRoutine, null, 2)}`,
         },
       ],
       model: MODEL,
@@ -2385,12 +2737,18 @@ Rules:
 
     const content = data?.choices?.[0]?.message?.content?.trim();
     if (!content) {
-      throw new Error("Routine text conversion returned empty output");
+      throw new Error("Vision routine draft returned empty output");
+    }
+
+    let parsedProgram;
+    try {
+      parsedProgram = JSON.parse(content);
+    } catch {
+      parsedProgram = await repairVisionProgramJson(content);
     }
 
     return {
-      parsedProgram: JSON.parse(content),
-      cleanedText,
+      parsedProgram,
     };
   }
 
@@ -2400,24 +2758,25 @@ Rules:
     label: "Optimizing screenshots",
   });
 
-  const extractedChunks = [];
+  const interpretedChunks = [];
   for (let index = 0; index < safeImages.length; index += 1) {
     try {
-      const chunk = await extractRoutineTextFromSingleImage(
+      const chunk = await interpretSingleRoutineScreenshot(
         safeImages[index],
         index + 1,
         safeImages.length
       );
-      if (chunk) extractedChunks.push(chunk);
+      if (chunk?.days?.length) interpretedChunks.push(chunk);
     } catch (error) {
       const importError = buildVisionImportError(
         error,
-        "ocr",
-        extractedChunks.join("\n\n"),
+        "interpret",
+        stringifyVisionInterpretation(mergeVisionInterpretations(interpretedChunks)),
         { current: index + 1, total: safeImages.length }
       );
 
-      console.error("Vision OCR failed:", importError.message, importError.details);
+      console.error("Vision interpretation failed:", importError.message, importError.details);
+      const mergedInterpretation = mergeVisionInterpretations(interpretedChunks);
       return {
         success: false,
         error: {
@@ -2426,33 +2785,37 @@ Rules:
           hint: importError.hint,
           status: importError.status,
           details: importError.details,
+          fallbackProgram: mergedInterpretation.days.length
+            ? buildFallbackProgramFromVisionInterpretation(mergedInterpretation)
+            : null,
         },
         extractedText: importError.extractedText,
       };
     }
   }
 
-  const extractedText = normalizeImportedRoutineText(extractedChunks.join("\n\n"));
-  if (!extractedText) {
+  const mergedInterpretation = mergeVisionInterpretations(interpretedChunks);
+  const extractedText = stringifyVisionInterpretation(mergedInterpretation);
+  if (!mergedInterpretation.days.length) {
     return {
       success: false,
       error: {
-        message: "The screenshots did not produce enough readable routine text yet.",
-        stage: "ocr",
-        hint: "Try tighter crops with the workout text filling more of the image.",
+        message: "The screenshots did not produce enough usable routine structure yet.",
+        stage: "interpret",
+        hint: "Try tighter crops with the actual routine filling more of the image.",
       },
       extractedText: "",
     };
   }
 
   try {
-    const { parsedProgram, cleanedText } = await buildProgramFromExtractedText(
-      extractedText
+    const { parsedProgram } = await buildProgramFromVisionInterpretation(
+      mergedInterpretation
     );
     return {
       success: true,
       program: normalizeVisionProgramPayload(parsedProgram),
-      extractedText: cleanedText,
+      extractedText,
     };
   } catch (error) {
     const importError = buildVisionImportError(error, "draft", extractedText);
@@ -2465,6 +2828,7 @@ Rules:
         hint: importError.hint,
         status: importError.status,
         details: importError.details,
+        fallbackProgram: buildFallbackProgramFromVisionInterpretation(mergedInterpretation),
       },
       extractedText: importError.extractedText,
     };

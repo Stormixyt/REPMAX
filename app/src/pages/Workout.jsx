@@ -178,6 +178,7 @@ export default function Workout() {
   const completedCount = sets.filter(s => s.completed).length
   const totalSets = sets.length
   const progress = totalSets > 0 ? (completedCount / totalSets) * 100 : 0
+  const exerciseEntries = Object.entries(exercises)
 
   if (loading) {
     return (
@@ -252,58 +253,76 @@ export default function Workout() {
   }
 
   return (
-    <div className="page" style={{ paddingTop: 12, paddingBottom: 100 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="page workout-shell">
+      <header className="workout-topbar">
+        <div className="workout-topbar-main">
           {!focusMode && (
-            <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: 4 }}>
+            <button className="workout-back-btn" onClick={() => navigate(-1)}>
               <RiArrowLeftLine size={22} />
             </button>
           )}
-          <div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{workout?.day_name || 'Workout'}</h1>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: 0 }}>Week {workout?.week_number || 1} / {formatTime(elapsed)}</p>
+          <div className="workout-title-block">
+            <div className="workout-kicker">Week {workout?.week_number || 1}</div>
+            <h1 className="workout-title">{workout?.day_name || 'Workout'}</h1>
+            <p className="workout-subtitle">{formatTime(elapsed)} live session · {exerciseEntries.length} exercises loaded</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setFocusMode(!focusMode)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: focusMode ? 'var(--accent)' : 'var(--text-tertiary)', padding: '8px', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Focus Mode">
+        <div className="workout-header-actions">
+          <button
+            className={`workout-action-chip ${focusMode ? 'active' : ''}`}
+            onClick={() => setFocusMode(!focusMode)}
+            title="Focus Mode"
+          >
             {focusMode ? <RiEyeOffLine size={18} /> : <RiEyeLine size={18} />}
           </button>
-          <button onClick={() => setShowTimer(true)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--accent)', padding: '8px 14px', borderRadius: 10, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <RiTimerFlashFill size={16} /> Rest
+          <button className="workout-action-chip workout-action-chip-rest" onClick={() => setShowTimer(true)}>
+            <RiTimerFlashFill size={16} />
+            Rest
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Progress bar */}
-      <div style={{ height: 4, background: 'var(--bg-elevated)', borderRadius: 99, marginBottom: 20, overflow: 'hidden' }}>
-        <div style={{ width: `${progress}%`, height: '100%', background: progress === 100 ? 'var(--success)' : 'var(--accent)', borderRadius: 99, transition: 'width 0.4s ease' }} />
-      </div>
+      <section className="workout-progress-shell">
+        <div className="workout-progress-copy">
+          <span>Session progress</span>
+          <strong>{completedCount}/{totalSets} sets</strong>
+        </div>
+        <div className="workout-progress-track">
+          <div
+            className="workout-progress-fill"
+            style={{ width: `${progress}%`, background: progress === 100 ? 'var(--success)' : 'var(--accent)' }}
+          />
+        </div>
+      </section>
 
-      {/* Exercises */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {Object.entries(exercises).map(([exerciseName, exerciseSets]) => {
+      <div className="workout-card-stack">
+        {exerciseEntries.map(([exerciseName, exerciseSets], exerciseIndex) => {
           const doneSets = exerciseSets.filter(s => s.completed).length
           const allDone = doneSets === exerciseSets.length
 
           return (
             <div key={exerciseName} className={`exercise-card ${allDone ? 'done' : ''}`}>
-              {/* Exercise header */}
               <div className="exercise-header">
-                <div>
+                <div className="exercise-header-main">
+                  <div className="exercise-kicker">Exercise {exerciseIndex + 1}</div>
                   <div className="exercise-name" style={{ color: allDone ? 'var(--success)' : 'var(--text-primary)' }}>{exerciseName}</div>
-                  <div style={{ fontSize: '0.73rem', color: 'var(--text-tertiary)', marginTop: 2 }}>{exerciseSets.length} sets / {exerciseSets[0]?.target_reps || '?'} reps</div>
+                  <div className="exercise-meta-row">
+                    <span className="exercise-meta-chip">{exerciseSets.length} sets</span>
+                    <span className="exercise-meta-chip">{exerciseSets[0]?.target_reps || '?'} reps</span>
+                    {ghostData[`${exerciseName}_${exerciseSets[0]?.set_number}`] && (
+                      <span className="exercise-meta-chip ghost">Ghost loaded</span>
+                    )}
+                  </div>
                 </div>
                 <div className="exercise-counter" style={{ color: allDone ? 'var(--success)' : 'var(--accent)' }}>{doneSets}/{exerciseSets.length}</div>
               </div>
 
-              <div style={{ padding: '0 16px' }}>
+              <div className="exercise-body">
                 <div className="set-header-row">
                   <div style={{ width: 28 }}>Set</div>
                   <div style={{ flex: 1, textAlign: 'center' }}>Weight</div>
                   <div style={{ flex: 1, textAlign: 'center' }}>Reps</div>
-                  <div style={{ width: 48 }}></div>
+                  <div style={{ width: 48, textAlign: 'right' }}>Done</div>
                 </div>
 
                 {exerciseSets.map(set => {
@@ -313,10 +332,10 @@ export default function Workout() {
 
                   return (
                     <div key={set.id} className={`set-row ${beaten ? 'ghost-beaten' : ''}`}>
-                      <div style={{ width: 28, fontWeight: 700, fontSize: '0.85rem', color: set.completed ? 'var(--success)' : 'var(--text-secondary)' }}>
+                      <div className="set-row-number" style={{ color: set.completed ? 'var(--success)' : 'var(--text-secondary)' }}>
                         {set.set_number}
                       </div>
-                      <div style={{ flex: 1, position: 'relative' }}>
+                      <div className="set-row-field">
                         <input
                           type="number" inputMode="decimal"
                           placeholder={String(set.target_weight || '—')}
@@ -329,7 +348,7 @@ export default function Workout() {
                           <div className="ghost-hint">{ghost.weight}</div>
                         )}
                       </div>
-                      <div style={{ flex: 1, position: 'relative' }}>
+                      <div className="set-row-field">
                         <input
                           type="number" inputMode="numeric"
                           placeholder={String(set.target_reps || '—')}
@@ -356,8 +375,7 @@ export default function Workout() {
         })}
       </div>
 
-      {/* Finish button */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px 20px', background: 'linear-gradient(transparent, var(--bg-primary) 30%)', paddingTop: 40, zIndex: 20 }}>
+      <div className="workout-footer-bar">
         <button className="btn btn-primary btn-full btn-lg" onClick={finishWorkout} disabled={completedCount === 0} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <RiFlashlightFill size={18} /> Finish Workout ({completedCount}/{totalSets})
         </button>

@@ -37,12 +37,30 @@ export default function ThemeSelector() {
     ? 'ultra-signature'
     : 'default'
 
+  function syncAppearanceChange(work) {
+    if (typeof document !== 'undefined') {
+      document.body.classList.add('appearance-syncing')
+    }
+
+    const finish = () => {
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => {
+          document.body.classList.remove('appearance-syncing')
+        }, 180)
+      } else if (typeof document !== 'undefined') {
+        document.body.classList.remove('appearance-syncing')
+      }
+    }
+
+    return Promise.resolve(work()).finally(finish)
+  }
+
   async function handleThemeChange(id) {
     if (!isPro || savingTheme === id) return
 
     setSavingTheme(id)
     try {
-      await updateProfile({ theme_color: id })
+      await syncAppearanceChange(() => updateProfile({ theme_color: id }))
     } finally {
       setSavingTheme('')
     }
@@ -53,7 +71,7 @@ export default function ThemeSelector() {
 
     setSavingSkin(id)
     try {
-      await updateProfile({ interface_skin: id })
+      await syncAppearanceChange(() => updateProfile({ interface_skin: id }))
     } finally {
       setSavingSkin('')
     }
@@ -143,16 +161,22 @@ export default function ThemeSelector() {
                 <span className="theme-style-preview-pill" />
               </div>
 
-              <div className="theme-style-copy">
-                <div className="theme-style-name">
-                  {style.name}
-                  {style.id === 'ultra-signature' && <RiSparklingFill size={14} />}
+              <div className="theme-style-copy-shell">
+                <div className="theme-style-head">
+                  <div className="theme-style-name">
+                    {style.name}
+                    {style.id === 'ultra-signature' && <RiSparklingFill size={14} />}
+                  </div>
+                  <div className="theme-style-indicator">
+                    {currentInterfaceSkin === style.id ? <RiCheckFill size={16} /> : !isUltra ? <RiLock2Line size={16} /> : null}
+                  </div>
                 </div>
-                <div className="theme-style-description">{style.description}</div>
-              </div>
-
-              <div className="theme-style-indicator">
-                {currentInterfaceSkin === style.id ? <RiCheckFill size={16} /> : !isUltra ? <RiLock2Line size={16} /> : null}
+                <div className="theme-style-copy">
+                  <div className="theme-style-helper">
+                    {style.id === 'default' ? 'Restrained premium shell' : 'High-contrast luxury shell'}
+                  </div>
+                  <div className="theme-style-description">{style.description}</div>
+                </div>
               </div>
             </button>
           ))}
