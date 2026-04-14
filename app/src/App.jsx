@@ -24,7 +24,7 @@ import UltraLab from './pages/UltraLab'
 import Layout from './components/Layout'
 import CallScreen from './components/CallScreen'
 import UsernameModal from './components/UsernameModal'
-import { syncPushSubscription } from './lib/pushNotifications'
+import { syncPushSubscription, showLocalNotification } from './lib/pushNotifications'
 
 export default function App() {
   const { user, profile, loading, isOnboarded, needsUsername, fetchProfile, isAdmin, isPro, isUltra } = useAuth()
@@ -32,6 +32,8 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const [incomingCallPrompt, setIncomingCallPrompt] = useState(null)
+  const [messageBanner, setMessageBanner] = useState(null)
+  const messageBannerTimerRef = useRef(null)
   const activeCallChannelRef = useRef(null)
   const activeCallRef = useRef(null)
 
@@ -52,7 +54,8 @@ export default function App() {
       'tier-pro',
       'tier-ultra',
       'skin-default',
-      'skin-ultra-signature'
+      'skin-ultra-signature',
+      'skin-v5'
     )
 
     if (profile?.theme_color) {
@@ -69,8 +72,9 @@ export default function App() {
       document.body.classList.add('tier-free')
     }
 
-    const interfaceSkin = isUltra && profile?.interface_skin === 'ultra-signature'
-      ? 'skin-ultra-signature'
+    const skinValue = profile?.interface_skin
+    const interfaceSkin = isUltra && (skinValue === 'ultra-signature' || skinValue === 'v5')
+      ? `skin-${skinValue}`
       : 'skin-default'
 
     document.body.classList.add(interfaceSkin)
@@ -129,6 +133,57 @@ export default function App() {
       document.removeEventListener('visibilitychange', resyncPush)
     }
   }, [user?.id])
+
+  // ── Global message notification listener ──
+  // Shows an in-app banner + local browser notification when someone messages you
+  // and you're NOT on that chat page.
+  useEffect(() => {
+    if (!user?.id) return undefined
+
+    const channel = supabase
+      .channel(`global-messages-${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`
+      }, ({ new: notif }) => {
+        // Only handle chat messages, not calls (those are handled separately)
+        if (notif.type === 'incoming_call') return
+        if (notif.read) return
+
+        const chatId = notif.data?.chat_id
+        const chatPath = chatId ? `/chat/${chatId}` : null
+
+        // Don't show banner if user is already in that chat
+        if (chatPath && location.pathname === chatPath) return
+
+        // Show in-app banner
+        setMessageBanner({
+          id: notif.id,
+          title: notif.title || 'New Message',
+          body: notif.body || 'You have a new message',
+          chatId,
+          type: notif.type
+        })
+
+        // Auto-dismiss after 5s
+        if (messageBannerTimerRef.current) clearTimeout(messageBannerTimerRef.current)
+        messageBannerTimerRef.current = setTimeout(() => setMessageBanner(null), 5000)
+
+        // Also fire a local browser notification (shows on phone notification tray)
+        showLocalNotification(notif.title || 'REPMAX', notif.body || 'New message', {
+          tag: `msg-${notif.id}`,
+          data: { url: chatPath || '/app' }
+        })
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+      if (messageBannerTimerRef.current) clearTimeout(messageBannerTimerRef.current)
+    }
+  }, [user?.id, location.pathname])
 
   useEffect(() => {
     if (!user?.id) {
@@ -405,6 +460,21 @@ export default function App() {
       )}
 
       {callToast && <div className="toast fade-in">{callToast}</div>}
+
+      {/* In-app message notification banner */}
+      {messageBanner && (
+        <div className="message-banner" onClick={() => {
+          if (messageBanner.chatId) navigate(`/chat/${messageBanner.chatId}`)
+          setMessageBanner(null)
+        }}>
+          <div className="message-banner-icon">💬</div>
+          <div className="message-banner-content">
+            <div className="message-banner-title">{messageBanner.title}</div>
+            <div className="message-banner-body">{messageBanner.body}</div>
+          </div>
+          <button className="message-banner-close" onClick={(e) => { e.stopPropagation(); setMessageBanner(null) }}>✕</button>
+        </div>
+      )}
 
       {/* Username modal — blocks the app until user picks a username */}
       {needsUsername && (

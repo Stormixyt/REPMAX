@@ -416,7 +416,7 @@ export default function Settings() {
 
       {/* App Info */}
       <div style={{ textAlign: 'center', padding: '24px 0 40px' }}>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>REPMAX v2.0 · Made with grit</div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>REPMAX v5.0 · Made with grit</div>
       </div>
 
       {/* Admin Panel — only visible to admin */}

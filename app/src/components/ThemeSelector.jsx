@@ -25,6 +25,12 @@ const INTERFACE_STYLES = [
     description: 'Richer contrast, deeper glow, and the full REPMAX luxury performance skin.',
     previewClass: 'ultra-signature',
   },
+  {
+    id: 'v5',
+    name: 'V5',
+    description: 'Deeper blacks, glass-morphism cards, and a tighter visual system. The future of REPMAX.',
+    previewClass: 'v5',
+  },
 ]
 
 export default function ThemeSelector() {
@@ -33,8 +39,8 @@ export default function ThemeSelector() {
   const [savingSkin, setSavingSkin] = useState('')
 
   const currentTheme = profile?.theme_color || 'green'
-  const currentInterfaceSkin = isUltra && profile?.interface_skin === 'ultra-signature'
-    ? 'ultra-signature'
+  const currentInterfaceSkin = isUltra && (profile?.interface_skin === 'ultra-signature' || profile?.interface_skin === 'v5')
+    ? profile.interface_skin
     : 'default'
 
   function syncAppearanceChange(work) {
