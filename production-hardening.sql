@@ -10,8 +10,11 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pro_requested_at timestamptz DEFAU
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pro_approved_by uuid DEFAULT NULL REFERENCES profiles(id);
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pro_rejection_reason text DEFAULT NULL;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unit_preference text DEFAULT 'kg' CHECK (unit_preference IN ('kg', 'lbs'));
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS interface_skin text DEFAULT 'default' CHECK (interface_skin IN ('default', 'ultra-signature'));
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS interface_skin text DEFAULT 'default' CHECK (interface_skin IN ('default', 'ultra-signature', 'v5'));
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS onboarding_type text DEFAULT NULL CHECK (onboarding_type IN ('quick', 'advanced'));
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bio text DEFAULT '';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_emoji text DEFAULT '';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_badge text DEFAULT '';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS learned_preferences jsonb DEFAULT '{}';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS workouts_since_last_learn int DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS height_cm numeric DEFAULT NULL;
