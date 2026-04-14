@@ -22,6 +22,8 @@ import {
   RiArrowDownLine,
   RiEqualizerLine,
   RiCalendarLine,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
   RiMoonFill,
   RiSunFill,
   RiTimeFill,
@@ -154,18 +156,16 @@ async function searchOpenFoodFacts(query) {
 }
 
 // Translate any query to English for database search
+const _translationCache = new Map();
 async function translateQuery(query) {
-  // Quick ASCII check — if all ASCII printable, likely already English
-  if (/^[\x20-\x7E]+$/.test(query)) {
-    return { english: query, is_english: true, original_lang: "English" };
-  }
+  if (_translationCache.has(query)) return _translationCache.get(query);
   try {
     const data = await callGroq({
       messages: [
         {
           role: "system",
           content:
-            'You are a translator. Detect the language of the food query and translate it to English. Return ONLY valid JSON with no extra text: {"english":"translated text","is_english":false,"original_lang":"detected language name"}',
+            'You are a translator. Detect the language of the food query and translate it to English. If the query is already in English, still return it. Return ONLY valid JSON with no extra text: {"english":"translated text","is_english":true/false,"original_lang":"detected language name"}',
         },
         { role: "user", content: `Food query: ${query}` },
       ],
@@ -174,9 +174,12 @@ async function translateQuery(query) {
       max_tokens: 120,
       response_format: { type: "json_object" },
     });
-    return JSON.parse(data.choices[0].message.content);
+    const result = JSON.parse(data.choices[0].message.content);
+    _translationCache.set(query, result);
+    return result;
   } catch {
-    return { english: query, is_english: true, original_lang: "Unknown" };
+    const fallback = { english: query, is_english: true, original_lang: "Unknown" };
+    return fallback;
   }
 }
 
@@ -237,6 +240,13 @@ function buildDraftNutritionSetup(profile = {}) {
   };
 }
 
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+function toDateStr(d) { return d.toISOString().split("T")[0]; }
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function isSameDay(a, b) { return toDateStr(a) === toDateStr(b); }
+function isToday(d) { return isSameDay(d, new Date()); }
+const DAY_NAMES_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Nutrition() {
   const { user, profile, isPro } = useAuth();
@@ -259,7 +269,16 @@ export default function Nutrition() {
   const [waterGlasses, setWaterGlasses] = useState(0);
   const [savedMeals, setSavedMeals] = useState([]);
   const [setupSource, setSetupSource] = useState("manual");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [loggedDates, setLoggedDates] = useState(new Set());
   const mounted = useRef(true);
+
+  const selectedDateStr = toDateStr(selectedDate);
+  const isViewingToday = isToday(selectedDate);
+  const canAddFood = (() => {
+    const diff = (new Date().setHours(0,0,0,0) - new Date(selectedDateStr).getTime()) / 86400000;
+    return diff <= 3;
+  })();
 
   const [setupForm, setSetupForm] = useState({
     age: "",
@@ -274,7 +293,7 @@ export default function Nutrition() {
     mounted.current = true;
     loadNutrition();
     return () => { mounted.current = false; };
-  }, []);
+  }, [selectedDateStr]);
 
   useEffect(() => {
     if (nutProfile || !showSetup || setupSource !== "manual") return;
@@ -291,7 +310,7 @@ export default function Nutrition() {
 
   async function loadNutrition() {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const dateStr = selectedDateStr;
       const [npRes, logsRes] = await Promise.all([
         supabase
           .from("nutrition_profiles")
@@ -302,7 +321,7 @@ export default function Nutrition() {
           .from("food_logs")
           .select("*")
           .eq("user_id", user.id)
-          .eq("logged_at", today)
+          .eq("logged_at", dateStr)
           .order("created_at", { ascending: true }),
       ]);
       if (!mounted.current) return;
@@ -325,13 +344,14 @@ export default function Nutrition() {
       }
       setTodayLogs(logsRes.data || []);
 
-      // Load water for today
+      // Load water for selected date
       try {
         const { data: waterData } = await supabase
           .from('water_logs').select('glasses')
-          .eq('user_id', user.id).eq('logged_at', today).maybeSingle();
+          .eq('user_id', user.id).eq('logged_at', dateStr).maybeSingle();
         if (waterData) setWaterGlasses(waterData.glasses || 0);
-      } catch { /* water table may not exist yet */ }
+        else setWaterGlasses(0);
+      } catch { setWaterGlasses(0); }
 
       // Load saved meals
       try {
@@ -340,6 +360,21 @@ export default function Nutrition() {
           .eq('user_id', user.id).order('created_at', { ascending: false }).limit(10);
         if (meals) setSavedMeals(meals);
       } catch { /* saved_meals table may not exist yet */ }
+
+      // Load which of last 7 days have food logged (for calendar dots)
+      try {
+        const weekAgo = toDateStr(addDays(new Date(), -6));
+        const todayStr = toDateStr(new Date());
+        const { data: recentLogs } = await supabase
+          .from('food_logs')
+          .select('logged_at')
+          .eq('user_id', user.id)
+          .gte('logged_at', weekAgo)
+          .lte('logged_at', todayStr);
+        if (recentLogs) {
+          setLoggedDates(new Set(recentLogs.map(l => l.logged_at)));
+        }
+      } catch {}
     } catch (err) {
       console.error("Nutrition load error:", err);
     }
@@ -469,7 +504,7 @@ export default function Nutrition() {
       sugar: food.sugar || 0,
       meal_type: selectedMeal,
       source,
-      logged_at: new Date().toISOString().split("T")[0],
+      logged_at: selectedDateStr,
     });
     if (!error) {
       showToastMsg(`Added ${food.food_name}`);
@@ -494,9 +529,8 @@ export default function Nutrition() {
   async function addWaterGlass() {
     const newCount = waterGlasses + 1;
     setWaterGlasses(newCount);
-    const today = new Date().toISOString().split('T')[0];
     try {
-      await supabase.from('water_logs').upsert({ user_id: user.id, logged_at: today, glasses: newCount }, { onConflict: 'user_id,logged_at' });
+      await supabase.from('water_logs').upsert({ user_id: user.id, logged_at: selectedDateStr, glasses: newCount }, { onConflict: 'user_id,logged_at' });
     } catch { /* table may not exist yet */ }
   }
 
@@ -504,9 +538,8 @@ export default function Nutrition() {
     if (waterGlasses <= 0) return;
     const newCount = waterGlasses - 1;
     setWaterGlasses(newCount);
-    const today = new Date().toISOString().split('T')[0];
     try {
-      await supabase.from('water_logs').upsert({ user_id: user.id, logged_at: today, glasses: newCount }, { onConflict: 'user_id,logged_at' });
+      await supabase.from('water_logs').upsert({ user_id: user.id, logged_at: selectedDateStr, glasses: newCount }, { onConflict: 'user_id,logged_at' });
     } catch {}
   }
 
@@ -580,6 +613,44 @@ export default function Nutrition() {
           <RiEqualizerLine size={18} />
         </button>
       </div>
+
+      {/* ── Date Navigation ── */}
+      <div className="nutrition-date-nav">
+        <button className="date-nav-arrow" onClick={() => setSelectedDate(d => addDays(d, -1))}>
+          <RiArrowLeftSLine size={20} />
+        </button>
+        <div className="date-nav-days">
+          {Array.from({ length: 7 }).map((_, i) => {
+            const d = addDays(new Date(), i - 6);
+            const ds = toDateStr(d);
+            const active = ds === selectedDateStr;
+            const hasLog = loggedDates.has(ds);
+            return (
+              <button
+                key={ds}
+                className={`date-nav-pill ${active ? "active" : ""}`}
+                onClick={() => setSelectedDate(d)}
+              >
+                <span className="date-nav-day-name">{DAY_NAMES_SHORT[d.getDay()]}</span>
+                <span className="date-nav-day-num">{d.getDate()}</span>
+                {hasLog && <span className="date-nav-dot" />}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          className="date-nav-arrow"
+          onClick={() => { if (!isViewingToday) setSelectedDate(d => addDays(d, 1)); }}
+          disabled={isViewingToday}
+        >
+          <RiArrowRightSLine size={20} />
+        </button>
+      </div>
+      {!isViewingToday && (
+        <button className="btn btn-sm btn-ghost date-today-btn" onClick={() => setSelectedDate(new Date())}>
+          ← Back to Today
+        </button>
+      )}
 
       {/* ── Setup Modal ── */}
       {showSetup && (
@@ -893,17 +964,19 @@ export default function Nutrition() {
             })}
           </div>
 
-          {/* Today's food log */}
+          {/* Food log for selected date */}
           <div className="section-header-row">
             <h3 className="section-label-text">
-              <RiCalendarLine size={15} /> Today's Log
+              <RiCalendarLine size={15} /> {isViewingToday ? "Today's Log" : new Date(selectedDateStr + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
             </h3>
+            {canAddFood && (
             <button
               className="btn btn-primary btn-sm"
               onClick={() => setShowAddFood(true)}
             >
               <RiAddCircleFill size={15} /> Add Food
             </button>
+            )}
           </div>
 
           {MEAL_TYPES.map((meal) => {

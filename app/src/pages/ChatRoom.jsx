@@ -333,16 +333,17 @@ export default function ChatRoom() {
     setMessages(prev => [...prev, newMsg])
     requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }))
 
-    const { error } = await supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text' })
-    if (error) {
-      // Mark as failed
-      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _failed: true } : m))
-      return
-    }
+    // Fire insert + push in parallel so neither blocks the other
+    const [insertResult] = await Promise.allSettled([
+      supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text' }),
+      notifyChatRecipients(tempId, 'text', content).catch((notifyError) => {
+        console.warn('[REPMAX] Failed to notify chat recipients:', notifyError)
+      })
+    ])
 
-    notifyChatRecipients(tempId, 'text', content).catch((notifyError) => {
-      console.warn('[REPMAX] Failed to notify chat recipients:', notifyError)
-    })
+    if (insertResult.status === 'rejected' || insertResult.value?.error) {
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _failed: true } : m))
+    }
   }
 
   async function deleteMessage(msgId) {

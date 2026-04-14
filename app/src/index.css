@@ -3903,6 +3903,94 @@ body.coach-route-active.keyboard-open .coach-composer {
     background: #070707;
 }
 
+/* Date Navigation Strip */
+.nutrition-date-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 12px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+}
+.date-nav-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+.date-nav-arrow:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+}
+.date-nav-arrow:disabled {
+    opacity: 0.25;
+    cursor: default;
+}
+.date-nav-days {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    justify-content: space-between;
+}
+.date-nav-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 0;
+    min-width: 36px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-radius: 12px;
+    position: relative;
+    transition: all 0.2s;
+}
+.date-nav-pill:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+.date-nav-pill.active {
+    background: rgba(212, 255, 0, 0.12);
+    color: var(--accent);
+}
+.date-nav-day-name {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.date-nav-day-num {
+    font-size: 0.88rem;
+    font-weight: 800;
+    line-height: 1;
+}
+.date-nav-pill.active .date-nav-day-num {
+    color: white;
+}
+.date-nav-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    position: absolute;
+    bottom: 2px;
+}
+.date-today-btn {
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+    color: var(--accent);
+}
+
 /* Glass Modal */
 .glass-modal {
     background: rgba(30, 30, 30, 0.6);

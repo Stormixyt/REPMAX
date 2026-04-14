@@ -38,22 +38,45 @@ export async function triggerPushNotification({
   }
 
   try {
-    const data = await invokeEdgeFunction('send-push', {
-      notification: {
-        userIds: targets,
-        type,
-        title,
-        body,
-        data,
-        tag,
-        preferenceKey: ignorePreferences ? null : resolvePreferenceKey(type, preferenceKey),
-        requireInteraction,
-        renotify
-      }
-    }, {
-      timeoutMs: 12000,
-      requireAuth: true
-    })
+    let data
+    try {
+      data = await invokeEdgeFunction('send-push', {
+        notification: {
+          userIds: targets,
+          type,
+          title,
+          body,
+          data,
+          tag,
+          preferenceKey: ignorePreferences ? null : resolvePreferenceKey(type, preferenceKey),
+          requireInteraction,
+          renotify
+        }
+      }, {
+        timeoutMs: 12000,
+        requireAuth: true
+      })
+    } catch (firstError) {
+      // Retry once after a short delay
+      console.warn('[REPMAX] Push first attempt failed, retrying:', firstError)
+      await new Promise(r => setTimeout(r, 1500))
+      data = await invokeEdgeFunction('send-push', {
+        notification: {
+          userIds: targets,
+          type,
+          title,
+          body,
+          data: {},
+          tag,
+          preferenceKey: ignorePreferences ? null : resolvePreferenceKey(type, preferenceKey),
+          requireInteraction,
+          renotify
+        }
+      }, {
+        timeoutMs: 12000,
+        requireAuth: true
+      })
+    }
 
     return {
       error: null,
