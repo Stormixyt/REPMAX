@@ -12,6 +12,66 @@
   max-width: 860px;
 }
 
+/* ── Loading Hero ── */
+.ultra-loading-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 24px;
+  margin-top: 20px;
+  border-radius: 28px;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(156, 92, 255, 0.12) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(14, 10, 22, 0.96), rgba(8, 8, 12, 0.98));
+  border: 1px solid rgba(182, 123, 255, 0.12);
+}
+
+.ultra-loading-pulse {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: conic-gradient(#D7FF00 0 25%, rgba(156, 92, 255, 0.3) 25% 50%, rgba(255,255,255,0.05) 50% 100%);
+  animation: ultra-pulse-spin 1.5s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes ultra-pulse-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ultra-loading-kicker {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #d9a7ff;
+  margin-bottom: 8px;
+}
+
+.ultra-loading-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.ultra-loading-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.ultra-loading-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(156, 92, 255, 0.2), rgba(215, 255, 0, 0.15), rgba(156, 92, 255, 0.2));
+  background-size: 200% 100%;
+  animation: ultra-bar-shimmer 2s ease infinite;
+}
+
 .ultra-page-stack {
   display: grid;
   gap: 28px;
@@ -32,6 +92,18 @@
   background: rgba(156, 92, 255, 0.12);
   border-radius: 8px;
   width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ultra-lab-kicker {
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(156, 92, 255, 0.18), rgba(215, 255, 0, 0.06));
+  border: 1px solid rgba(182, 123, 255, 0.15);
+  font-size: 0.68rem;
+  margin-bottom: 8px;
 }
 
 /* ── Body Copy ── */

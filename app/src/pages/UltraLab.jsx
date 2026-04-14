@@ -1183,15 +1183,20 @@ export default function UltraLab() {
 
   if (loading) {
     return (
-      <div className="page">
+      <div className="page ultra-lab-page">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <RiArrowLeftLine size={20} /> Back
         </button>
-        <div className="page-header">
-          <h1 className="page-title">ULTRA <span className="accent">Lab</span></h1>
+        <div className="ultra-loading-hero">
+          <div className="ultra-loading-pulse" />
+          <div className="ultra-loading-kicker">ULTRA LAB</div>
+          <div className="ultra-loading-title">Initializing your analytics engine...</div>
+          <div className="ultra-loading-bars">
+            <div className="ultra-loading-bar" style={{ width: '80%', animationDelay: '0s' }} />
+            <div className="ultra-loading-bar" style={{ width: '60%', animationDelay: '0.15s' }} />
+            <div className="ultra-loading-bar" style={{ width: '90%', animationDelay: '0.3s' }} />
+          </div>
         </div>
-        <div className="skeleton" style={{ height: 180, borderRadius: 22, marginBottom: 16 }} />
-        <div className="skeleton" style={{ height: 240, borderRadius: 22 }} />
       </div>
     )
   }
@@ -1204,10 +1209,10 @@ export default function UltraLab() {
 
       <div className="page-header ultra-lab-header">
         <div>
-          <div className="ultra-lab-kicker">REPMAX ULTRA</div>
+          <div className="ultra-lab-kicker"><RiSparklingFill size={12} /> REPMAX ULTRA</div>
           <h1 className="page-title">ULTRA <span className="accent">Lab</span></h1>
           <p className="ultra-lab-subtitle">
-            Intelligence, Import Studio, and Social Edge now live in one place so the main app can stay sharp.
+            Your training intelligence, routine import, and social analytics — all in one premium command center.
           </p>
         </div>
         {subscriptionTier !== 'free' && <ProBadge size="md" tier={subscriptionTier} />}
