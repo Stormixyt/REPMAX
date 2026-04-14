@@ -73,9 +73,9 @@ export default function App() {
     }
 
     const skinValue = profile?.interface_skin
-    const interfaceSkin = isUltra && (skinValue === 'ultra-signature' || skinValue === 'v5')
-      ? `skin-${skinValue}`
-      : 'skin-default'
+    let interfaceSkin = 'skin-default'
+    if (skinValue === 'v5' && (isPro || isUltra)) interfaceSkin = 'skin-v5'
+    else if (skinValue === 'ultra-signature' && isUltra) interfaceSkin = 'skin-ultra-signature'
 
     document.body.classList.add(interfaceSkin)
   }, [profile?.theme_color, profile?.interface_skin, isPro, isUltra])

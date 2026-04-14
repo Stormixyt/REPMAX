@@ -39,9 +39,12 @@ export default function ThemeSelector() {
   const [savingSkin, setSavingSkin] = useState('')
 
   const currentTheme = profile?.theme_color || 'green'
-  const currentInterfaceSkin = isUltra && (profile?.interface_skin === 'ultra-signature' || profile?.interface_skin === 'v5')
-    ? profile.interface_skin
-    : 'default'
+  const currentInterfaceSkin = (() => {
+    const skin = profile?.interface_skin
+    if (skin === 'v5' && isPro) return 'v5'
+    if (skin === 'ultra-signature' && isUltra) return 'ultra-signature'
+    return 'default'
+  })()
 
   function syncAppearanceChange(work) {
     if (typeof document !== 'undefined') {
@@ -73,7 +76,8 @@ export default function ThemeSelector() {
   }
 
   async function handleInterfaceSkinChange(id) {
-    if (!isUltra || savingSkin === id) return
+    if (!isPro || savingSkin === id) return
+    if (id === 'ultra-signature' && !isUltra) return
 
     setSavingSkin(id)
     try {
@@ -134,20 +138,20 @@ export default function ThemeSelector() {
         </div>
       </div>
 
-      <div className={`theme-selector-section ${!isUltra ? 'locked' : ''}`}>
+      <div className={`theme-selector-section ${!isPro ? 'locked' : ''}`}>
         <div className="theme-selector-section-head">
           <div>
             <div className="theme-selector-label">Interface Style</div>
             <div className="theme-selector-note">
-              {isUltra
-                ? 'ULTRA members can switch between the default premium shell and the signature REPMAX look.'
-                : 'Upgrade to ULTRA to unlock the signature REPMAX interface style.'}
+              {isPro
+                ? 'Choose your interface look. V5 is available to PRO+, ULTRA Signature is ULTRA-only.'
+                : 'Upgrade to PRO to unlock interface styles.'}
             </div>
           </div>
-          {!isUltra && (
+          {!isPro && (
             <div className="theme-selector-tag">
               <RiVipCrownFill size={14} />
-              ULTRA
+              PRO
             </div>
           )}
         </div>
@@ -159,7 +163,7 @@ export default function ThemeSelector() {
               type="button"
               className={`theme-style-card ${style.previewClass} ${currentInterfaceSkin === style.id ? 'is-active' : ''}`}
               onClick={() => handleInterfaceSkinChange(style.id)}
-              disabled={!isUltra}
+              disabled={!isPro || (style.id === 'ultra-signature' && !isUltra)}
             >
               <div className="theme-style-preview">
                 <span className="theme-style-preview-top" />
@@ -171,7 +175,7 @@ export default function ThemeSelector() {
                 <div className="theme-style-head">
                   <div className="theme-style-name">
                     {style.name}
-                    {style.id === 'ultra-signature' && <RiSparklingFill size={14} />}
+                    {(style.id === 'ultra-signature' || style.id === 'v5') && <RiSparklingFill size={14} />}
                   </div>
                   <div className="theme-style-indicator">
                     {currentInterfaceSkin === style.id ? <RiCheckFill size={16} /> : !isUltra ? <RiLock2Line size={16} /> : null}
@@ -179,7 +183,7 @@ export default function ThemeSelector() {
                 </div>
                 <div className="theme-style-copy">
                   <div className="theme-style-helper">
-                    {style.id === 'default' ? 'Restrained premium shell' : 'High-contrast luxury shell'}
+                    {style.id === 'default' ? 'Restrained premium shell' : style.id === 'v5' ? 'Next-gen glass interface' : 'High-contrast luxury shell'}
                   </div>
                   <div className="theme-style-description">{style.description}</div>
                 </div>
