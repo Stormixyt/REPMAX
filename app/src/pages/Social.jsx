@@ -180,10 +180,10 @@ export default function Social() {
     const { data } = await supabase
       .from('profiles')
       .select('id, display_name, total_workouts, subscription_status, username, avatar_seed, image_url, status_emoji')
-      .ilike('username', query)
+      .ilike('username', `%${query}%`)
       .neq('id', user.id)
-      .limit(1)
-    setSearchResult(data?.[0] || 'not_found')
+      .limit(8)
+    setSearchResult(data?.length > 0 ? data : 'not_found')
     setSearching(false)
   }
 
@@ -676,22 +676,26 @@ export default function Social() {
                 {searchResult === 'not_found' ? (
                   <div className="v3-empty" style={{ padding: 24 }}>
                     <RiSearchLine size={32} className="v3-empty-icon" />
-                    <h4 className="v3-empty-title">No user found</h4>
-                    <p className="v3-empty-desc">Check the code and try again.</p>
+                    <h4 className="v3-empty-title">No users found</h4>
+                    <p className="v3-empty-desc">Try a different username.</p>
                   </div>
                 ) : (
-                  <div className="v3-friend-card" style={{ borderColor: 'var(--accent)' }}>
-                    <div className={`v3-friend-avatar ${searchResult.subscription_status === 'pro' ? 'pro' : ''}`}>
-                      <img src={searchResult.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${searchResult.avatar_seed || searchResult.id}&backgroundColor=transparent`} alt="" />
-                    </div>
-                    <div className="v3-friend-info">
-                      <div className="v3-friend-name">
-                        {searchResult.display_name}
-                        {searchResult.subscription_status === 'pro' && <RiVipCrownFill size={14} style={{ color: 'var(--accent)' }} />}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {searchResult.map(sr => (
+                      <div key={sr.id} className="v3-friend-card" style={{ borderColor: 'var(--accent)' }}>
+                        <div className={`v3-friend-avatar ${sr.subscription_status === 'pro' ? 'pro' : ''}`}>
+                          <img src={sr.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${sr.avatar_seed || sr.id}&backgroundColor=transparent`} alt="" />
+                        </div>
+                        <div className="v3-friend-info">
+                          <div className="v3-friend-name">
+                            {sr.display_name}
+                            {sr.subscription_status === 'pro' && <RiVipCrownFill size={14} style={{ color: 'var(--accent)' }} />}
+                          </div>
+                          <div className="v3-friend-meta">@{sr.username} · {sr.total_workouts || 0} workouts</div>
+                        </div>
+                        <button className="btn btn-sm btn-primary" onClick={() => sendFriendRequest(sr.id)}>Add</button>
                       </div>
-                      <div className="v3-friend-meta">{searchResult.total_workouts || 0} workouts</div>
-                    </div>
-                    <button className="btn btn-sm btn-primary" onClick={() => sendFriendRequest(searchResult.id)}>Add</button>
+                    ))}
                   </div>
                 )}
               </div>

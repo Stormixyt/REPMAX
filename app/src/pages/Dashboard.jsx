@@ -593,17 +593,130 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Daily Challenge */}
-      <div className="challenge-card">
-        <div className="challenge-icon">{challenge.icon}</div>
-        <div className="challenge-text">
-          <div className="challenge-title">{challenge.title}</div>
-          <div className="challenge-desc">{challenge.desc}</div>
-          <div className="challenge-progress">
-            <div className="challenge-progress-fill" style={{ width: '0%' }} />
+      {/* Daily Challenge — free/PRO users */}
+      {!isUltra && (
+        <div className="challenge-card">
+          <div className="challenge-icon">{challenge.icon}</div>
+          <div className="challenge-text">
+            <div className="challenge-title">{challenge.title}</div>
+            <div className="challenge-desc">{challenge.desc}</div>
+            <div className="challenge-progress">
+              <div className="challenge-progress-fill" style={{ width: '0%' }} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ═══ ULTRA AUTOPILOT — Today's Play ═══ */}
+      {isUltra && (() => {
+        const insights = buildUltraInsights({ profile, workouts: workoutHistory, recentPRs, unit })
+        const readinessInsight = insights.find(i => i.id === 'readiness')
+        const readinessVal = parseInt(readinessInsight?.value) || 50
+        const loadInsight = insights.find(i => i.id === 'load')
+
+        const trainAction = todayWorkout
+          ? { label: todayWorkout.day_name, sub: `${todayWorkout.exercises?.length || 0} exercises · Week ${todayWorkout.weekNumber}` }
+          : { label: 'Rest or freestyle', sub: readinessVal >= 70 ? 'Readiness is high — train if you want' : 'Recovery day recommended' }
+
+        const proteinTarget = profile?.goal === 'hypertrophy' ? 160 : profile?.goal === 'strength' ? 180 : 140
+        const calorieTarget = profile?.goal === 'hypertrophy' ? 2800 : 2200
+
+        const recoverSignal = readinessVal >= 80 ? '🟢 Prime — go hard'
+          : readinessVal >= 60 ? '🟡 Steady — normal intensity'
+          : '🔴 Rebuild — lighter volume today'
+
+        const topFriend = null // friends loaded on Social page, not Dashboard
+
+        return (
+          <div className="card autopilot-card" style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(204,255,0,0.04), rgba(0,212,255,0.02)), var(--bg-card)', border: '1px solid rgba(204,255,0,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <RiSparklingFill size={16} color="var(--accent)" />
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)' }}>Today's Play</span>
+              <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: 'var(--text-tertiary)' }}>Autopilot</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {/* Train */}
+              <div style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(204,255,0,0.06)', border: '1px solid rgba(204,255,0,0.08)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 4 }}>🏋️ Train</div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, lineHeight: 1.3 }}>{trainAction.label}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: 2 }}>{trainAction.sub}</div>
+              </div>
+
+              {/* Eat */}
+              <div style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.06)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', marginBottom: 4 }}>🍗 Eat</div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, lineHeight: 1.3 }}>{proteinTarget}g protein</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: 2 }}>{todayWorkout ? `~${calorieTarget} kcal` : `~${calorieTarget - 300} kcal rest day`}</div>
+              </div>
+
+              {/* Recover */}
+              <div style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>💤 Recover</div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 600, lineHeight: 1.3 }}>{recoverSignal}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: 2 }}>Readiness {readinessVal}/100</div>
+              </div>
+
+              {/* Social */}
+              <div style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => navigate('/social')}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>👥 Social</div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 600, lineHeight: 1.3 }}>{topFriend ? `Nudge ${topFriend.display_name?.split(' ')[0]}` : 'Find a gym partner'}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: 2 }}>{topFriend ? 'Tap to message' : 'Add friends'}</div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ═══ PLATEAU DOCTOR — Stall Detector ═══ */}
+      {isUltra && recentPRs.length > 0 && (() => {
+        const now = Date.now()
+        const DAY = 86400000
+        const exerciseLastPR = {}
+        recentPRs.forEach(pr => {
+          const name = pr.exercise_name
+          if (!exerciseLastPR[name]) {
+            exerciseLastPR[name] = { age: (now - new Date(pr.achieved_at).getTime()) / DAY, weight: pr.weight, reps: pr.reps }
+          }
+        })
+
+        const stalled = Object.entries(exerciseLastPR)
+          .filter(([, data]) => data.age >= 14)
+          .sort((a, b) => b[1].age - a[1].age)
+          .slice(0, 3)
+
+        if (stalled.length === 0) return null
+
+        const readinessInsight = buildUltraInsights({ profile, workouts: workoutHistory, recentPRs, unit }).find(i => i.id === 'readiness')
+        const readiness = parseInt(readinessInsight?.value) || 50
+
+        return (
+          <div className="card" style={{ marginBottom: 16, borderColor: 'rgba(255,100,100,0.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: '1.1rem' }}>🩺</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6b6b' }}>Plateau Doctor</span>
+            </div>
+            {stalled.map(([name, data]) => {
+              const cause = readiness < 55 ? 'Under-recovery likely'
+                : data.age > 28 ? 'Exercise may need rotation'
+                : 'Volume or progression mismatch'
+              return (
+                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>{name}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                      Stalled {Math.round(data.age)}d · {cause}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#ff6b6b', fontWeight: 700 }}>
+                    {data.weight}{unit}×{data.reps}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {todayWorkout ? (
         <div className="card card-accent" style={{ marginBottom: 16, marginTop: 14 }}>
@@ -711,6 +824,33 @@ export default function Dashboard() {
         </div>
         <div className="ultra-lab-spotlight-cta">
           <div className="ultra-lab-spotlight-chip">{isUltra ? 'Open now' : 'Preview'}</div>
+          <RiArrowRightLine size={18} />
+        </div>
+      </section>
+
+      <section
+        className={`ultra-lab-spotlight communities-spotlight ${isUltra ? 'live' : 'locked'}`}
+        onClick={() => navigate('/communities')}
+      >
+        <div className="ultra-lab-spotlight-copy">
+          <div className="ultra-lab-spotlight-kicker">{isUltra ? 'COMMUNITIES · LIVE' : 'COMMUNITIES · ULTRA'}</div>
+          <h3 className="ultra-lab-spotlight-title">
+            {isUltra ? 'Your crews are waiting.' : 'Crews, PR walls, challenges — ULTRA only.'}
+          </h3>
+          <p className="ultra-lab-spotlight-body">
+            {isUltra
+              ? 'See who holds the crown in your city, your gym, and your split this week.'
+              : 'City crews, shared PR walls, stake challenges, and the elite streak board all live here.'}
+          </p>
+          <div className="ultra-lab-spotlight-tags">
+            <span>Crews</span>
+            <span>PR Wall</span>
+            <span>Challenges</span>
+            <span>Streaks</span>
+          </div>
+        </div>
+        <div className="ultra-lab-spotlight-cta">
+          <div className="ultra-lab-spotlight-chip">{isUltra ? 'Enter' : 'Preview'}</div>
           <RiArrowRightLine size={18} />
         </div>
       </section>

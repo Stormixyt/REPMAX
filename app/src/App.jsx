@@ -21,6 +21,7 @@ import Recovery from './pages/Recovery'
 import AdminPanel from './pages/AdminPanel'
 import RunTracker from './pages/RunTracker'
 import UltraLab from './pages/UltraLab'
+import Communities from './pages/Communities'
 import Layout from './components/Layout'
 import CallScreen from './components/CallScreen'
 import UsernameModal from './components/UsernameModal'
@@ -148,9 +149,20 @@ export default function App() {
         table: 'notifications',
         filter: `user_id=eq.${user.id}`
       }, ({ new: notif }) => {
-        // Only handle chat messages, not calls (those are handled separately)
+        // Only handle chat-style notifications here. General alerts use the layout toast.
         if (notif.type === 'incoming_call') return
         if (notif.read) return
+        if (!notif.data?.chat_id && notif.type !== 'message') return
+
+        // Dedup: skip if we already processed this notification ID
+        if (window.__repmaxSeenNotifIds?.has(notif.id)) return
+        if (!window.__repmaxSeenNotifIds) window.__repmaxSeenNotifIds = new Set()
+        window.__repmaxSeenNotifIds.add(notif.id)
+        // Keep set small — trim old entries
+        if (window.__repmaxSeenNotifIds.size > 50) {
+          const arr = [...window.__repmaxSeenNotifIds]
+          window.__repmaxSeenNotifIds = new Set(arr.slice(-25))
+        }
 
         const chatId = notif.data?.chat_id
         const chatPath = chatId ? `/chat/${chatId}` : null
@@ -395,9 +407,9 @@ export default function App() {
       {incomingCallPrompt?.chatId && (
         <div style={{
           position: 'fixed',
-          top: 20,
-          left: 20,
-          right: 20,
+          top: 'calc(var(--safe-top) + 12px)',
+          left: 'calc(var(--safe-left) + 12px)',
+          right: 'calc(var(--safe-right) + 12px)',
           zIndex: 10001,
           display: 'flex',
           justifyContent: 'center',
@@ -501,6 +513,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/run" element={<RunTracker />} />
           <Route path="/ultra-lab" element={<UltraLab />} />
+          <Route path="/communities" element={<Communities />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/app" replace />} />

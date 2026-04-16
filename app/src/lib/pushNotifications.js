@@ -4,6 +4,7 @@
 // The VAPID Public Key must match your backend's VAPID keys!
 const VAPID_PUBLIC_KEY = 'BNBo_jz-q5KOGSbK1Y43HB_UoZim9DwFNVOPGmUThMBDYihvSnX2zPCpqtck6NSiUE--C7ag2p5N4vv97aXh_Hg'
 const PUSH_SYNC_KEY = 'repmax-push-last-sync'
+const PUSH_DEVICE_ID_KEY = 'repmax-push-device-id'
 
 function canUsePushNotifications() {
   return (
@@ -39,6 +40,22 @@ function readLastPushSync() {
   }
 }
 
+function getPushDeviceId() {
+  try {
+    const existing = localStorage.getItem(PUSH_DEVICE_ID_KEY)
+    if (existing) return existing
+    const nextId = crypto.randomUUID()
+    localStorage.setItem(PUSH_DEVICE_ID_KEY, nextId)
+    return nextId
+  } catch {
+    return `repmax-${Date.now()}`
+  }
+}
+
+function serializeSubscription(subscription) {
+  return JSON.parse(JSON.stringify(subscription))
+}
+
 async function getServiceWorkerRegistration() {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
 
@@ -57,20 +74,69 @@ async function persistSubscription(userId, subscription) {
   if (!userId || !subscription) return
 
   const { supabase } = await import('./supabase')
+  const serialized = serializeSubscription(subscription)
+  const syncedAt = new Date().toISOString()
+
+  try {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (!profileError && profile && Object.prototype.hasOwnProperty.call(profile, 'push_subscriptions')) {
+      const deviceId = getPushDeviceId()
+      const currentEntries = Array.isArray(profile.push_subscriptions) ? profile.push_subscriptions : []
+      const nextEntries = [
+        ...currentEntries.filter((entry) => {
+          const endpoint = entry?.subscription?.endpoint || entry?.endpoint
+          return entry?.device_id !== deviceId && endpoint !== serialized.endpoint
+        }),
+        {
+          device_id: deviceId,
+          endpoint: serialized.endpoint,
+          subscription: serialized,
+          updated_at: syncedAt,
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        }
+      ]
+
+      const { error: multiDeviceError } = await supabase
+        .from('profiles')
+        .update({
+          push_subscriptions: nextEntries,
+          push_subscription: serialized
+        })
+        .eq('id', userId)
+
+      if (!multiDeviceError) {
+        try {
+          localStorage.setItem(PUSH_SYNC_KEY, syncedAt)
+        } catch {}
+        return
+      }
+
+      console.warn('[REPMAX] Failed to persist multi-device push subscription, falling back to legacy field:', multiDeviceError)
+    }
+  } catch (error) {
+    console.warn('[REPMAX] Failed to inspect push profile before syncing:', error)
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update({
-      push_subscription: JSON.parse(JSON.stringify(subscription))
+      push_subscription: serialized
     })
     .eq('id', userId)
 
-  if (!error) {
-    try {
-      localStorage.setItem(PUSH_SYNC_KEY, new Date().toISOString())
-    } catch {}
-  } else {
+  if (error) {
     console.warn('[REPMAX] Failed to persist push subscription:', error)
+    return
   }
+
+  try {
+    localStorage.setItem(PUSH_SYNC_KEY, syncedAt)
+  } catch {}
 }
 
 export async function requestNotificationPermission() {

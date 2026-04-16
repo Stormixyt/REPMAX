@@ -14,6 +14,26 @@ function sortChatMessagesChronologically(items = []) {
   )
 }
 
+function groupReactionsByMessage(rows = []) {
+  return rows.reduce((acc, row) => {
+    if (!row?.message_id) return acc
+    if (!acc[row.message_id]) acc[row.message_id] = []
+    acc[row.message_id].push(row)
+    return acc
+  }, {})
+}
+
+function isPremiumProfile(profile = {}) {
+  return profile?.subscription_tier === 'pro'
+    || profile?.subscription_tier === 'ultra'
+    || profile?.subscription_status === 'pro'
+    || profile?.subscription_status === 'ultra'
+}
+
+function isUltraProfile(profile = {}) {
+  return profile?.subscription_tier === 'ultra' || profile?.subscription_status === 'ultra'
+}
+
 export default function ChatRoom() {
   const { chatId } = useParams()
   const navigate = useNavigate()
@@ -31,6 +51,7 @@ export default function ChatRoom() {
   const inputRef = useRef(null)
   const channelRef = useRef(null)
   const toastTimerRef = useRef(null)
+  const messageIdsRef = useRef(new Set())
   const [incomingCall, setIncomingCall] = useState(null)
   const [reactionMsgId, setReactionMsgId] = useState(null)
   const [reactions, setReactions] = useState({}) // { msgId: [{emoji, user_id}...] }
@@ -57,13 +78,17 @@ export default function ChatRoom() {
     })
   }, [])
 
+  useEffect(() => {
+    messageIdsRef.current = new Set(messages.map((message) => message.id))
+  }, [messages])
+
   // Use AbortController pattern to prevent stale state updates on unmount
   useEffect(() => {
     let cancelled = false
 
     async function init() {
       const [metaRes, msgRes] = await Promise.all([
-        supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed, image_url))').eq('id', chatId).single(),
+        supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed, image_url, subscription_status, status_emoji))').eq('id', chatId).single(),
         supabase.from('messages').select('*').eq('chat_id', chatId).order('created_at', { ascending: true }).limit(200)
       ])
 
@@ -77,7 +102,22 @@ export default function ChatRoom() {
           setChatMeta({ type: 'group', title: metaRes.data.name || 'Group Chat', members: metaRes.data.chat_members })
         }
       }
-      setMessages(msgRes.data || [])
+      const nextMessages = msgRes.data || []
+      setMessages(nextMessages)
+      messageIdsRef.current = new Set(nextMessages.map((message) => message.id))
+
+      if (nextMessages.length > 0) {
+        const { data: reactionRows } = await supabase
+          .from('message_reactions')
+          .select('message_id, user_id, emoji, is_super')
+          .in('message_id', nextMessages.map((message) => message.id))
+
+        if (!cancelled) {
+          setReactions(groupReactionsByMessage(reactionRows || []))
+        }
+      } else if (!cancelled) {
+        setReactions({})
+      }
 
       const { data: pendingCallNotifications } = await supabase
         .from('notifications')
@@ -134,6 +174,45 @@ export default function ChatRoom() {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
         if (cancelled) return
         setMessages(prev => prev.filter(m => m.id !== payload.old.id))
+        setReactions(prev => {
+          if (!prev[payload.old.id]) return prev
+          const next = { ...prev }
+          delete next[payload.old.id]
+          return next
+        })
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message_reactions' }, payload => {
+        if (cancelled) return
+        if (!messageIdsRef.current.has(payload.new.message_id)) return
+
+        setReactions(prev => {
+          const existing = prev[payload.new.message_id] || []
+          if (existing.some((reaction) => reaction.emoji === payload.new.emoji && reaction.user_id === payload.new.user_id)) {
+            return prev
+          }
+          return {
+            ...prev,
+            [payload.new.message_id]: [...existing, payload.new]
+          }
+        })
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'message_reactions' }, payload => {
+        if (cancelled) return
+        if (!messageIdsRef.current.has(payload.old.message_id)) return
+
+        setReactions(prev => {
+          const existing = prev[payload.old.message_id] || []
+          const nextList = existing.filter((reaction) => !(reaction.emoji === payload.old.emoji && reaction.user_id === payload.old.user_id))
+          if (nextList.length === existing.length) return prev
+
+          const next = { ...prev }
+          if (nextList.length === 0) {
+            delete next[payload.old.message_id]
+          } else {
+            next[payload.old.message_id] = nextList
+          }
+          return next
+        })
       })
       .on('broadcast', { event: 'offer' }, ({ payload }) => {
         if (payload.callerId !== user.id) {
@@ -497,6 +576,18 @@ export default function ChatRoom() {
     return member?.profiles?.display_name || 'Someone'
   }
 
+  function getMemberProfile(senderId) {
+    if (senderId === user.id) return {
+      subscription_tier: profile?.subscription_tier,
+      subscription_status: profile?.subscription_status,
+      status_emoji: profile?.status_emoji,
+      avatar_seed: profile?.avatar_seed,
+      image_url: profile?.image_url,
+    }
+    const member = chatMeta?.members?.find(m => m.user_id === senderId)
+    return member?.profiles || {}
+  }
+
   function formatInviteTime(dateStr) {
     try {
       const d = new Date(dateStr)
@@ -663,6 +754,9 @@ export default function ChatRoom() {
         {messages.map((msg) => {
           const isMe = msg.sender_id === user.id
           const senderName = getMemberName(msg.sender_id)
+          const senderProfile = getMemberProfile(msg.sender_id)
+          const senderPremium = isPremiumProfile(senderProfile)
+          const senderUltra = isUltraProfile(senderProfile)
 
           const dateLabel = getDateLabel(msg.created_at)
           let showDate = false
@@ -699,7 +793,26 @@ export default function ChatRoom() {
                 onDoubleClick={() => msg.type === 'text' && setReactionMsgId(prev => prev === msg.id ? null : msg.id)}
               >
                 {!isMe && chatMeta?.type === 'group' && (
-                  <div className="msg-sender-name">{senderName}</div>
+                  <div className="msg-sender-name" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span>{senderName}</span>
+                    {senderProfile?.status_emoji && (
+                      <span style={{ fontSize: '0.82rem', lineHeight: 1 }}>{senderProfile.status_emoji}</span>
+                    )}
+                    {senderPremium && (
+                      <span style={{
+                        padding: '2px 6px',
+                        borderRadius: 999,
+                        fontSize: '0.58rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        background: senderUltra ? 'rgba(255, 42, 133, 0.16)' : 'rgba(204, 255, 0, 0.16)',
+                        color: senderUltra ? '#ff5cab' : 'var(--accent)'
+                      }}>
+                        {senderUltra ? 'Ultra' : 'Pro'}
+                      </span>
+                    )}
+                  </div>
                 )}
 
                 {msg.type === 'text' ? (

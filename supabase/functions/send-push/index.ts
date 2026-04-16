@@ -64,54 +64,138 @@ async function cleanupInvalidSubscriptions(userIds: string[]) {
     .in('id', uniqueIds)
 }
 
+function getProfilePushTargets(profile: Record<string, unknown>) {
+  const seen = new Set<string>()
+  const targets: Array<{ endpoint: string; subscription: Record<string, unknown> }> = []
+
+  const addSubscription = (candidate: Record<string, unknown> | null | undefined) => {
+    const subscription = candidate?.subscription && typeof candidate.subscription === 'object'
+      ? candidate.subscription as Record<string, unknown>
+      : candidate
+
+    const endpoint = typeof subscription?.endpoint === 'string' ? subscription.endpoint : null
+    if (!endpoint || seen.has(endpoint)) return
+
+    seen.add(endpoint)
+    targets.push({ endpoint, subscription })
+  }
+
+  if (Array.isArray(profile?.push_subscriptions)) {
+    for (const entry of profile.push_subscriptions) {
+      if (!entry || typeof entry !== 'object') continue
+      addSubscription(entry as Record<string, unknown>)
+    }
+  }
+
+  if (profile?.push_subscription && typeof profile.push_subscription === 'object') {
+    addSubscription(profile.push_subscription as Record<string, unknown>)
+  }
+
+  return targets
+}
+
+async function cleanupInvalidSubscriptionTargets(staleTargets: Array<{ id: string; endpoint: string }>) {
+  const grouped = staleTargets.reduce<Record<string, Set<string>>>((acc, target) => {
+    if (!acc[target.id]) acc[target.id] = new Set()
+    acc[target.id].add(target.endpoint)
+    return acc
+  }, {})
+
+  for (const [userId, endpointSet] of Object.entries(grouped)) {
+    const staleEndpoints = [...endpointSet]
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (!profile) continue
+
+    const updates: Record<string, unknown> = {}
+    const legacyEndpoint = typeof profile?.push_subscription?.endpoint === 'string'
+      ? profile.push_subscription.endpoint
+      : null
+
+    if (legacyEndpoint && staleEndpoints.includes(legacyEndpoint)) {
+      updates.push_subscription = null
+    }
+
+    if (Array.isArray(profile?.push_subscriptions)) {
+      const filtered = profile.push_subscriptions.filter((entry: Record<string, unknown>) => {
+        const endpoint = typeof entry?.subscription?.endpoint === 'string'
+          ? entry.subscription.endpoint
+          : typeof entry?.endpoint === 'string'
+            ? entry.endpoint
+            : null
+        return !endpoint || !staleEndpoints.includes(endpoint)
+      })
+
+      if (filtered.length !== profile.push_subscriptions.length) {
+        updates.push_subscriptions = filtered
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await supabase.from('profiles').update(updates).eq('id', userId)
+    }
+  }
+}
+
 async function pushToProfiles(
   profiles: Array<Record<string, unknown>>,
   payload: Record<string, unknown>,
   preferenceKey: string | null = null,
   dryRun = false,
 ) {
-  const eligibleProfiles = profiles.filter((profile) => {
-    if (!profile?.push_subscription) return false
-    if (!preferenceKey) return true
-    return profile?.[preferenceKey] !== false
+  const eligibleTargets = profiles.flatMap((profile) => {
+    if (preferenceKey && profile?.[preferenceKey] === false) return []
+
+    return getProfilePushTargets(profile).map((target) => ({
+      id: String(profile.id),
+      display_name: profile.display_name,
+      endpoint: target.endpoint,
+      subscription: target.subscription,
+    }))
   })
+
+  const matchedProfileIds = new Set(eligibleTargets.map((target) => target.id))
 
   if (dryRun) {
     return {
-      matched: eligibleProfiles.length,
+      matched: matchedProfileIds.size,
       sent: 0,
       failed: 0,
-      recipients: eligibleProfiles.slice(0, 10).map((profile) => ({
-        id: profile.id,
-        display_name: profile.display_name,
+      recipients: eligibleTargets.slice(0, 10).map((target) => ({
+        id: target.id,
+        display_name: target.display_name,
       })),
     }
   }
 
-  const staleSubscriptions: string[] = []
+  const staleSubscriptions: Array<{ id: string; endpoint: string }> = []
   configureWebPush()
 
   const results = await Promise.allSettled(
-    eligibleProfiles.map(async (profile) => {
+    eligibleTargets.map(async (target) => {
       try {
         await webpush.sendNotification(
-          profile.push_subscription,
+          target.subscription,
           buildPushPayload(payload),
         )
-        return { id: profile.id }
+        return { id: target.id }
       } catch (error) {
         if (error?.statusCode === 404 || error?.statusCode === 410) {
-          staleSubscriptions.push(String(profile.id))
+          staleSubscriptions.push({ id: target.id, endpoint: target.endpoint })
         }
         throw error
       }
     }),
   )
 
-  await cleanupInvalidSubscriptions(staleSubscriptions)
+  await cleanupInvalidSubscriptionTargets(staleSubscriptions)
 
   return {
-    matched: eligibleProfiles.length,
+    matched: matchedProfileIds.size,
     sent: results.filter((result) => result.status === 'fulfilled').length,
     failed: results.filter((result) => result.status === 'rejected').length,
   }
@@ -124,7 +208,7 @@ async function handleMessagePush(msg: Record<string, unknown>, dryRun = false) {
 
   const { data: members, error: membersError } = await supabase
     .from('chat_members')
-    .select('user_id, profiles!inner(id, push_subscription, display_name)')
+    .select('user_id, profiles!inner(*)')
     .eq('chat_id', msg.chat_id)
     .neq('user_id', msg.sender_id)
 
@@ -192,7 +276,7 @@ async function handleDirectNotification(notification: Record<string, unknown>) {
 
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('id, display_name, push_subscription, notify_nudges, notify_invites, notify_reminders')
+    .select('*')
     .in('id', userIds)
 
   if (error) {
@@ -251,15 +335,17 @@ function buildEngagementNotification(profile: Record<string, unknown>, batchId: 
 async function handleEngagementPush(engagement: Record<string, unknown>) {
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('id, display_name, current_streak, push_subscription, notify_reminders')
-    .not('push_subscription', 'is', null)
+    .select('*')
 
   if (error) {
     console.error('[REPMAX] Failed to load engagement push profiles:', error)
     return jsonResponse({ error: error.message }, 500)
   }
 
-  const eligibleProfiles = (profiles || []).filter((profile) => profile.notify_reminders !== false)
+  const eligibleProfiles = (profiles || []).filter((profile) => {
+    if (profile.notify_reminders === false) return false
+    return getProfilePushTargets(profile).length > 0
+  })
   const batchId = new Date().toISOString().slice(0, 13)
   const dryRun = engagement?.dryRun === true || engagement?.dry_run === true
 
@@ -275,27 +361,30 @@ async function handleEngagementPush(engagement: Record<string, unknown>) {
     })
   }
 
-  const staleSubscriptions: string[] = []
+  const staleSubscriptions: Array<{ id: string; endpoint: string }> = []
   configureWebPush()
 
   const results = await Promise.allSettled(
     eligibleProfiles.map(async (profile) => {
+      const primaryTarget = getProfilePushTargets(profile)[0]
+      if (!primaryTarget) return { id: profile.id }
+
       try {
         await webpush.sendNotification(
-          profile.push_subscription,
+          primaryTarget.subscription,
           buildPushPayload(buildEngagementNotification(profile, batchId)),
         )
         return { id: profile.id }
       } catch (error) {
         if (error?.statusCode === 404 || error?.statusCode === 410) {
-          staleSubscriptions.push(String(profile.id))
+          staleSubscriptions.push({ id: String(profile.id), endpoint: primaryTarget.endpoint })
         }
         throw error
       }
     }),
   )
 
-  await cleanupInvalidSubscriptions(staleSubscriptions)
+  await cleanupInvalidSubscriptionTargets(staleSubscriptions)
 
   return jsonResponse({
     ok: true,

@@ -38,9 +38,9 @@ export async function triggerPushNotification({
   }
 
   try {
-    let data
+    let responseData
     try {
-      data = await invokeEdgeFunction('send-push', {
+      responseData = await invokeEdgeFunction('send-push', {
         notification: {
           userIds: targets,
           type,
@@ -60,13 +60,13 @@ export async function triggerPushNotification({
       // Retry once after a short delay
       console.warn('[REPMAX] Push first attempt failed, retrying:', firstError)
       await new Promise(r => setTimeout(r, 1500))
-      data = await invokeEdgeFunction('send-push', {
+      responseData = await invokeEdgeFunction('send-push', {
         notification: {
           userIds: targets,
           type,
           title,
           body,
-          data: {},
+          data,
           tag,
           preferenceKey: ignorePreferences ? null : resolvePreferenceKey(type, preferenceKey),
           requireInteraction,
@@ -80,11 +80,11 @@ export async function triggerPushNotification({
 
     return {
       error: null,
-      matched: Number(data?.matched || 0),
-      sent: Number(data?.sent || 0),
-      failed: Number(data?.failed || 0),
-      mode: data?.mode || 'notification',
-      ok: data?.ok === true
+      matched: Number(responseData?.matched || 0),
+      sent: Number(responseData?.sent || 0),
+      failed: Number(responseData?.failed || 0),
+      mode: responseData?.mode || 'notification',
+      ok: responseData?.ok === true
     }
   } catch (error) {
     console.warn('[REPMAX] Push dispatch failed:', error)

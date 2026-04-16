@@ -1,5 +1,5 @@
 -- ============================================================
--- Fix V5 skin — Run this in Supabase SQL Editor
+-- Fix V5 skin + Realtime — Run this in Supabase SQL Editor
 -- ============================================================
 
 -- 1. Drop the old CHECK constraint that blocks 'v5'
@@ -14,17 +14,16 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bio text DEFAULT '';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_emoji text DEFAULT '';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_badge text DEFAULT '';
 
--- 4. Enable Realtime on notifications table (required for in-app message banners)
+-- 4. Enable Realtime on notifications table
 ALTER TABLE notifications REPLICA IDENTITY FULL;
 
--- 5. Make sure notifications table is in the Realtime publication
--- (Supabase may already have this, but this ensures it)
-BEGIN;
-  -- Drop and re-add to publication if it exists
+-- 5. Add notifications to Realtime publication
+DO $$
+BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 EXCEPTION WHEN duplicate_object THEN
   NULL;
-END;
+END $$;
 
--- 6. Verify it worked
+-- 6. Done
 SELECT 'V5 skin + Realtime notifications fixed ✅' AS result;

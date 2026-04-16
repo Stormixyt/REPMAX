@@ -54,7 +54,7 @@ export default function Layout() {
         if (notification.type === 'incoming_call') return
 
         const targetChatId = notification.data?.chat_id
-        if (targetChatId && path === `/chat/${targetChatId}`) return
+        if (targetChatId) return
 
         setToast({ title: notification.title, body: notification.body || '' })
         setTimeout(() => setToast(null), 5000)

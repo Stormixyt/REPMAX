@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
-import { supabase } from '../lib/supabase'
+import { invokeServerApi, supabase } from '../lib/supabase'
 import { triggerPushNotification } from '../lib/notifications'
 import ProBadge from '../components/ProBadge'
 import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine, RiImageFill, RiTranslate2 } from '@remixicon/react'
@@ -175,8 +175,27 @@ export default function Settings() {
   }
 
   async function deleteAccount() {
-    await supabase.from('profiles').delete().eq('id', user.id)
-    await signOut()
+    try {
+      await invokeServerApi('/api/delete-account', {}, {
+        timeoutMs: 20000,
+        requireAuth: true
+      })
+      await signOut()
+    } catch (error) {
+      console.error('Delete account error:', error)
+      showToast(error?.message || 'Failed to delete account. Contact support.')
+    }
+  }
+
+  async function resetPassword() {
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+      redirectTo: `${window.location.origin}/app`
+    })
+    if (error) {
+      showToast('Failed to send reset email')
+    } else {
+      showToast('Password reset email sent! Check your inbox.')
+    }
   }
 
   const initials = (profile?.display_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -217,7 +236,7 @@ export default function Settings() {
         <RiArrowRightSLine size={20} className="settings-chevron" />
       </div>
 
-      <div className="settings-item" onClick={() => showToast('Password reset email sent! (mock)')}>
+      <div className="settings-item" onClick={resetPassword}>
         <div className="settings-item-left">
           <div className="settings-icon"><RiLockPasswordFill size={18} /></div>
           <div>

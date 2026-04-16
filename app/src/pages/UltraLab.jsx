@@ -8,6 +8,7 @@ import { optimizeImageForVision } from '../lib/visionImages'
 import { weightLabel } from '../lib/units'
 import PaywallGate from '../components/PaywallGate'
 import ProBadge from '../components/ProBadge'
+import UltraInsights from '../components/UltraInsights'
 import './ultra-lab.css'
 import {
   RiArrowLeftLine,
@@ -1275,6 +1276,13 @@ export default function UltraLab() {
       {activeTab === 'intelligence' && (
         isUltra ? (
           <div className="ultra-page-stack">
+            <UltraInsights
+              workouts={workouts}
+              sets={recentSets}
+              prs={recentPRs}
+              analytics={analyticsModel}
+              unit={unit}
+            />
             {intelligenceHero}
 
             <section className="ultra-intelligence-shell ultra-intelligence-details">

@@ -176,6 +176,8 @@ export default function RunTracker() {
     const pausedDuration = pausedAtRef.current ? Date.now() - pausedAtRef.current : 0
     startedAtRef.current = (startedAtRef.current || Date.now()) + pausedDuration
     pausedAtRef.current = null
+    // Clear last GPS point to prevent drift — first reading after resume sets new anchor
+    lastPointRef.current = null
     setIsPaused(false)
     startTimer()
     beginLocationWatch()
