@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, Outlet } from 'react-router-dom'
-import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiLeafFill, RiLeafLine, RiChat3Fill, RiChat3Line, RiBrainFill, RiBrainLine, RiUser3Fill, RiUser3Line } from '@remixicon/react'
+import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiLeafFill, RiLeafLine, RiChat3Fill, RiChat3Line, RiBrainFill, RiBrainLine, RiUser3Fill, RiUser3Line, RiTeamFill, RiTeamLine } from '@remixicon/react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { supabase } from '../lib/supabase'
@@ -80,6 +80,7 @@ export default function Layout() {
     { path: '/progress', label: t('nav_progress'), ActiveIcon: RiBarChart2Fill, Icon: RiBarChart2Line },
     { path: '/nutrition', label: t('nav_diet'), ActiveIcon: RiLeafFill, Icon: RiLeafLine },
     { path: '/social', label: t('nav_chat'), ActiveIcon: RiChat3Fill, Icon: RiChat3Line },
+    { path: '/communities', label: 'Crews', ActiveIcon: RiTeamFill, Icon: RiTeamLine },
     { path: '/coach', label: t('nav_coach'), ActiveIcon: RiBrainFill, Icon: RiBrainLine },
     { path: '/profile', label: t('nav_profile'), ActiveIcon: RiUser3Fill, Icon: RiUser3Line },
   ]

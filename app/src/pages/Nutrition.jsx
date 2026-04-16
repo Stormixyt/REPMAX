@@ -32,6 +32,7 @@ import {
   RiRefreshLine,
   RiAddFill,
   RiBookmarkFill,
+  RiBrainFill,
 } from "@remixicon/react";
 
 // ─── Nutrition constants ──────────────────────────────────────────────────────
@@ -1073,6 +1074,81 @@ export default function Nutrition() {
             <button className="water-add-btn" onClick={addWaterGlass}>
               <RiAddFill size={18} /> Add Glass
             </button>
+          </div>
+
+          {/* ── Smart Nutrition Insights ── */}
+          <div className="glass-card" style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <RiBrainFill size={16} style={{ color: 'var(--accent)' }} />
+              <span style={{ fontWeight: 800, fontSize: '0.9rem', fontFamily: 'var(--font-display)' }}>Smart Insights</span>
+            </div>
+
+            {/* Protein pacing */}
+            {(() => {
+              const proteinPct = nutProfile.target_protein > 0
+                ? Math.round((totals.protein / nutProfile.target_protein) * 100)
+                : 0
+              const hour = new Date().getHours()
+              const dayProgressPct = Math.round(((hour - 6) / 16) * 100)
+              const isAhead = proteinPct > dayProgressPct + 10
+              const isBehind = proteinPct < dayProgressPct - 15
+
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 14px', borderRadius: 14,
+                  background: isBehind ? 'rgba(239,68,68,0.06)' : isAhead ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${isBehind ? 'rgba(239,68,68,0.2)' : isAhead ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                  marginBottom: 10,
+                }}>
+                  <div style={{ fontSize: '1.5rem' }}>{isBehind ? '⚠️' : isAhead ? '💪' : '📊'}</div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff' }}>
+                      {isBehind ? 'Protein behind schedule' : isAhead ? 'Protein pacing looks great' : 'Protein on track'}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {proteinPct}% of target hit with {100 - dayProgressPct}% of your eating window remaining.
+                      {isBehind && ` Add ${Math.round(nutProfile.target_protein - totals.protein)}g to catch up.`}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Meal balance indicator */}
+            {(() => {
+              const mealCounts = { breakfast: 0, lunch: 0, dinner: 0, snack: 0 }
+              todayLogs.forEach(l => { if (mealCounts[l.meal_type] !== undefined) mealCounts[l.meal_type] += 1 })
+              const logged = Object.values(mealCounts).filter(c => c > 0).length
+              return (
+                <div style={{
+                  display: 'flex', gap: 8, marginBottom: 10,
+                }}>
+                  {['breakfast', 'lunch', 'dinner', 'snack'].map(m => (
+                    <div key={m} style={{
+                      flex: 1, padding: '8px 4px', borderRadius: 10, textAlign: 'center',
+                      background: mealCounts[m] > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${mealCounts[m] > 0 ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                    }}>
+                      <div style={{ fontSize: '0.92rem', marginBottom: 2 }}>
+                        {mealCounts[m] > 0 ? '✅' : '⬜'}
+                      </div>
+                      <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>{m}</div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+
+            {/* Calorie deficit/surplus context */}
+            {remaining !== 0 && (
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.55, padding: '4px 0' }}>
+                {remaining > 0
+                  ? `${Math.round(remaining)} kcal remaining. ${remaining > 500 ? 'Consider a protein-rich meal to close the gap.' : 'One snack could fill this.'}`
+                  : `${Math.abs(Math.round(remaining))} kcal over target. ${Math.abs(remaining) < 200 ? 'Marginal — no adjustment needed.' : 'Reduce portion size tomorrow to compensate.'}`
+                }
+              </div>
+            )}
           </div>
 
           {/* ── Saved Meals Quick Add ── */}

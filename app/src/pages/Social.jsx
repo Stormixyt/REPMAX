@@ -10,7 +10,7 @@ import {
   RiUserAddFill, RiSearchLine, RiTeamFill, RiChat3Fill,
   RiVipCrownFill, RiFlashlightFill, RiCheckFill, RiCloseFill,
   RiMapPin2Fill, RiTimeFill, RiCalendarLine,
-  RiArrowRightSLine, RiDirectionFill, RiRunFill
+  RiArrowRightSLine, RiDirectionFill, RiRunFill, RiFireFill
 } from '@remixicon/react'
 
 export default function Social() {
@@ -64,7 +64,7 @@ export default function Social() {
     try {
       // Fetch friends and pending in parallel; gym_appointments may not exist yet
       const [friendsRes, pendingRes] = await Promise.all([
-        supabase.from('friendships').select('*, friend:friend_id(id, display_name, total_workouts, subscription_status, avatar_seed, image_url), requester:user_id(id, display_name, total_workouts, subscription_status, avatar_seed, image_url)').or(`user_id.eq.${user.id},friend_id.eq.${user.id}`).eq('status', 'accepted'),
+        supabase.from('friendships').select('*, friend:friend_id(id, display_name, total_workouts, current_streak, subscription_status, subscription_tier, avatar_seed, image_url, goal), requester:user_id(id, display_name, total_workouts, current_streak, subscription_status, subscription_tier, avatar_seed, image_url, goal)').or(`user_id.eq.${user.id},friend_id.eq.${user.id}`).eq('status', 'accepted'),
         supabase.from('friendships').select('*, requester:user_id(id, display_name, total_workouts, avatar_seed, image_url)').eq('friend_id', user.id).eq('status', 'pending'),
       ])
 
@@ -623,9 +623,24 @@ export default function Social() {
                     <div className="v3-friend-info">
                       <div className="v3-friend-name">
                         {f.display_name}
-                        {f.subscription_status === 'pro' && <RiVipCrownFill size={14} style={{ color: 'var(--accent)' }} />}
+                        {(f.subscription_tier === 'ultra' || f.subscription_status === 'ultra') && (
+                          <span style={{ padding: '1px 5px', borderRadius: 999, fontSize: '0.56rem', fontWeight: 800, letterSpacing: '0.06em', background: 'rgba(255,42,133,0.16)', color: '#ff5cab', marginLeft: 4 }}>ULTRA</span>
+                        )}
+                        {(f.subscription_tier === 'pro' || f.subscription_status === 'pro') && !(f.subscription_tier === 'ultra') && (
+                          <RiVipCrownFill size={13} style={{ color: 'var(--accent)', marginLeft: 4 }} />
+                        )}
                       </div>
-                      <div className="v3-friend-meta">{f.total_workouts || 0} workouts</div>
+                      <div className="v3-friend-meta" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span>{f.total_workouts || 0} workouts</span>
+                        {(f.current_streak || 0) > 0 && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: '#ff5e00' }}>
+                            <RiFireFill size={11} />{f.current_streak}d
+                          </span>
+                        )}
+                        {f.goal && (
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>{f.goal}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="v3-friend-actions">
                       <button className="v3-action-btn accent" onClick={e => { e.stopPropagation(); openDirectChat(f.id) }} title="Message">

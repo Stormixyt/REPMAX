@@ -86,6 +86,14 @@ const SUGGESTED_PROMPTS = [
   },
 ];
 
+const FOLLOW_UP_CHIPS = [
+  "Go deeper on that",
+  "Give me alternatives",
+  "How do I apply this to my plan?",
+  "Explain like I'm a beginner",
+  "Can you rewrite my program with this?",
+];
+
 function getStorageKey(userId) {
   return `${STORAGE_NAMESPACE}:${userId}`;
 }
@@ -1442,6 +1450,19 @@ export default function AICoach() {
                       <div className={`coach-msg-bubble ${isUser ? "user" : "assistant"}`}>
                         <MessageBody content={message.content} />
                       </div>
+                      {!isUser && !loading && message.id === activeConversation?.messages?.[activeConversation.messages.length - 1]?.id && (
+                        <div className="coach-followup-chips">
+                          {FOLLOW_UP_CHIPS.map((chip) => (
+                            <button
+                              key={chip}
+                              className="coach-followup-chip"
+                              onClick={() => sendMessage(chip)}
+                            >
+                              {chip}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

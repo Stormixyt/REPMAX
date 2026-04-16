@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { sendNotification } from '../lib/notifications'
 import GymPicker from '../components/GymPicker'
 import { startCall, answerCall } from '../lib/webrtc'
-import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill, RiPhoneFill, RiVideoOnFill, RiCloseLine } from '@remixicon/react'
+import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill, RiPhoneFill, RiVideoOnFill, RiCloseLine, RiMicLine, RiReplyLine, RiCloseFill, RiImageAddLine } from '@remixicon/react'
 
 function sortChatMessagesChronologically(items = []) {
   return [...items].sort(
@@ -54,7 +54,11 @@ export default function ChatRoom() {
   const messageIdsRef = useRef(new Set())
   const [incomingCall, setIncomingCall] = useState(null)
   const [reactionMsgId, setReactionMsgId] = useState(null)
-  const [reactions, setReactions] = useState({}) // { msgId: [{emoji, user_id}...] }
+  const [reactions, setReactions] = useState({})
+  const [replyTo, setReplyTo] = useState(null)
+  const [typingUsers, setTypingUsers] = useState([])
+  const typingTimerRef = useRef(null)
+  const lastTypingBroadcast = useRef(0)
   const REACTION_EMOJIS = ['💪', '🔥', '👏', '🤣', '❤️']
   const SUPER_EMOJIS = ['⚡', '🏆', '💎', '🫡', '☠️']
 
@@ -263,6 +267,14 @@ export default function ChatRoom() {
           }
         }
       })
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (cancelled || payload.userId === user.id) return
+        setTypingUsers(prev => {
+          const exists = prev.find(t => t.userId === payload.userId)
+          if (exists) return prev.map(t => t.userId === payload.userId ? { ...t, ts: Date.now() } : t)
+          return [...prev, { userId: payload.userId, name: payload.name || 'Someone', ts: Date.now() }]
+        })
+      })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log(`[REPMAX] Chat ${chatId} realtime connected`)
@@ -283,6 +295,25 @@ export default function ChatRoom() {
       }
     }
   }, [chatId, user.id, upsertIncomingCall, showCallToast])
+
+  useEffect(() => {
+    if (typingUsers.length === 0) return undefined
+    const interval = setInterval(() => {
+      setTypingUsers(prev => prev.filter(t => Date.now() - t.ts < 3500))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [typingUsers.length])
+
+  function broadcastTyping() {
+    const now = Date.now()
+    if (now - lastTypingBroadcast.current < 2000) return
+    lastTypingBroadcast.current = now
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { userId: user.id, name: profile?.display_name || 'Someone' },
+    }).catch(() => {})
+  }
 
   async function markCallNotificationRead(notificationId) {
     if (!notificationId) return
@@ -404,17 +435,20 @@ export default function ChatRoom() {
     e?.preventDefault()
     if (!text.trim()) return
     const content = text.trim()
+    const replyRef = replyTo ? { id: replyTo.id, sender: replyTo.senderName, preview: String(replyTo.content || '').slice(0, 80) } : null
+    const fullContent = replyRef ? JSON.stringify({ text: content, reply: replyRef }) : content
+    const msgType = replyRef ? 'reply' : 'text'
     setText('')
+    setReplyTo(null)
     inputRef.current?.focus()
 
     const tempId = crypto.randomUUID()
-    const newMsg = { id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text', created_at: new Date().toISOString(), _pending: true }
+    const newMsg = { id: tempId, chat_id: chatId, sender_id: user.id, content: fullContent, type: msgType, created_at: new Date().toISOString(), _pending: true }
     setMessages(prev => [...prev, newMsg])
     requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }))
 
-    // Fire insert + push in parallel so neither blocks the other
     const [insertResult] = await Promise.allSettled([
-      supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'text' }),
+      supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content: fullContent, type: msgType }),
       notifyChatRecipients(tempId, 'text', content).catch((notifyError) => {
         console.warn('[REPMAX] Failed to notify chat recipients:', notifyError)
       })
@@ -790,7 +824,7 @@ export default function ChatRoom() {
               <div
                 className={`msg-wrapper ${isMe ? 'sent' : 'received'} msg-enter`}
                 onClick={() => isMe && setTappedMsgId(prev => prev === msg.id ? null : msg.id)}
-                onDoubleClick={() => msg.type === 'text' && setReactionMsgId(prev => prev === msg.id ? null : msg.id)}
+                onDoubleClick={() => (msg.type === 'text' || msg.type === 'reply') && setReactionMsgId(prev => prev === msg.id ? null : msg.id)}
               >
                 {!isMe && chatMeta?.type === 'group' && (
                   <div className="msg-sender-name" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -815,16 +849,55 @@ export default function ChatRoom() {
                   </div>
                 )}
 
-                {msg.type === 'text' ? (
-                  <div className={`msg-bubble ${isMe ? 'sent' : 'received'}`}>
-                    {msg.content}
-                    <div className="msg-time">
-                      {time}
-                      {isMe && !msg._failed && <RiCheckDoubleLine size={12} style={{ marginLeft: 4, opacity: msg._pending ? 0.4 : 1 }} />}
-                      {msg._failed && <span style={{ color: 'var(--danger)', marginLeft: 4, fontSize: '0.7rem' }}>Failed</span>}
+                {(msg.type === 'text' || msg.type === 'reply') ? (() => {
+                  let displayText = msg.content
+                  let replyData = null
+                  if (msg.type === 'reply') {
+                    try {
+                      const parsed = JSON.parse(msg.content)
+                      displayText = parsed.text || msg.content
+                      replyData = parsed.reply || null
+                    } catch { displayText = msg.content }
+                  }
+                  return (
+                    <div className={`msg-bubble ${isMe ? 'sent' : 'received'}`}>
+                      {replyData && (
+                        <div style={{
+                          padding: '6px 10px',
+                          marginBottom: 6,
+                          borderRadius: 10,
+                          borderLeft: '3px solid var(--accent)',
+                          background: 'rgba(255,255,255,0.04)',
+                          fontSize: '0.76rem',
+                        }}>
+                          <div style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '0.68rem', marginBottom: 2 }}>{replyData.sender}</div>
+                          <div style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{replyData.preview}</div>
+                        </div>
+                      )}
+                      {displayText}
+                      <div className="msg-time">
+                        {time}
+                        {isMe && !msg._failed && <RiCheckDoubleLine size={12} style={{ marginLeft: 4, opacity: msg._pending ? 0.4 : 1 }} />}
+                        {msg._failed && <span style={{ color: 'var(--danger)', marginLeft: 4, fontSize: '0.7rem' }}>Failed</span>}
+                      </div>
+                      {!isMe && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setReplyTo({ id: msg.id, senderName, content: displayText }) }}
+                          style={{
+                            position: 'absolute', top: 4, right: isMe ? 'auto' : -36, left: isMe ? -36 : 'auto',
+                            background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '50%',
+                            width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s',
+                            color: 'var(--text-secondary)',
+                          }}
+                          className="msg-reply-btn"
+                        >
+                          <RiReplyLine size={14} />
+                        </button>
+                      )}
                     </div>
-                  </div>
-                ) : (
+                  )
+                })() : (
                   /* GYM INVITE CARD — Inline for better control */
                   <div className="invite-card msg-enter">
                     <div className="invite-card-bolt"><RiFlashlightFill size={100} /></div>
@@ -964,16 +1037,88 @@ export default function ChatRoom() {
         <div ref={scrollRef} style={{ height: 1 }} />
       </div>
 
+      {/* Typing Indicator */}
+      {typingUsers.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: 'calc(64px + var(--safe-bottom))',
+          left: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '5px 12px',
+          background: 'rgba(10,10,10,0.85)',
+          borderRadius: 12,
+          fontSize: '0.72rem',
+          color: 'var(--text-secondary)',
+          zIndex: 19,
+          backdropFilter: 'blur(10px)',
+          animation: 'fadeIn 0.2s ease',
+        }}>
+          <span style={{ display: 'flex', gap: 3 }}>
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1s infinite' }} />
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1s infinite 0.2s' }} />
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1s infinite 0.4s' }} />
+          </span>
+          {typingUsers.length === 1
+            ? `${typingUsers[0].name} is typing`
+            : `${typingUsers.length} people typing`}
+        </div>
+      )}
+
+      {/* Reply-To Bar */}
+      {replyTo && (
+        <div style={{
+          position: 'fixed',
+          bottom: 'calc(64px + var(--safe-bottom))',
+          left: 0,
+          right: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '8px 16px',
+          background: 'rgba(10,10,10,0.95)',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          zIndex: 21,
+          backdropFilter: 'blur(12px)',
+          animation: 'fadeIn 0.15s ease',
+        }}>
+          <RiReplyLine size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--accent)', marginBottom: 1 }}>{replyTo.senderName}</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {String(replyTo.content || '').slice(0, 60)}
+            </div>
+          </div>
+          <button onClick={() => setReplyTo(null)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }}>
+            <RiCloseFill size={18} />
+          </button>
+        </div>
+      )}
+
       {/* Input Bar */}
       <div className="chat-input-bar">
-        <button onClick={() => { setShowInviteMenu(true); setInviteForm({ location: '', time: '' }) }} className="chat-lightning-btn">
-          <RiFlashlightFill size={20} />
+        <button onClick={() => { setShowInviteMenu(true); setInviteForm({ location: '', time: '' }) }} className="chat-lightning-btn" style={{ width: 38, height: 38 }}>
+          <RiFlashlightFill size={18} />
         </button>
-        <form onSubmit={sendMessage} style={{ flex: 1, display: 'flex', gap: 10 }}>
-          <input ref={inputRef} type="text" placeholder="Message..." value={text} onChange={e => setText(e.target.value)} className="chat-input" />
-          <button type="submit" disabled={!text.trim()} className={`chat-send-btn ${text.trim() ? 'active' : ''}`}>
-            <RiSendPlaneFill size={18} />
-          </button>
+        <form onSubmit={sendMessage} style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={replyTo ? `Reply to ${replyTo.senderName}...` : 'Message...'}
+            value={text}
+            onChange={e => { setText(e.target.value); broadcastTyping() }}
+            className="chat-input"
+          />
+          {text.trim() ? (
+            <button type="submit" className="chat-send-btn active">
+              <RiSendPlaneFill size={18} />
+            </button>
+          ) : (
+            <button type="button" className="chat-send-btn" style={{ opacity: 0.5 }} onClick={() => showToast('Voice notes coming soon')}>
+              <RiMicLine size={18} />
+            </button>
+          )}
         </form>
       </div>
 
