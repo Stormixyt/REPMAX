@@ -92,7 +92,16 @@ export default function ThemeSelector() {
 
     setSavingSkin(id)
     try {
-      await syncAppearanceChange(() => updateProfile({ interface_skin: id }))
+      const result = await syncAppearanceChange(() => updateProfile({ interface_skin: id }))
+      if (result?.error) {
+        console.error('[ThemeSelector] interface_skin update failed:', result.error)
+        const msg = String(result.error?.message || result.error)
+        if (/check constraint|violates check/i.test(msg)) {
+          alert(`Skin "${id}" is not yet enabled on your database.\nRun fix-v6-skin.sql in the Supabase SQL editor, then try again.`)
+        } else {
+          alert(`Could not save skin: ${msg}`)
+        }
+      }
     } finally {
       setSavingSkin('')
     }
