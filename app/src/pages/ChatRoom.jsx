@@ -59,6 +59,11 @@ export default function ChatRoom() {
   const [typingUsers, setTypingUsers] = useState([])
   const typingTimerRef = useRef(null)
   const lastTypingBroadcast = useRef(0)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
+  const recordingTimerRef = useRef(null)
   const REACTION_EMOJIS = ['💪', '🔥', '👏', '🤣', '❤️']
   const SUPER_EMOJIS = ['⚡', '🏆', '💎', '🫡', '☠️']
 
@@ -92,7 +97,7 @@ export default function ChatRoom() {
 
     async function init() {
       const [metaRes, msgRes] = await Promise.all([
-        supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed, image_url, subscription_status, status_emoji))').eq('id', chatId).single(),
+        supabase.from('chats').select('*, chat_members(user_id, profiles(display_name, avatar_seed, image_url, subscription_status, subscription_tier, status_emoji, avatar_config))').eq('id', chatId).single(),
         supabase.from('messages').select('*').eq('chat_id', chatId).order('created_at', { ascending: true }).limit(200)
       ])
 
@@ -313,6 +318,73 @@ export default function ChatRoom() {
       event: 'typing',
       payload: { userId: user.id, name: profile?.display_name || 'Someone' },
     }).catch(() => {})
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+      audioChunksRef.current = []
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        clearInterval(recordingTimerRef.current)
+        setRecordingDuration(0)
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        if (blob.size < 1000) { showToast('Recording too short'); return }
+        await sendVoiceMessage(blob)
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setIsRecording(true)
+      setRecordingDuration(0)
+      recordingTimerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000)
+    } catch {
+      showToast('Microphone access denied')
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+    setIsRecording(false)
+  }
+
+  function cancelRecording() {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.ondataavailable = null
+      mediaRecorderRef.current.onstop = null
+      mediaRecorderRef.current.stop()
+      mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop())
+    }
+    clearInterval(recordingTimerRef.current)
+    setIsRecording(false)
+    setRecordingDuration(0)
+    audioChunksRef.current = []
+  }
+
+  async function sendVoiceMessage(blob) {
+    const fileName = `voice-${chatId}-${Date.now()}.webm`
+    const { data: uploadData, error: uploadError } = await supabase.storage.from('voice-messages').upload(fileName, blob, { contentType: 'audio/webm' })
+    if (uploadError) { showToast('Upload failed'); console.warn('[Voice] upload error:', uploadError); return }
+    const { data: urlData } = supabase.storage.from('voice-messages').getPublicUrl(fileName)
+    const voiceUrl = urlData?.publicUrl
+    if (!voiceUrl) { showToast('Could not get voice URL'); return }
+
+    const tempId = crypto.randomUUID()
+    const content = JSON.stringify({ url: voiceUrl, duration: recordingDuration })
+    const newMsg = { id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'voice', created_at: new Date().toISOString(), _pending: true }
+    setMessages(prev => [...prev, newMsg])
+    requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }))
+
+    const [insertResult] = await Promise.allSettled([
+      supabase.from('messages').insert({ id: tempId, chat_id: chatId, sender_id: user.id, content, type: 'voice' }),
+      notifyChatRecipients(tempId, 'text', '🎤 Voice message').catch(() => {})
+    ])
+    if (insertResult.status === 'rejected' || insertResult.value?.error) {
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _failed: true } : m))
+    }
   }
 
   async function markCallNotificationRead(notificationId) {
@@ -617,9 +689,35 @@ export default function ChatRoom() {
       status_emoji: profile?.status_emoji,
       avatar_seed: profile?.avatar_seed,
       image_url: profile?.image_url,
+      avatar_config: profile?.avatar_config,
     }
     const member = chatMeta?.members?.find(m => m.user_id === senderId)
     return member?.profiles || {}
+  }
+
+  function getFrameStyle(memberProfile) {
+    const frameId = memberProfile?.avatar_config?.profileFrame
+    if (!frameId || frameId === 'none') return {}
+    const frames = {
+      'gold-ring': { boxShadow: '0 0 0 2px #ffb800, 0 0 10px rgba(255,184,0,0.4)' },
+      'neon-glow': { boxShadow: '0 0 0 2px var(--accent), 0 0 12px var(--accent-glow-strong)' },
+      'aurora': { boxShadow: '0 0 0 2px #b026ff, 0 0 12px rgba(176,38,255,0.5)' },
+      'fire': { boxShadow: '0 0 0 2px #ff5e00, 0 0 12px rgba(255,94,0,0.5)' },
+      'diamond': { boxShadow: '0 0 0 2px #00d4ff, 0 0 12px rgba(0,212,255,0.5)' },
+    }
+    return frames[frameId] || {}
+  }
+
+  function getNameStyle(memberProfile) {
+    const effectId = memberProfile?.avatar_config?.nameEffect
+    if (!effectId || effectId === 'none') return {}
+    const effects = {
+      'gradient-fire': { background: 'linear-gradient(90deg,#ff5e00,#ff2a85)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+      'gradient-aurora': { background: 'linear-gradient(90deg,#b026ff,#00d4ff,#ccff00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+      'gradient-gold': { background: 'linear-gradient(90deg,#ffb800,#ffd700,#ff5e00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+      'glow-neon': { textShadow: '0 0 6px var(--accent), 0 0 14px var(--accent-glow)' },
+    }
+    return effects[effectId] || {}
   }
 
   function formatInviteTime(dateStr) {
@@ -749,7 +847,7 @@ export default function ChatRoom() {
           <RiArrowLeftLine size={22} />
         </button>
         {chatMeta?.type === 'direct' && (
-          <img src={chatMeta.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${chatMeta.avatar}&backgroundColor=transparent`} alt="" className="chat-header-avatar" style={{ objectFit: 'cover' }} />
+          <img src={chatMeta.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${chatMeta.avatar}&backgroundColor=transparent`} alt="" className="chat-header-avatar" style={{ objectFit: 'cover', ...(() => { const other = chatMeta?.members?.find(m => m.user_id !== user.id); return getFrameStyle(other?.profiles || {}) })() }} />
         )}
         {chatMeta?.type === 'group' && (
           <div className="chat-header-avatar" style={{ background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -828,7 +926,7 @@ export default function ChatRoom() {
               >
                 {!isMe && chatMeta?.type === 'group' && (
                   <div className="msg-sender-name" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span>{senderName}</span>
+                    <span style={getNameStyle(senderProfile)}>{senderName}</span>
                     {senderProfile?.status_emoji && (
                       <span style={{ fontSize: '0.82rem', lineHeight: 1 }}>{senderProfile.status_emoji}</span>
                     )}
@@ -849,7 +947,23 @@ export default function ChatRoom() {
                   </div>
                 )}
 
-                {(msg.type === 'text' || msg.type === 'reply') ? (() => {
+                {msg.type === 'voice' ? (() => {
+                  let voiceData = { url: '', duration: 0 }
+                  try { voiceData = JSON.parse(msg.content) } catch {}
+                  return (
+                    <div className={`msg-bubble ${isMe ? 'sent' : 'received'}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <RiMicLine size={16} style={{ flexShrink: 0, color: isMe ? 'var(--text-on-accent)' : 'var(--accent)' }} />
+                      <audio controls preload="metadata" style={{ height: 32, maxWidth: 200, flex: 1 }}>
+                        <source src={voiceData.url} type="audio/webm" />
+                      </audio>
+                      <span style={{ fontSize: '0.68rem', opacity: 0.6, flexShrink: 0 }}>{voiceData.duration || 0}s</span>
+                      <div className="msg-time" style={{ marginTop: 0 }}>
+                        {time}
+                        {isMe && !msg._failed && <RiCheckDoubleLine size={12} style={{ marginLeft: 4, opacity: msg._pending ? 0.4 : 1 }} />}
+                      </div>
+                    </div>
+                  )
+                })() : (msg.type === 'text' || msg.type === 'reply') ? (() => {
                   let displayText = msg.content
                   let replyData = null
                   if (msg.type === 'reply') {
@@ -1114,8 +1228,20 @@ export default function ChatRoom() {
             <button type="submit" className="chat-send-btn active">
               <RiSendPlaneFill size={18} />
             </button>
+          ) : isRecording ? (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', animation: 'pulse 1s infinite', minWidth: 32 }}>
+                {recordingDuration}s
+              </span>
+              <button type="button" className="chat-send-btn" style={{ background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }} onClick={cancelRecording}>
+                <RiCloseFill size={18} />
+              </button>
+              <button type="button" className="chat-send-btn active" onClick={stopRecording}>
+                <RiSendPlaneFill size={18} />
+              </button>
+            </div>
           ) : (
-            <button type="button" className="chat-send-btn" style={{ opacity: 0.5 }} onClick={() => showToast('Voice notes coming soon')}>
+            <button type="button" className="chat-send-btn" style={{ opacity: 0.6 }} onClick={startRecording}>
               <RiMicLine size={18} />
             </button>
           )}

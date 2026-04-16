@@ -925,6 +925,23 @@ export default function Onboarding() {
     ? ['Goal', 'Level', 'Body', 'Schedule', 'Equipment', 'Focus', 'Split', 'Injuries']
     : ['Basics', 'Setup', 'Split']
 
+  const motivationalHint = (() => {
+    if (path === 'quick') {
+      if (step === 0 && goal) return goal === 'strength' ? 'Heavy iron. Good choice.' : goal === 'hypertrophy' ? 'Size mode activated.' : goal === 'athletic' ? 'Built different.' : 'Smart start.'
+      if (step === 1 && selectedDays?.length >= 3) return `${selectedDays.length} days locked in. Consistency wins.`
+      if (step === 2 && chosenSplit) return 'Split set. Your AI program is almost ready.'
+    }
+    if (path === 'advanced') {
+      if (step === 0 && goal) return goal === 'strength' ? 'Strength-first. RPE 8+ incoming.' : goal === 'hypertrophy' ? 'Volume protocol unlocked.' : goal === 'athletic' ? 'Power + conditioning.' : 'Balanced approach. Smart.'
+      if (step === 1 && level) return level === 'advanced' ? 'Respect. Autoregulation matters at your level.' : level === 'intermediate' ? 'Perfect growth phase. Let\'s push it.' : 'Clean start. We\'ll build the foundation right.'
+      if (step === 3 && selectedDays?.length >= 4) return `${selectedDays.length} days/week. That's serious commitment.`
+      if (step === 4) return 'Equipment locked. Programming adapts to what you have.'
+      if (step === 6 && chosenSplit) return 'Split selected. One step from your first AI program.'
+      if (step === 7) return 'Last step. Be honest — the AI adjusts around injuries.'
+    }
+    return null
+  })()
+
   return (
     <div className="onboarding-page" style={{
       minHeight: '100vh',
@@ -1000,6 +1017,19 @@ export default function Onboarding() {
         position: 'relative',
         zIndex: 1
       }}>
+        {motivationalHint && (
+          <div style={{
+            textAlign: 'center',
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            color: 'var(--accent)',
+            marginBottom: 10,
+            animation: 'fadeIn 0.3s ease',
+            letterSpacing: '0.02em',
+          }}>
+            {motivationalHint}
+          </div>
+        )}
         <button
           onClick={nextStep}
           disabled={!canProceed()}

@@ -60,6 +60,38 @@ export default function Profile() {
   const drawnAvatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
   const avatarUrl = profile?.image_url || drawnAvatarUrl
 
+  const avatarConfig = profile?.avatar_config || {}
+  const frameId = avatarConfig.profileFrame || 'none'
+  const nameEffectId = avatarConfig.nameEffect || 'none'
+  const bannerId = avatarConfig.profileBanner || 'none'
+
+  const FRAME_STYLES = {
+    none: {},
+    'gold-ring': { boxShadow: '0 0 0 3px #ffb800, 0 0 16px rgba(255,184,0,0.5)' },
+    'neon-glow': { boxShadow: '0 0 0 3px var(--accent), 0 0 22px var(--accent-glow-strong)' },
+    'aurora': { boxShadow: '0 0 0 3px #b026ff, 0 0 18px rgba(176,38,255,0.6), 0 0 36px rgba(0,212,255,0.3)' },
+    'fire': { boxShadow: '0 0 0 3px #ff5e00, 0 0 20px rgba(255,94,0,0.6), 0 0 40px rgba(255,42,133,0.2)' },
+    'diamond': { boxShadow: '0 0 0 3px #00d4ff, 0 0 22px rgba(0,212,255,0.7), 0 0 44px rgba(176,38,255,0.25)' },
+  }
+  const NAME_STYLES = {
+    none: {},
+    'gradient-fire': { background: 'linear-gradient(90deg,#ff5e00,#ff2a85)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+    'gradient-aurora': { background: 'linear-gradient(90deg,#b026ff,#00d4ff,#ccff00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+    'gradient-gold': { background: 'linear-gradient(90deg,#ffb800,#ffd700,#ff5e00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+    'glow-neon': { textShadow: '0 0 8px var(--accent), 0 0 20px var(--accent-glow)' },
+  }
+  const BANNER_STYLES = {
+    none: {},
+    'dark-grid': { background: 'linear-gradient(180deg,rgba(14,10,22,0.9),rgba(7,7,7,0.95))' },
+    'aurora-wave': { background: 'linear-gradient(135deg,rgba(176,38,255,0.3),rgba(0,212,255,0.2),rgba(255,42,133,0.15))' },
+    'fire-fade': { background: 'linear-gradient(135deg,rgba(255,94,0,0.3),rgba(255,42,133,0.15),rgba(176,38,255,0.1))' },
+    'gold-luxury': { background: 'linear-gradient(135deg,rgba(255,184,0,0.25),rgba(255,215,0,0.1),rgba(204,255,0,0.08))' },
+  }
+
+  const frameStyle = FRAME_STYLES[frameId] || {}
+  const nameStyle = NAME_STYLES[nameEffectId] || {}
+  const bannerStyle = BANNER_STYLES[bannerId] || {}
+
   const canFeedback = (profile?.total_workouts || 0) >= 6
 
   const earnedBadges = BADGE_DEFS.filter(b => b.check(profile, isPro))
@@ -128,8 +160,8 @@ export default function Profile() {
       </div>
 
       {/* Avatar + Info */}
-      <div className="profile-hero" style={{ position: 'relative' }}>
-        <div className={`profile-avatar-lg aura-ring ${getAuraLevel(profile?.current_streak || 0)}`} style={{ position: 'relative', overflow: 'visible', background: 'var(--bg-elevated)', border: isPro ? '3px solid var(--accent)' : '2px solid var(--border)' }}>
+      <div className="profile-hero" style={{ position: 'relative', padding: '24px 0 16px', borderRadius: 22, ...bannerStyle }}>
+        <div className={`profile-avatar-lg aura-ring ${getAuraLevel(profile?.current_streak || 0)}`} style={{ position: 'relative', overflow: 'visible', background: 'var(--bg-elevated)', border: isPro ? '3px solid var(--accent)' : '2px solid var(--border)', ...frameStyle }}>
           <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
           <button
             onClick={() => setShowAvatarBuilder(true)}
@@ -145,7 +177,7 @@ export default function Profile() {
           </button>
           {isPro && <div className="profile-pro-ring" />}
         </div>
-        <h2 className="profile-display-name">
+        <h2 className="profile-display-name" style={nameStyle}>
           {profile?.display_name || 'Athlete'}
           {isPro && <ProBadge size="md" tier={subscriptionTier} />}
         </h2>

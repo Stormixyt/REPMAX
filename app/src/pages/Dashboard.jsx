@@ -593,6 +593,34 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Quick-Access Chip Rail — always visible */}
+      <div className="home-chip-rail scroll-x" role="navigation" aria-label="Quick navigation">
+        <button type="button" className="home-chip home-chip-community" onClick={() => navigate('/communities')}>
+          <span className="home-chip-icon"><RiTeamFill size={18} /></span>
+          <span className="home-chip-label">Community</span>
+        </button>
+        <button type="button" className="home-chip home-chip-ultra" onClick={() => navigate(ultraLabHref)}>
+          <span className="home-chip-icon"><RiSparklingFill size={18} /></span>
+          <span className="home-chip-label">ULTRA Lab</span>
+        </button>
+        <button type="button" className="home-chip" onClick={() => navigate('/coach')}>
+          <span className="home-chip-icon"><RiBrainFill size={18} /></span>
+          <span className="home-chip-label">Coach</span>
+        </button>
+        <button type="button" className="home-chip" onClick={() => navigate('/recovery')}>
+          <span className="home-chip-icon"><RiMoonClearFill size={18} /></span>
+          <span className="home-chip-label">Recovery</span>
+        </button>
+        <button type="button" className="home-chip" onClick={() => navigate('/run')}>
+          <span className="home-chip-icon"><RiRunFill size={18} /></span>
+          <span className="home-chip-label">Run</span>
+        </button>
+        <button type="button" className="home-chip" onClick={() => navigate('/nutrition')}>
+          <span className="home-chip-icon"><RiFireFill size={18} /></span>
+          <span className="home-chip-label">Eat</span>
+        </button>
+      </div>
+
       {/* Daily Challenge — free/PRO users */}
       {!isUltra && (
         <div className="challenge-card">
