@@ -56,7 +56,8 @@ export default function App() {
       'tier-ultra',
       'skin-default',
       'skin-ultra-signature',
-      'skin-v5'
+      'skin-v5',
+      'skin-v6'
     )
 
     if (profile?.theme_color) {
@@ -75,7 +76,8 @@ export default function App() {
 
     const skinValue = profile?.interface_skin
     let interfaceSkin = 'skin-default'
-    if (skinValue === 'v5' && (isPro || isUltra)) interfaceSkin = 'skin-v5'
+    if (skinValue === 'v6' && isUltra) interfaceSkin = 'skin-v6'
+    else if (skinValue === 'v5' && (isPro || isUltra)) interfaceSkin = 'skin-v5'
     else if (skinValue === 'ultra-signature' && isUltra) interfaceSkin = 'skin-ultra-signature'
 
     document.body.classList.add(interfaceSkin)

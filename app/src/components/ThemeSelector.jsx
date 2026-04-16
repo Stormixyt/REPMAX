@@ -18,18 +18,28 @@ const INTERFACE_STYLES = [
     name: 'Default',
     description: 'Cleaner and more restrained, while still keeping the premium tier polish.',
     previewClass: 'default',
+    requiredTier: 'pro',
+  },
+  {
+    id: 'v5',
+    name: 'V5',
+    description: 'Deeper blacks, glass-morphism cards, and a tighter visual system.',
+    previewClass: 'v5',
+    requiredTier: 'pro',
   },
   {
     id: 'ultra-signature',
     name: 'ULTRA Signature',
     description: 'Richer contrast, deeper glow, and the full REPMAX luxury performance skin.',
     previewClass: 'ultra-signature',
+    requiredTier: 'ultra',
   },
   {
-    id: 'v5',
-    name: 'V5',
-    description: 'Deeper blacks, glass-morphism cards, and a tighter visual system. The future of REPMAX.',
-    previewClass: 'v5',
+    id: 'v6',
+    name: 'V6 Aurora',
+    description: 'ULTRA-exclusive chroma shell. Aurora depth, glass that breathes, signature glow. The apex skin.',
+    previewClass: 'v6',
+    requiredTier: 'ultra',
   },
 ]
 
@@ -41,6 +51,7 @@ export default function ThemeSelector() {
   const currentTheme = profile?.theme_color || 'green'
   const currentInterfaceSkin = (() => {
     const skin = profile?.interface_skin
+    if (skin === 'v6' && isUltra) return 'v6'
     if (skin === 'v5' && isPro) return 'v5'
     if (skin === 'ultra-signature' && isUltra) return 'ultra-signature'
     return 'default'
@@ -77,7 +88,7 @@ export default function ThemeSelector() {
 
   async function handleInterfaceSkinChange(id) {
     if (!isPro || savingSkin === id) return
-    if (id === 'ultra-signature' && !isUltra) return
+    if ((id === 'ultra-signature' || id === 'v6') && !isUltra) return
 
     setSavingSkin(id)
     try {
@@ -157,39 +168,53 @@ export default function ThemeSelector() {
         </div>
 
         <div className="theme-style-grid">
-          {INTERFACE_STYLES.map((style) => (
-            <button
-              key={style.id}
-              type="button"
-              className={`theme-style-card ${style.previewClass} ${currentInterfaceSkin === style.id ? 'is-active' : ''}`}
-              onClick={() => handleInterfaceSkinChange(style.id)}
-              disabled={!isPro || (style.id === 'ultra-signature' && !isUltra)}
-            >
-              <div className="theme-style-preview">
-                <span className="theme-style-preview-top" />
-                <span className="theme-style-preview-card" />
-                <span className="theme-style-preview-pill" />
-              </div>
+          {INTERFACE_STYLES.map((style) => {
+            const ultraLocked = style.requiredTier === 'ultra' && !isUltra
+            const proLocked = !isPro
+            const locked = proLocked || ultraLocked
+            return (
+              <button
+                key={style.id}
+                type="button"
+                className={`theme-style-card ${style.previewClass} ${currentInterfaceSkin === style.id ? 'is-active' : ''}`}
+                onClick={() => handleInterfaceSkinChange(style.id)}
+                disabled={locked}
+              >
+                <div className="theme-style-preview">
+                  <span className="theme-style-preview-top" />
+                  <span className="theme-style-preview-card" />
+                  <span className="theme-style-preview-pill" />
+                </div>
 
-              <div className="theme-style-copy-shell">
-                <div className="theme-style-head">
-                  <div className="theme-style-name">
-                    {style.name}
-                    {(style.id === 'ultra-signature' || style.id === 'v5') && <RiSparklingFill size={14} />}
+                <div className="theme-style-copy-shell">
+                  <div className="theme-style-head">
+                    <div className="theme-style-name">
+                      {style.name}
+                      {style.requiredTier === 'ultra' && <RiSparklingFill size={14} />}
+                    </div>
+                    <div className="theme-style-indicator">
+                      {currentInterfaceSkin === style.id ? <RiCheckFill size={16} /> : locked ? <RiLock2Line size={16} /> : null}
+                    </div>
                   </div>
-                  <div className="theme-style-indicator">
-                    {currentInterfaceSkin === style.id ? <RiCheckFill size={16} /> : !isUltra ? <RiLock2Line size={16} /> : null}
+                  <div className="theme-style-copy">
+                    <div className="theme-style-helper">
+                      {style.id === 'default' ? 'Restrained premium shell'
+                        : style.id === 'v5' ? 'Next-gen glass interface'
+                        : style.id === 'v6' ? 'ULTRA only · apex skin'
+                        : 'High-contrast luxury shell'}
+                    </div>
+                    <div className="theme-style-description">{style.description}</div>
                   </div>
+                  {style.requiredTier === 'ultra' && !ultraLocked && (
+                    <div className="theme-style-tag-ultra"><RiVipCrownFill size={11} /> ULTRA</div>
+                  )}
+                  {ultraLocked && !proLocked && (
+                    <div className="theme-style-tag-locked"><RiLock2Line size={11} /> ULTRA required</div>
+                  )}
                 </div>
-                <div className="theme-style-copy">
-                  <div className="theme-style-helper">
-                    {style.id === 'default' ? 'Restrained premium shell' : style.id === 'v5' ? 'Next-gen glass interface' : 'High-contrast luxury shell'}
-                  </div>
-                  <div className="theme-style-description">{style.description}</div>
-                </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            )
+          })}
         </div>
       </div>
 

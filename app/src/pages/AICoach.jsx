@@ -1097,7 +1097,9 @@ export default function AICoach() {
     try {
       await navigator.clipboard.writeText(message.content);
       setCopiedMessageId(message.id);
-    } catch {}
+    } catch (err) {
+      console.warn("[Coach] clipboard copy failed:", err);
+    }
   }
 
   async function sendMessage(question) {
@@ -1127,7 +1129,9 @@ export default function AICoach() {
     setInput("");
     setLoading(true);
 
-    persistCoachMessage(targetConversationId, nextTitle, userMessage).catch(() => {});
+    persistCoachMessage(targetConversationId, nextTitle, userMessage).catch((err) => {
+      console.warn("[Coach] persist user message failed:", err);
+    });
 
     try {
       let assistantContent = "";
@@ -1189,9 +1193,12 @@ export default function AICoach() {
           targetConversationId,
           nextTitle,
           assistantMessage
-        ).catch(() => {});
+        ).catch((err) => {
+          console.warn("[Coach] persist assistant message failed:", err);
+        });
       }
-    } catch {
+    } catch (err) {
+      console.error("[Coach] sendMessage failed:", err);
       const errorMessage = createMessage(
         "assistant",
         "I hit a connection issue. Try sending that again in a second."
@@ -1206,9 +1213,9 @@ export default function AICoach() {
         )
       );
 
-      persistCoachMessage(targetConversationId, nextTitle, errorMessage).catch(
-        () => {}
-      );
+      persistCoachMessage(targetConversationId, nextTitle, errorMessage).catch((persistErr) => {
+        console.warn("[Coach] persist error message failed:", persistErr);
+      });
     } finally {
       setLoading(false);
     }

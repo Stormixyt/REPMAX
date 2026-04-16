@@ -626,12 +626,13 @@
 
         <!-- ULTRA Tier -->
         <div class="pricing-card ultra reveal reveal-delay-3">
+          <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:linear-gradient(135deg,rgba(255,42,133,0.22),rgba(176,38,255,0.18));border:1px solid rgba(255,42,133,0.35);font-size:0.64rem;font-weight:800;letter-spacing:0.12em;color:#ffb7d3;margin-bottom:10px;">★ 15 EXCLUSIVE FEATURES</div>
           <div class="pricing-tier">ULTRA</div>
           <div class="pricing-price">
             <span class="currency">€</span>5
             <span class="period">/week</span>
           </div>
-          <p class="pricing-desc">The deep REPMAX layer. Behavior-aware intelligence, premium import precision, and a more immersive training signal from start to finish.</p>
+          <p class="pricing-desc">The tier most lifters never see. Behavior-aware intelligence, shared PR walls, challenge rooms, a signature V6 interface, and 15 features built to make you train smarter — and look unmissable doing it.</p>
 
           <div class="pricing-features">
             <div class="pricing-feature">
@@ -644,35 +645,53 @@
               <span class="check">
                 <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
               </span>
-              ULTRA intelligence layer
+              ULTRA Lab cockpit — Plateau Doctor, Exercise ROI, Forecasts, Flex
             </div>
             <div class="pricing-feature">
               <span class="check">
                 <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
               </span>
-              Custom routine import studio
+              Communities — City, Gym &amp; Split crews with weekly kings
             </div>
             <div class="pricing-feature">
               <span class="check">
                 <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
               </span>
-              Social edge & partner matching
+              Shared PR Wall + live crew reactions
             </div>
             <div class="pricing-feature">
               <span class="check">
                 <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
               </span>
-              Optional ULTRA signature interface
+              Challenge Rooms — stake-based duels, visible L&apos;s &amp; crowns
             </div>
             <div class="pricing-feature">
               <span class="check">
                 <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
               </span>
-              Priority future drops
+              Elite Streak Board — top 1% per country
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Training DNA Sigil + ULTRA Identity Ring
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              V6 signature skin — exclusive, can&apos;t be bought a la carte
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Priority AI + unlimited Coach, 3 model personalities
             </div>
           </div>
 
-          <a href="#ultra" class="pricing-btn pricing-btn-ultra" id="pricing-ultra-btn" style="text-decoration:none;text-align:center;">Explore ULTRA</a>
+          <a href="#ultra" class="pricing-btn pricing-btn-ultra" id="pricing-ultra-btn" style="text-decoration:none;text-align:center;">See the 15 features →</a>
         </div>
       </div>
     </div>
@@ -720,6 +739,290 @@
       <div class="ultra-scroll-hint reveal reveal-delay-4">
         <span>Scroll to explore</span>
         <div class="ultra-scroll-arrow"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ULTRA 15 — FEATURE MANIFESTO -->
+  <style>
+    .ultra-fifteen {
+      position: relative;
+      padding: 120px 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(176,38,255,0.08), transparent 55%), #060308;
+      overflow: hidden;
+    }
+    .ultra-fifteen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 10% 30%, rgba(255,42,133,0.12), transparent 30%),
+        radial-gradient(circle at 90% 70%, rgba(0,212,255,0.08), transparent 30%);
+      pointer-events: none;
+    }
+    .ultra-fifteen-head {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 64px;
+      position: relative;
+      z-index: 1;
+    }
+    .ultra-fifteen-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(255,42,133,0.2), rgba(176,38,255,0.18));
+      border: 1px solid rgba(255,42,133,0.35);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      color: #ffb7d3;
+      margin-bottom: 18px;
+    }
+    .ultra-fifteen-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      color: #fff;
+      margin-bottom: 18px;
+    }
+    .ultra-fifteen-title em {
+      font-style: normal;
+      background: linear-gradient(135deg, #ff2a85, #b026ff 60%, #ccff00);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .ultra-fifteen-sub {
+      color: rgba(255,255,255,0.6);
+      font-size: 1.05rem;
+      line-height: 1.55;
+    }
+    .ultra-fifteen-groups {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 44px;
+    }
+    .ultra-fifteen-group-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .ultra-fifteen-group-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ff2a85, #b026ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.03em;
+    }
+    .ultra-fifteen-group-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .ultra-fifteen-group-sub {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+    }
+    .ultra-fifteen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .ultra-fifteen-card {
+      position: relative;
+      padding: 22px;
+      border-radius: 22px;
+      background: linear-gradient(160deg, rgba(18,10,24,0.92), rgba(8,6,14,0.96));
+      border: 1px solid rgba(255,42,133,0.14);
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+      overflow: hidden;
+    }
+    .ultra-fifteen-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 100% 0%, rgba(255,42,133,0.08), transparent 50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .ultra-fifteen-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255,42,133,0.35);
+      box-shadow: 0 20px 60px rgba(176,38,255,0.18);
+    }
+    .ultra-fifteen-card:hover::before { opacity: 1; }
+    .ultra-fifteen-card-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      color: rgba(255,42,133,0.75);
+      margin-bottom: 6px;
+    }
+    .ultra-fifteen-card-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.12rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .ultra-fifteen-card-body {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: rgba(255,255,255,0.64);
+    }
+    .ultra-fifteen-card.pillar-flex { border-color: rgba(255,184,0,0.18); }
+    .ultra-fifteen-card.pillar-flex .ultra-fifteen-card-num { color: rgba(255,184,0,0.8); }
+    .ultra-fifteen-card.pillar-flex:hover { border-color: rgba(255,184,0,0.4); box-shadow: 0 20px 60px rgba(255,184,0,0.15); }
+    .ultra-fifteen-card.pillar-crew { border-color: rgba(0,212,255,0.16); }
+    .ultra-fifteen-card.pillar-crew .ultra-fifteen-card-num { color: rgba(0,212,255,0.75); }
+    .ultra-fifteen-card.pillar-crew:hover { border-color: rgba(0,212,255,0.38); box-shadow: 0 20px 60px rgba(0,212,255,0.15); }
+    @media (max-width: 640px) {
+      .ultra-fifteen { padding: 80px 0; }
+      .ultra-fifteen-group-num { font-size: 1.8rem; }
+      .ultra-fifteen-card { padding: 18px; }
+    }
+  </style>
+  <section class="ultra-fifteen" id="ultra-features">
+    <div class="container" style="position:relative;z-index:1;">
+      <div class="ultra-fifteen-head reveal">
+        <div class="ultra-fifteen-kicker">★ ULTRA · 15 EXCLUSIVE FEATURES</div>
+        <h2 class="ultra-fifteen-title">Fifteen things PRO users <em>will never see.</em></h2>
+        <p class="ultra-fifteen-sub">Five that actually help you train smarter. Five that make you look unmissable. Five that turn your friends into crews, rivals, and leaderboards. This is ULTRA.</p>
+      </div>
+
+      <div class="ultra-fifteen-groups">
+        <!-- PILLAR 1 — PERFORMANCE -->
+        <div class="reveal">
+          <div class="ultra-fifteen-group-head">
+            <div class="ultra-fifteen-group-num">01</div>
+            <div>
+              <div class="ultra-fifteen-group-title">Performance · Train smarter, not just harder</div>
+              <div class="ultra-fifteen-group-sub">Behavior-aware intelligence. No generic analytics.</div>
+            </div>
+          </div>
+          <div class="ultra-fifteen-grid">
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">01 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">Plateau Doctor</div>
+              <div class="ultra-fifteen-card-body">Detects your stalled lift the day it happens. Diagnoses the cause. Prescribes the exact deload, rep scheme, or swap. No more guessing why bench stopped moving.</div>
+            </div>
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">02 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">Exercise ROI Heatmap</div>
+              <div class="ultra-fifteen-card-body">Per-lift PRs ÷ sets logged. Finally see which exercises convert into real gain and which ones are quietly wasting your Wednesdays.</div>
+            </div>
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">03 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">14-Day PR Forecast</div>
+              <div class="ultra-fifteen-card-body">A rolling curve of PR probability across your next two weeks. Tells you "Tuesday is your strongest day this month" before the session starts.</div>
+            </div>
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">04 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">Live PR Probability</div>
+              <div class="ultra-fifteen-card-body">A bar on every working set: "72% chance this becomes a PR." Warmups stop being boring when the model is watching.</div>
+            </div>
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">05 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">Auto-Deload Oracle</div>
+              <div class="ultra-fifteen-card-body">Predicts your optimal deload week ten days out. Auto-scales volume so your next mesocycle lands at peak readiness.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PILLAR 2 — FLEX -->
+        <div class="reveal">
+          <div class="ultra-fifteen-group-head">
+            <div class="ultra-fifteen-group-num" style="background:linear-gradient(135deg,#ffb800,#ff5e00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">02</div>
+            <div>
+              <div class="ultra-fifteen-group-title">Flex · Visibility built for the strong</div>
+              <div class="ultra-fifteen-group-sub">Status, rarity, and identity — visible across the app.</div>
+            </div>
+          </div>
+          <div class="ultra-fifteen-grid">
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">06 · FLEX</div>
+              <div class="ultra-fifteen-card-name">Signature Lift Card</div>
+              <div class="ultra-fifteen-card-body">A shareable, animated card showcasing your top lift. Tier coloring from Silver to Diamond to ULTRA based on real population percentile.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">07 · FLEX</div>
+              <div class="ultra-fifteen-card-name">Training DNA Sigil</div>
+              <div class="ultra-fifteen-card-body">A procedurally generated emblem unique to your exact lifting history. Evolves as you grow. Appears beside your username everywhere.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">08 · FLEX</div>
+              <div class="ultra-fifteen-card-name">Leaderboard Aura</div>
+              <div class="ultra-fifteen-card-body">ULTRA members get an animated name gradient, particle trail, and aurora glow on PR walls, chat, and crew boards. People notice.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">09 · FLEX</div>
+              <div class="ultra-fifteen-card-name">ULTRA Identity Ring</div>
+              <div class="ultra-fifteen-card-body">A gemstone ring around your avatar that tiers up with every month of active ULTRA. Visible on every screen. Can&apos;t be faked.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">10 · FLEX</div>
+              <div class="ultra-fifteen-card-name">Progression Reel</div>
+              <div class="ultra-fifteen-card-body">Auto-stitches your monthly progress photos into a cinematic vertical video. Blur-safe. One tap to share as a clip.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PILLAR 3 — CREWS -->
+        <div class="reveal">
+          <div class="ultra-fifteen-group-head">
+            <div class="ultra-fifteen-group-num" style="background:linear-gradient(135deg,#00d4ff,#b026ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">03</div>
+            <div>
+              <div class="ultra-fifteen-group-title">Crews · Social that rewards consistency</div>
+              <div class="ultra-fifteen-group-sub">Not a generic feed. A leaderboard you actually care about.</div>
+            </div>
+          </div>
+          <div class="ultra-fifteen-grid">
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">11 · CREW</div>
+              <div class="ultra-fifteen-card-name">City Crew</div>
+              <div class="ultra-fifteen-card-body">Auto-joined when you tag your city. Weekly "King of [City]" crown rotates. Want to flex on your whole town? Lift harder this week.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">12 · CREW</div>
+              <div class="ultra-fifteen-card-name">Gym Crew</div>
+              <div class="ultra-fifteen-card-body">Tag your gym, get instant crew with everyone who lifts there. Private PR wall scoped to the building. Silent-flex: top lifter in the room.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">13 · CREW</div>
+              <div class="ultra-fifteen-card-name">Split Crews + Challenge Rooms</div>
+              <div class="ultra-fifteen-card-body">Auto-matched by PPL, Arnold, Upper/Lower. Weekly volume races. Stake-based duels where the loser wears an "L" badge for seven days.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">14 · CREW</div>
+              <div class="ultra-fifteen-card-name">Shared PR Wall + Reactions</div>
+              <div class="ultra-fifteen-card-body">Every PR you log lights up on the crew wall instantly. Live reactions. Your gym sees it before you&apos;ve even racked the bar.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">15 · CREW</div>
+              <div class="ultra-fifteen-card-name">Elite Streak Board</div>
+              <div class="ultra-fifteen-card-body">Top 1% streaks per country. High risk, high flex. Breaking your streak paints a visible mark on your profile for a week.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:64px;position:relative;z-index:1;" class="reveal">
+        <a href="#waitlist" class="ultra-btn ultra-btn-primary" style="font-size:1.05rem;padding:0 32px;min-height:58px;">Reserve ULTRA · €5/week</a>
+        <div style="margin-top:14px;font-size:0.78rem;color:rgba(255,255,255,0.4);">Invite-only · Access approved manually · No Stripe, no fake urgency</div>
       </div>
     </div>
   </section>
