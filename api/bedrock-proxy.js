@@ -7,6 +7,8 @@ const MODEL_MAP = {
   'anthropic/claude-haiku-3.5': 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
 }
 
+const BEDROCK_REGION = 'us-east-1'
+
 function parseBearerToken(headerValue) {
   if (!headerValue || typeof headerValue !== 'string') return null
   if (!headerValue.startsWith('Bearer ')) return null
@@ -36,98 +38,17 @@ async function getUserSubscriptionTier(userId) {
   return data?.[0]?.subscription_tier || 'free'
 }
 
-function hmacSha256(key, message) {
-  const crypto = require('crypto')
-  return crypto.createHmac('sha256', key).update(message).digest()
-}
-
-function sha256(data) {
-  const crypto = require('crypto')
-  return crypto.createHash('sha256').update(data).digest('hex')
-}
-
-function getSignatureKey(secretKey, dateStamp, region, service) {
-  let key = Buffer.from('AWS4' + secretKey, 'utf8')
-  key = hmacSha256(key, dateStamp)
-  key = hmacSha256(key, region)
-  key = hmacSha256(key, service)
-  key = hmacSha256(key, 'aws4_request')
-  return key
-}
-
-function signRequest({ method, url, headers, body, region, accessKey, secretKey, sessionToken }) {
-  const crypto = require('crypto')
-  const parsedUrl = new URL(url)
-  const now = new Date()
-  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '')
-  const dateStamp = amzDate.slice(0, 8)
-  const service = 'bedrock'
-  const host = parsedUrl.hostname
-  const path = parsedUrl.pathname
-
-  const payloadHash = sha256(body || '')
-
-  const canonicalHeaders = [
-    `content-type:application/json`,
-    `host:${host}`,
-    `x-amz-content-sha256:${payloadHash}`,
-    `x-amz-date:${amzDate}`,
-    ...(sessionToken ? [`x-amz-security-token:${sessionToken}`] : []),
-  ].join('\n') + '\n'
-
-  const signedHeadersList = [
-    'content-type',
-    'host',
-    'x-amz-content-sha256',
-    'x-amz-date',
-    ...(sessionToken ? ['x-amz-security-token'] : []),
-  ].join(';')
-
-  const canonicalRequest = [
-    method,
-    path,
-    '',
-    canonicalHeaders,
-    signedHeadersList,
-    payloadHash,
-  ].join('\n')
-
-  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`
-  const stringToSign = [
-    'AWS4-HMAC-SHA256',
-    amzDate,
-    credentialScope,
-    sha256(canonicalRequest),
-  ].join('\n')
-
-  const signingKey = getSignatureKey(secretKey, dateStamp, region, service)
-  const signature = crypto.createHmac('sha256', signingKey).update(stringToSign).digest('hex')
-
-  const authHeader = `AWS4-HMAC-SHA256 Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeadersList}, Signature=${signature}`
-
-  return {
-    'Content-Type': 'application/json',
-    'Host': host,
-    'X-Amz-Date': amzDate,
-    'X-Amz-Content-Sha256': payloadHash,
-    'Authorization': authHeader,
-    ...(sessionToken ? { 'X-Amz-Security-Token': sessionToken } : {}),
-  }
-}
-
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const awsAccessKey = process.env.AWS_ACCESS_KEY_ID
-  const awsSecretKey = process.env.AWS_SECRET_ACCESS_KEY
-  const awsSessionToken = process.env.AWS_SESSION_TOKEN || null
-  const awsRegion = process.env.AWS_BEDROCK_REGION || 'us-east-1'
-
-  if (!awsAccessKey || !awsSecretKey) {
-    return res.status(503).json({ error: 'AWS Bedrock is not configured. Add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in Vercel.' })
+  const bedrockApiKey = process.env.AWS_BEARER_TOKEN_BEDROCK
+  if (!bedrockApiKey) {
+    return res.status(503).json({
+      error: 'AWS Bedrock is not configured. Add AWS_BEARER_TOKEN_BEDROCK in Vercel.'
+    })
   }
 
   const accessToken = parseBearerToken(req.headers.authorization || req.headers.Authorization)
@@ -165,27 +86,20 @@ module.exports = async (req, res) => {
     ...(systemPrompt ? { system: systemPrompt } : {}),
   }
 
-  const bedrockUrl = `https://bedrock-runtime.${awsRegion}.amazonaws.com/model/${bedrockModelId}/invoke`
+  const bedrockUrl = `https://bedrock-runtime.${BEDROCK_REGION}.amazonaws.com/model/${bedrockModelId}/invoke`
   const payloadStr = JSON.stringify(bedrockPayload)
 
   if (payloadStr.length > 3_000_000) {
     return res.status(413).json({ error: 'Payload too large.' })
   }
 
-  const signedHeaders = signRequest({
-    method: 'POST',
-    url: bedrockUrl,
-    body: payloadStr,
-    region: awsRegion,
-    accessKey: awsAccessKey,
-    secretKey: awsSecretKey,
-    sessionToken: awsSessionToken,
-  })
-
   try {
     const upstreamRes = await fetch(bedrockUrl, {
       method: 'POST',
-      headers: signedHeaders,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${bedrockApiKey}`,
+      },
       body: payloadStr,
     })
 
@@ -194,6 +108,7 @@ module.exports = async (req, res) => {
     try { data = text ? JSON.parse(text) : {} } catch { data = { raw: text } }
 
     if (!upstreamRes.ok) {
+      console.error('[REPMAX] Bedrock error:', upstreamRes.status, text.slice(0, 500))
       return res.status(upstreamRes.status).json({
         error: data?.message || data?.error?.message || `Bedrock request failed: ${upstreamRes.status}`,
         details: data,
