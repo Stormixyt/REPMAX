@@ -15,20 +15,52 @@ export const COACH_MODEL_OPTIONS = [
     shortLabel: "Balanced",
     label: "Balanced Coach",
     description: "Best overall coaching quality with the Exacto-routed 70B model.",
+    provider: "openrouter",
   },
   {
     id: "meta-llama/llama-4-maverick",
     shortLabel: "Deep",
     label: "Deep Strategy",
     description: "Longer, more strategic answers when you want deeper thinking.",
+    provider: "openrouter",
   },
   {
     id: "meta-llama/llama-4-scout",
     shortLabel: "Fast",
     label: "Fast Replies",
     description: "Quicker coach answers when you just want the move.",
+    provider: "openrouter",
+  },
+  {
+    id: "anthropic/claude-opus-4",
+    shortLabel: "Opus 4",
+    label: "Claude Opus 4",
+    description: "Anthropic's most powerful model. Deep reasoning, nuanced training advice. ULTRA exclusive.",
+    provider: "bedrock",
+    ultraOnly: true,
+  },
+  {
+    id: "anthropic/claude-sonnet-4",
+    shortLabel: "Sonnet 4",
+    label: "Claude Sonnet 4",
+    description: "Fast, intelligent, great balance of speed and depth. ULTRA exclusive.",
+    provider: "bedrock",
+    ultraOnly: true,
+  },
+  {
+    id: "anthropic/claude-haiku-3.5",
+    shortLabel: "Haiku 3.5",
+    label: "Claude Haiku 3.5",
+    description: "Lightning-fast Claude model for instant coaching replies. ULTRA exclusive.",
+    provider: "bedrock",
+    ultraOnly: true,
   },
 ];
+
+export function isBedrockModel(modelId) {
+  const meta = COACH_MODEL_OPTIONS.find(m => m.id === modelId);
+  return meta?.provider === "bedrock";
+}
 
 export const COACH_RESPONSE_STYLE_OPTIONS = [
   {
@@ -396,6 +428,20 @@ function shouldRetryCoachModel(error) {
 async function callCoachModel(body, options = {}) {
   const selectedModel = resolveCoachModel(options.modelPreference);
   const timeoutMs = options.timeoutMs || 18000;
+
+  if (isBedrockModel(selectedModel)) {
+    try {
+      return await invokeServerApi("/api/bedrock-proxy", {
+        ...body,
+        model: selectedModel,
+      }, { timeoutMs, requireAuth: true });
+    } catch (error) {
+      if (shouldRetryCoachModel(error)) {
+        return callGroq({ ...body, model: DEFAULT_COACH_MODEL }, { timeoutMs });
+      }
+      throw error;
+    }
+  }
 
   try {
     return await callGroq(

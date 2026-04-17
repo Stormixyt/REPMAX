@@ -1374,12 +1374,28 @@ export default function AICoach() {
 
                   {isUltra ? (
                     <div className="coach-control-group coach-model-group">
-                      <div className="coach-control-label">ULTRA model</div>
-                      <div className="coach-model-toggle" role="tablist" aria-label="Coach model">
-                        {COACH_MODEL_OPTIONS.map((option) => (
+                      <div className="coach-control-label">Model</div>
+                      <div className="coach-model-toggle" role="tablist" aria-label="Coach model" style={{ flexWrap: 'wrap' }}>
+                        {COACH_MODEL_OPTIONS.filter(o => !o.ultraOnly).map((option) => (
                           <button
                             key={option.id}
                             className={`coach-model-chip ${activeCoachModel === option.id ? "active" : ""}`}
+                            onClick={() => setCoachModel(option.id)}
+                            type="button"
+                            aria-pressed={activeCoachModel === option.id}
+                          >
+                            {option.shortLabel}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="coach-control-label" style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <RiSparklingFill size={12} style={{ color: '#ff2a85' }} /> Claude (Bedrock)
+                      </div>
+                      <div className="coach-model-toggle" role="tablist" aria-label="Claude model" style={{ flexWrap: 'wrap' }}>
+                        {COACH_MODEL_OPTIONS.filter(o => o.ultraOnly).map((option) => (
+                          <button
+                            key={option.id}
+                            className={`coach-model-chip claude-chip ${activeCoachModel === option.id ? "active" : ""}`}
                             onClick={() => setCoachModel(option.id)}
                             type="button"
                             aria-pressed={activeCoachModel === option.id}
@@ -1394,7 +1410,7 @@ export default function AICoach() {
                     </div>
                   ) : (
                     <div className="coach-control-note">
-                      Coach chats already recover through OpenRouter automatically. ULTRA unlocks model switching.
+                      Coach chats recover through OpenRouter automatically. ULTRA unlocks model switching + Claude via Bedrock.
                     </div>
                   )}
                 </div>
