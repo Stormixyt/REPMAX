@@ -2,12 +2,12 @@ const SUPABASE_URL = 'https://hqwnyzmipumhhqmvdzus.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI'
 
 const MODEL_MAP = {
-  'anthropic/claude-opus-4': 'us.anthropic.claude-opus-4-0-20250514',
-  'anthropic/claude-sonnet-4': 'us.anthropic.claude-sonnet-4-20250514',
+  'anthropic/claude-opus-4': 'us.anthropic.claude-opus-4-20250514-v1:0',
+  'anthropic/claude-sonnet-4': 'us.anthropic.claude-sonnet-4-20250514-v1:0',
   'anthropic/claude-haiku-3.5': 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
 }
 
-const BEDROCK_REGION = 'us-east-1'
+const BEDROCK_REGION = process.env.AWS_BEDROCK_REGION || 'us-east-1'
 
 function parseBearerToken(headerValue) {
   if (!headerValue || typeof headerValue !== 'string') return null

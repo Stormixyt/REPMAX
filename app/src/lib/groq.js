@@ -410,8 +410,6 @@ function shouldRetryCoachModel(error) {
   }
 
   return (
-    status === 400 ||
-    status === 404 ||
     status === 408 ||
     status === 409 ||
     status === 429 ||
@@ -419,7 +417,7 @@ function shouldRetryCoachModel(error) {
     status === 502 ||
     status === 503 ||
     status === 504 ||
-    /provider|rate limit|model|timeout|overloaded|temporarily unavailable|bad gateway|service unavailable/i.test(
+    /provider|rate limit|timeout|overloaded|temporarily unavailable|bad gateway|service unavailable/i.test(
       message
     )
   );
@@ -437,7 +435,19 @@ async function callCoachModel(body, options = {}) {
       }, { timeoutMs, requireAuth: true });
     } catch (error) {
       if (shouldRetryCoachModel(error)) {
-        return callGroq({ ...body, model: DEFAULT_COACH_MODEL }, { timeoutMs });
+        try {
+          return await callGroq({ ...body, model: DEFAULT_COACH_MODEL }, { timeoutMs });
+        } catch (fallbackError) {
+          const combinedError = new Error(
+            `Claude via Bedrock failed (${error?.message || "unknown Bedrock error"}). OpenRouter fallback also failed (${fallbackError?.message || "unknown OpenRouter error"}).`
+          );
+          combinedError.status = fallbackError?.status || error?.status;
+          combinedError.payload = {
+            bedrock: error?.payload || null,
+            fallback: fallbackError?.payload || null,
+          };
+          throw combinedError;
+        }
       }
       throw error;
     }
