@@ -748,8 +748,10 @@ body.keyboard-open .bottom-nav {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 8px 16px;
+    gap: 2px;
+    padding: 8px 0;
+    flex: 1;
+    min-width: 0;
     background: none;
     border: none;
     cursor: pointer;
@@ -3886,16 +3888,20 @@ body.coach-route-active.keyboard-open .coach-composer {
    v2.0 — BOTTOM NAV UPDATE (5 items)
    ============================================ */
 .bottom-nav-item svg {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     stroke: none;
     fill: currentColor;
 }
 .bottom-nav-item {
-    gap: 3px;
+    gap: 2px;
 }
 .bottom-nav-item span {
-    font-size: 0.6rem;
+    font-size: 0.55rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 @media (min-width: 768px) {
@@ -4950,6 +4956,25 @@ body.coach-route-active.keyboard-open .coach-composer {
 }
 
 /* Photo Scan */
+.barcode-scanner-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.barcode-scanner-modal {
+    width: 100%;
+    max-width: 380px;
+    padding: 20px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
 .photo-scan-section {
     margin-top: 32px;
     padding-top: 24px;

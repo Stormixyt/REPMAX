@@ -33,6 +33,8 @@ import {
   RiAddFill,
   RiBookmarkFill,
   RiBrainFill,
+  RiBarcodeLine,
+  RiCloseLine,
 } from "@remixicon/react";
 
 // ─── Nutrition constants ──────────────────────────────────────────────────────
@@ -124,6 +126,28 @@ async function searchFatSecret(englishQuery) {
     console.error("FatSecret search error:", err);
     return [];
   }
+}
+
+// Barcode lookup via OpenFoodFacts
+async function lookupBarcode(barcode) {
+  const res = await fetch(
+    `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`
+  );
+  const data = await res.json();
+  if (data.status !== 1 || !data.product) return null;
+  const p = data.product;
+  const n = p.nutriments || {};
+  return {
+    food_name: p.product_name || barcode,
+    brand: p.brands || "",
+    serving_size: p.serving_size || "100g",
+    calories: Math.round(n["energy-kcal_100g"] || n["energy-kcal"] || 0),
+    protein: Math.round(n.proteins_100g || 0),
+    carbs: Math.round(n.carbohydrates_100g || 0),
+    fat: Math.round(n.fat_100g || 0),
+    fiber: Math.round(n.fiber_100g || 0),
+    sugar: Math.round(n.sugars_100g || 0),
+  };
 }
 
 // Fallback: OpenFoodFacts (no API key required)
@@ -269,6 +293,8 @@ export default function Nutrition() {
   const [toast, setToast] = useState("");
   const [waterGlasses, setWaterGlasses] = useState(0);
   const [savedMeals, setSavedMeals] = useState([]);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [barcodeLoading, setBarcodeLoading] = useState(false);
   const [setupSource, setSetupSource] = useState("manual");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loggedDates, setLoggedDates] = useState(new Set());
@@ -489,6 +515,25 @@ export default function Nutrition() {
 
   async function searchFoods() {
     await runFoodSearch(searchQuery);
+  }
+
+  async function handleBarcodeScan(barcode) {
+    setShowBarcodeScanner(false);
+    setBarcodeLoading(true);
+    try {
+      const food = await lookupBarcode(barcode);
+      if (food) {
+        setAiResult(null);
+        setSearchResults([food]);
+        setSearchQuery(barcode);
+        showToastMsg(`Found: ${food.food_name}`);
+      } else {
+        showToastMsg("Product not found — try searching by name");
+      }
+    } catch {
+      showToastMsg("Barcode lookup failed");
+    }
+    setBarcodeLoading(false);
   }
 
   async function addFoodLog(food, source = "search") {
@@ -1217,6 +1262,15 @@ export default function Nutrition() {
                 />
               </div>
               <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => setShowBarcodeScanner(true)}
+                disabled={barcodeLoading}
+                title="Scan barcode"
+                style={{ padding: '8px 10px' }}
+              >
+                {barcodeLoading ? <span className="spinner" /> : <RiBarcodeLine size={18} />}
+              </button>
+              <button
                 className="btn btn-primary btn-sm"
                 onClick={searchFoods}
                 disabled={searching}
@@ -1224,6 +1278,13 @@ export default function Nutrition() {
                 {searching ? <span className="spinner" /> : "Search"}
               </button>
             </div>
+
+            {showBarcodeScanner && (
+              <BarcodeScanner
+                onScan={handleBarcodeScan}
+                onClose={() => setShowBarcodeScanner(false)}
+              />
+            )}
 
             {/* Language detection hint */}
             {detectedLang && (
@@ -1366,6 +1427,7 @@ export default function Nutrition() {
                 <AIPhotoScan
                   onResult={(food) => addFoodLog(food, "photo")}
                   onManualPrefill={runFoodSearch}
+                  isPaid={isPro}
                 />
               </PaywallGate>
             </div>
@@ -1379,7 +1441,7 @@ export default function Nutrition() {
 }
 
 // ─── AI Photo Scan component (PRO) ───────────────────────────────────────────
-function AIPhotoScan({ onResult, onManualPrefill }) {
+function AIPhotoScan({ onResult, onManualPrefill, isPaid = false }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [preview, setPreview] = useState(null);
   const [scanState, setScanState] = useState("idle");
@@ -1418,7 +1480,7 @@ function AIPhotoScan({ onResult, onManualPrefill }) {
 
   async function analyzePhoto(dataUrl) {
     try {
-      const result = await scanFoodPhoto(dataUrl);
+      const result = await scanFoodPhoto(dataUrl, { isPaid });
 
       if (result.success && result.food) {
         onResult(result.food);
@@ -1560,6 +1622,102 @@ function AIPhotoScan({ onResult, onManualPrefill }) {
         onChange={handleFileSelect}
         style={{ display: "none" }}
       />
+    </div>
+  );
+}
+
+// ─── Barcode Scanner component ──────────────────────────────────────────────
+function BarcodeScanner({ onScan, onClose }) {
+  const scannerRef = useRef(null);
+  const containerRef = useRef(null);
+  const [manualCode, setManualCode] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function startScanner() {
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
+        if (!mounted || !containerRef.current) return;
+
+        const scanner = new Html5Qrcode("barcode-reader");
+        scannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 280, height: 150 } },
+          (decodedText) => {
+            scanner.stop().catch(() => {});
+            onScan(decodedText);
+          },
+          () => {}
+        );
+      } catch {
+        if (mounted) setError("Camera access denied. Enter barcode manually below.");
+      }
+    }
+
+    startScanner();
+
+    return () => {
+      mounted = false;
+      scannerRef.current?.stop?.().catch(() => {});
+    };
+  }, [onScan]);
+
+  return (
+    <div className="barcode-scanner-overlay">
+      <div className="barcode-scanner-modal glass-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+            <RiBarcodeLine size={18} style={{ verticalAlign: -3 }} /> Scan Barcode
+          </h3>
+          <button className="btn btn-secondary btn-sm" onClick={onClose} style={{ padding: '6px 8px' }}>
+            <RiCloseLine size={18} />
+          </button>
+        </div>
+
+        {!error && (
+          <div
+            id="barcode-reader"
+            ref={containerRef}
+            style={{ width: '100%', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}
+          />
+        )}
+
+        {error && (
+          <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <input
+            className="input"
+            placeholder="Or type barcode number…"
+            value={manualCode}
+            onChange={(e) => setManualCode(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && manualCode.trim()) {
+                scannerRef.current?.stop?.().catch(() => {});
+                onScan(manualCode.trim());
+              }
+            }}
+            style={{ flex: 1 }}
+          />
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={!manualCode.trim()}
+            onClick={() => {
+              scannerRef.current?.stop?.().catch(() => {});
+              onScan(manualCode.trim());
+            }}
+          >
+            Look up
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -9,9 +9,11 @@ const MODEL_MAP = {
 }
 
 const DAILY_LIMITS = {
-  pro: 3,
-  ultra: 25,
+  coach: { pro: 3, ultra: 25 },
+  photo_scan: { pro: 3, ultra: 20 },
 }
+
+const VALID_FEATURES = ['coach', 'photo_scan']
 
 const BEDROCK_REGION = process.env.AWS_BEDROCK_REGION || 'us-east-1'
 
@@ -69,10 +71,10 @@ async function getUserSubscriptionTier(userId) {
   return data?.[0]?.subscription_tier || 'free'
 }
 
-async function getDailyUsage(userId) {
+async function getDailyUsage(userId, feature) {
   const today = new Date().toISOString().slice(0, 10)
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}&select=message_count`,
+    `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}&feature=eq.${feature}&select=message_count`,
     { headers: getServiceRoleHeaders() }
   )
   if (!response.ok) return 0
@@ -80,19 +82,19 @@ async function getDailyUsage(userId) {
   return data?.[0]?.message_count || 0
 }
 
-async function incrementDailyUsage(userId) {
+async function incrementDailyUsage(userId, feature) {
   const today = new Date().toISOString().slice(0, 10)
   const headers = getServiceRoleHeaders()
 
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}`,
+    `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}&feature=eq.${feature}`,
     { headers: { ...headers, Prefer: 'return=representation' } }
   )
   const existing = response.ok ? await response.json() : []
 
   if (existing.length > 0) {
     await fetch(
-      `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}`,
+      `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}&feature=eq.${feature}`,
       {
         method: 'PATCH',
         headers,
@@ -109,6 +111,7 @@ async function incrementDailyUsage(userId) {
       body: JSON.stringify({
         user_id: userId,
         usage_date: today,
+        feature,
         message_count: 1,
       }),
     })
@@ -133,26 +136,28 @@ module.exports = async (req, res) => {
   const user = await getAuthenticatedUser(accessToken)
   if (!user?.id) return res.status(401).json({ error: 'Invalid session token' })
 
-  const tier = await getUserSubscriptionTier(user.id)
-  const dailyLimit = DAILY_LIMITS[tier]
-  if (!dailyLimit) {
-    return res.status(403).json({ error: 'Claude models require a PRO or ULTRA subscription.' })
-  }
-
-  const used = await getDailyUsage(user.id)
-  if (used >= dailyLimit) {
-    return res.status(429).json({
-      error: `Daily Claude limit reached (${dailyLimit} messages). Resets at midnight UTC.`,
-      limit: dailyLimit,
-      used,
-    })
-  }
-
   let body = req.body
   if (typeof body === 'string') {
     try { body = JSON.parse(body) } catch { return res.status(400).json({ error: 'Invalid JSON body' }) }
   }
   if (!body || typeof body !== 'object') return res.status(400).json({ error: 'Missing request body' })
+
+  const feature = VALID_FEATURES.includes(body.feature) ? body.feature : 'coach'
+  const tier = await getUserSubscriptionTier(user.id)
+  const featureLimits = DAILY_LIMITS[feature]
+  const dailyLimit = featureLimits?.[tier]
+  if (!dailyLimit) {
+    return res.status(403).json({ error: 'Claude models require a PRO or ULTRA subscription.' })
+  }
+
+  const used = await getDailyUsage(user.id, feature)
+  if (used >= dailyLimit) {
+    return res.status(429).json({
+      error: `Daily ${feature === 'photo_scan' ? 'photo scan' : 'Claude'} limit reached (${dailyLimit}/${dailyLimit}). Resets at midnight UTC.`,
+      limit: dailyLimit,
+      used,
+    })
+  }
 
   const requestedModel = body.model || 'anthropic/claude-sonnet-4'
   const bedrockModelId = MODEL_MAP[requestedModel] || MODEL_MAP['anthropic/claude-sonnet-4']
@@ -161,13 +166,32 @@ module.exports = async (req, res) => {
   const systemMessages = (body.messages || []).filter(m => m.role === 'system')
   const systemPrompt = systemMessages.map(m => m.content).join('\n\n')
 
+  function convertContent(content) {
+    if (typeof content === 'string') return content
+    if (!Array.isArray(content)) return JSON.stringify(content)
+    return content.map(block => {
+      if (block.type === 'text') return { type: 'text', text: block.text }
+      if (block.type === 'image_url' && block.image_url?.url) {
+        const dataUrlMatch = block.image_url.url.match(/^data:(image\/\w+);base64,(.+)$/)
+        if (dataUrlMatch) {
+          return {
+            type: 'image',
+            source: { type: 'base64', media_type: dataUrlMatch[1], data: dataUrlMatch[2] },
+          }
+        }
+        return { type: 'text', text: '[unsupported image URL]' }
+      }
+      return block
+    })
+  }
+
   const bedrockPayload = {
     anthropic_version: 'bedrock-2023-05-31',
     max_tokens: body.max_tokens || 2048,
     temperature: body.temperature ?? 0.55,
     messages: messages.map(m => ({
       role: m.role,
-      content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+      content: convertContent(m.content),
     })),
     ...(systemPrompt ? { system: systemPrompt } : {}),
   }
@@ -190,7 +214,7 @@ module.exports = async (req, res) => {
     const response = await client.send(command)
     const data = JSON.parse(new TextDecoder().decode(response.body))
 
-    await incrementDailyUsage(user.id)
+    await incrementDailyUsage(user.id, feature)
 
     const openAiFormat = {
       id: `bedrock-${Date.now()}`,

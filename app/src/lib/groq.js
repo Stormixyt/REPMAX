@@ -426,6 +426,7 @@ async function callCoachModel(body, options = {}) {
       return await invokeServerApi("/api/bedrock-proxy", {
         ...body,
         model: selectedModel,
+        feature: "coach",
       }, { timeoutMs, requireAuth: true });
     } catch (error) {
       if (shouldRetryCoachModel(error)) {
@@ -2392,7 +2393,7 @@ async function repairFoodScanJson(rawOutput) {
   return JSON.parse(repairedContent);
 }
 
-export async function scanFoodPhoto(dataUrl) {
+export async function scanFoodPhoto(dataUrl, { isPaid = false } = {}) {
   const prompt = `You are a professional nutritionist analyzing a meal photo.
 
 Rules:
@@ -2405,31 +2406,52 @@ Use this exact schema:
 {"food_name":"full description of the meal","serving_size":"estimated total portion","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"items":["item 1","item 2"]}`;
 
   let rawContent = "";
+  let usedBedrock = false;
 
   try {
-    const data = await callGroq({
-      messages: [
-        {
-          role: "user",
-          content: [
+    let data;
+
+    if (isPaid) {
+      try {
+        data = await invokeServerApi("/api/bedrock-proxy", {
+          messages: [
             {
-              type: "text",
-              text: prompt,
-            },
-            {
-              type: "image_url",
-              image_url: { url: dataUrl },
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: dataUrl } },
+              ],
             },
           ],
-        },
-      ],
-      model: VISION_MODEL,
-      temperature: 0.1,
-      max_tokens: 700,
-      response_format: { type: "json_object" },
-    }, {
-      timeoutMs: 45000,
-    });
+          model: "anthropic/claude-sonnet-4",
+          feature: "photo_scan",
+          temperature: 0.1,
+          max_tokens: 700,
+        }, { timeoutMs: 45000, requireAuth: true });
+        usedBedrock = true;
+      } catch (bedrockErr) {
+        if (bedrockErr?.status === 429) throw bedrockErr;
+        console.warn("[PhotoScan] Bedrock failed, falling back to OpenRouter:", bedrockErr?.message);
+      }
+    }
+
+    if (!data) {
+      data = await callGroq({
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: dataUrl } },
+            ],
+          },
+        ],
+        model: VISION_MODEL,
+        temperature: 0.1,
+        max_tokens: 700,
+        response_format: { type: "json_object" },
+      }, { timeoutMs: 45000 });
+    }
 
     rawContent = data?.choices?.[0]?.message?.content?.trim() || "";
     if (!rawContent) {
