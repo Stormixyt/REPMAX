@@ -4,8 +4,8 @@ const SUPABASE_URL = 'https://hqwnyzmipumhhqmvdzus.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI'
 
 const MODEL_MAP = {
-  'anthropic/claude-opus-4.7': 'us.anthropic.claude-opus-4-7-v1:0',
-  'anthropic/claude-sonnet-4.6': 'us.anthropic.claude-sonnet-4-6-v1:0',
+  'anthropic/claude-opus-4': 'us.anthropic.claude-opus-4-6-v1:0',
+  'anthropic/claude-sonnet-4': 'us.anthropic.claude-sonnet-4-20250514-v1:0',
   'anthropic/claude-haiku-4.5': 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
 }
 
@@ -155,8 +155,8 @@ module.exports = async (req, res) => {
   }
   if (!body || typeof body !== 'object') return res.status(400).json({ error: 'Missing request body' })
 
-  const requestedModel = body.model || 'anthropic/claude-sonnet-4.6'
-  const bedrockModelId = MODEL_MAP[requestedModel] || MODEL_MAP['anthropic/claude-sonnet-4.6']
+  const requestedModel = body.model || 'anthropic/claude-sonnet-4'
+  const bedrockModelId = MODEL_MAP[requestedModel] || MODEL_MAP['anthropic/claude-sonnet-4']
 
   const messages = (body.messages || []).filter(m => m.role !== 'system')
   const systemMessages = (body.messages || []).filter(m => m.role === 'system')
