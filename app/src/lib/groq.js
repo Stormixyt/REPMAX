@@ -32,14 +32,6 @@ export const COACH_MODEL_OPTIONS = [
     provider: "openrouter",
   },
   {
-    id: "anthropic/claude-opus-4",
-    shortLabel: "Opus 4",
-    label: "Claude Opus 4",
-    description: "Anthropic's most powerful model. Deep reasoning, nuanced training advice. PRO: 3/day, ULTRA: 25/day.",
-    provider: "bedrock",
-    paidOnly: true,
-  },
-  {
     id: "anthropic/claude-sonnet-4",
     shortLabel: "Sonnet 4",
     label: "Claude Sonnet 4",
