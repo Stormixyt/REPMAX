@@ -1,3 +1,5 @@
+const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime')
+
 const SUPABASE_URL = 'https://hqwnyzmipumhhqmvdzus.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI'
 
@@ -8,6 +10,21 @@ const MODEL_MAP = {
 }
 
 const BEDROCK_REGION = process.env.AWS_BEDROCK_REGION || 'us-east-1'
+
+let bedrockClient = null
+
+function getBedrockClient() {
+  if (!bedrockClient) {
+    bedrockClient = new BedrockRuntimeClient({
+      region: BEDROCK_REGION,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    })
+  }
+  return bedrockClient
+}
 
 function parseBearerToken(headerValue) {
   if (!headerValue || typeof headerValue !== 'string') return null
@@ -44,10 +61,9 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const bedrockApiKey = process.env.AWS_BEARER_TOKEN_BEDROCK
-  if (!bedrockApiKey) {
+  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
     return res.status(503).json({
-      error: 'AWS Bedrock is not configured. Add AWS_BEARER_TOKEN_BEDROCK in Vercel.'
+      error: 'AWS Bedrock is not configured. Add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in Vercel.'
     })
   }
 
@@ -86,7 +102,6 @@ module.exports = async (req, res) => {
     ...(systemPrompt ? { system: systemPrompt } : {}),
   }
 
-  const bedrockUrl = `https://bedrock-runtime.${BEDROCK_REGION}.amazonaws.com/model/${bedrockModelId}/invoke`
   const payloadStr = JSON.stringify(bedrockPayload)
 
   if (payloadStr.length > 3_000_000) {
@@ -94,26 +109,16 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const upstreamRes = await fetch(bedrockUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${bedrockApiKey}`,
-      },
+    const client = getBedrockClient()
+    const command = new InvokeModelCommand({
+      modelId: bedrockModelId,
+      contentType: 'application/json',
+      accept: 'application/json',
       body: payloadStr,
     })
 
-    const text = await upstreamRes.text()
-    let data = null
-    try { data = text ? JSON.parse(text) : {} } catch { data = { raw: text } }
-
-    if (!upstreamRes.ok) {
-      console.error('[REPMAX] Bedrock error:', upstreamRes.status, text.slice(0, 500))
-      return res.status(upstreamRes.status).json({
-        error: data?.message || data?.error?.message || `Bedrock request failed: ${upstreamRes.status}`,
-        details: data,
-      })
-    }
+    const response = await client.send(command)
+    const data = JSON.parse(new TextDecoder().decode(response.body))
 
     const openAiFormat = {
       id: `bedrock-${Date.now()}`,
@@ -136,7 +141,10 @@ module.exports = async (req, res) => {
 
     return res.status(200).json(openAiFormat)
   } catch (err) {
-    console.error('[REPMAX] Bedrock proxy error:', err)
-    return res.status(500).json({ error: 'Bedrock request failed: ' + (err.message || 'Unknown error') })
+    console.error('[REPMAX] Bedrock proxy error:', err.name, err.message)
+    const status = err.$metadata?.httpStatusCode || 500
+    return res.status(status).json({
+      error: err.message || 'Bedrock request failed',
+    })
   }
 }
