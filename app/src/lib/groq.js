@@ -48,9 +48,9 @@ export const COACH_MODEL_OPTIONS = [
     ultraOnly: true,
   },
   {
-    id: "anthropic/claude-haiku-3.5",
-    shortLabel: "Haiku 3.5",
-    label: "Claude Haiku 3.5",
+    id: "anthropic/claude-haiku-4.5",
+    shortLabel: "Haiku 4.5",
+    label: "Claude Haiku 4.5",
     description: "Lightning-fast Claude model for instant coaching replies. ULTRA exclusive.",
     provider: "bedrock",
     ultraOnly: true,

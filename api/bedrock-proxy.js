@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const MODEL_MAP = {
   'anthropic/claude-opus-4': 'us.anthropic.claude-opus-4-20250514-v1:0',
   'anthropic/claude-sonnet-4': 'us.anthropic.claude-sonnet-4-20250514-v1:0',
-  'anthropic/claude-haiku-3.5': 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+  'anthropic/claude-haiku-4.5': 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
 }
 
 const BEDROCK_REGION = process.env.AWS_BEDROCK_REGION || 'us-east-1'
