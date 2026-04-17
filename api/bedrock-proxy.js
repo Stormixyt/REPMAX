@@ -9,6 +9,11 @@ const MODEL_MAP = {
   'anthropic/claude-haiku-4.5': 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
 }
 
+const DAILY_LIMITS = {
+  pro: 3,
+  ultra: 25,
+}
+
 const BEDROCK_REGION = process.env.AWS_BEDROCK_REGION || 'us-east-1'
 
 let bedrockClient = null
@@ -30,6 +35,16 @@ function parseBearerToken(headerValue) {
   if (!headerValue || typeof headerValue !== 'string') return null
   if (!headerValue.startsWith('Bearer ')) return null
   return headerValue.slice(7).trim() || null
+}
+
+function getServiceRoleHeaders() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+  }
 }
 
 async function getAuthenticatedUser(accessToken) {
@@ -55,6 +70,52 @@ async function getUserSubscriptionTier(userId) {
   return data?.[0]?.subscription_tier || 'free'
 }
 
+async function getDailyUsage(userId) {
+  const today = new Date().toISOString().slice(0, 10)
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}&select=message_count`,
+    { headers: getServiceRoleHeaders() }
+  )
+  if (!response.ok) return 0
+  const data = await response.json()
+  return data?.[0]?.message_count || 0
+}
+
+async function incrementDailyUsage(userId) {
+  const today = new Date().toISOString().slice(0, 10)
+  const headers = getServiceRoleHeaders()
+
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}`,
+    { headers: { ...headers, Prefer: 'return=representation' } }
+  )
+  const existing = response.ok ? await response.json() : []
+
+  if (existing.length > 0) {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}`,
+      {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          message_count: existing[0].message_count + 1,
+          updated_at: new Date().toISOString(),
+        }),
+      }
+    )
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/claude_daily_usage`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        user_id: userId,
+        usage_date: today,
+        message_count: 1,
+      }),
+    })
+  }
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -74,8 +135,18 @@ module.exports = async (req, res) => {
   if (!user?.id) return res.status(401).json({ error: 'Invalid session token' })
 
   const tier = await getUserSubscriptionTier(user.id)
-  if (tier !== 'ultra') {
-    return res.status(403).json({ error: 'Claude models require ULTRA subscription.' })
+  const dailyLimit = DAILY_LIMITS[tier]
+  if (!dailyLimit) {
+    return res.status(403).json({ error: 'Claude models require a PRO or ULTRA subscription.' })
+  }
+
+  const used = await getDailyUsage(user.id)
+  if (used >= dailyLimit) {
+    return res.status(429).json({
+      error: `Daily Claude limit reached (${dailyLimit} messages). Resets at midnight UTC.`,
+      limit: dailyLimit,
+      used,
+    })
   }
 
   let body = req.body
@@ -120,6 +191,8 @@ module.exports = async (req, res) => {
     const response = await client.send(command)
     const data = JSON.parse(new TextDecoder().decode(response.body))
 
+    await incrementDailyUsage(user.id)
+
     const openAiFormat = {
       id: `bedrock-${Date.now()}`,
       object: 'chat.completion',
@@ -136,6 +209,10 @@ module.exports = async (req, res) => {
         prompt_tokens: data?.usage?.input_tokens || 0,
         completion_tokens: data?.usage?.output_tokens || 0,
         total_tokens: (data?.usage?.input_tokens || 0) + (data?.usage?.output_tokens || 0),
+      },
+      claude_daily_usage: {
+        used: used + 1,
+        limit: dailyLimit,
       },
     }
 

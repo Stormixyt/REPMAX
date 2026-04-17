@@ -35,25 +35,25 @@ export const COACH_MODEL_OPTIONS = [
     id: "anthropic/claude-opus-4",
     shortLabel: "Opus 4",
     label: "Claude Opus 4",
-    description: "Anthropic's most powerful model. Deep reasoning, nuanced training advice. ULTRA exclusive.",
+    description: "Anthropic's most powerful model. Deep reasoning, nuanced training advice. PRO: 3/day, ULTRA: 25/day.",
     provider: "bedrock",
-    ultraOnly: true,
+    paidOnly: true,
   },
   {
     id: "anthropic/claude-sonnet-4",
     shortLabel: "Sonnet 4",
     label: "Claude Sonnet 4",
-    description: "Fast, intelligent, great balance of speed and depth. ULTRA exclusive.",
+    description: "Fast, intelligent, great balance of speed and depth. PRO: 3/day, ULTRA: 25/day.",
     provider: "bedrock",
-    ultraOnly: true,
+    paidOnly: true,
   },
   {
     id: "anthropic/claude-haiku-4.5",
     shortLabel: "Haiku 4.5",
     label: "Claude Haiku 4.5",
-    description: "Lightning-fast Claude model for instant coaching replies. ULTRA exclusive.",
+    description: "Lightning-fast Claude model for instant coaching replies. PRO: 3/day, ULTRA: 25/day.",
     provider: "bedrock",
-    ultraOnly: true,
+    paidOnly: true,
   },
 ];
 
@@ -408,6 +408,8 @@ function shouldRetryCoachModel(error) {
   } else {
     message = String(rawMessage || "");
   }
+
+  if (status === 429 && /daily.*limit/i.test(message)) return false;
 
   return (
     status === 408 ||

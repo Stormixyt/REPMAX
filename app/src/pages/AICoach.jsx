@@ -822,7 +822,7 @@ export default function AICoach() {
     conversations.find((conversation) => conversation.id === activeConversationId) ||
     conversations[0] ||
     null;
-  const activeCoachModel = isUltra ? coachModel : DEFAULT_COACH_MODEL;
+  const activeCoachModel = isPro ? coachModel : DEFAULT_COACH_MODEL;
   const activeCoachModelMeta = getCoachModelMeta(activeCoachModel);
   const activeCoachStyleMeta = getCoachStyleMeta(responseStyle);
 
@@ -1207,9 +1207,13 @@ export default function AICoach() {
       }
     } catch (err) {
       console.error("[Coach] sendMessage failed:", err);
+      const isRateLimit = err?.status === 429 || /daily.*limit|limit reached/i.test(err?.message || '');
+      const errorText = isRateLimit
+        ? `You've reached your daily Claude limit. ${isUltra ? '25' : '3'} messages per day — resets at midnight UTC. Try a free model in the meantime!`
+        : "I hit a connection issue. Try sending that again in a second.";
       const errorMessage = createMessage(
         "assistant",
-        "I hit a connection issue. Try sending that again in a second."
+        errorText
       );
 
       setConversations((prev) =>
@@ -1372,11 +1376,11 @@ export default function AICoach() {
                     </div>
                   </div>
 
-                  {isUltra ? (
+                  {isPro ? (
                     <div className="coach-control-group coach-model-group">
                       <div className="coach-control-label">Model</div>
                       <div className="coach-model-toggle" role="tablist" aria-label="Coach model" style={{ flexWrap: 'wrap' }}>
-                        {COACH_MODEL_OPTIONS.filter(o => !o.ultraOnly).map((option) => (
+                        {COACH_MODEL_OPTIONS.filter(o => !o.paidOnly).map((option) => (
                           <button
                             key={option.id}
                             className={`coach-model-chip ${activeCoachModel === option.id ? "active" : ""}`}
@@ -1390,9 +1394,12 @@ export default function AICoach() {
                       </div>
                       <div className="coach-control-label" style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <RiSparklingFill size={12} style={{ color: '#ff2a85' }} /> Claude (Bedrock)
+                        <span style={{ fontSize: '0.65rem', opacity: 0.6, marginLeft: 4 }}>
+                          {isUltra ? '25/day' : '3/day'}
+                        </span>
                       </div>
                       <div className="coach-model-toggle" role="tablist" aria-label="Claude model" style={{ flexWrap: 'wrap' }}>
-                        {COACH_MODEL_OPTIONS.filter(o => o.ultraOnly).map((option) => (
+                        {COACH_MODEL_OPTIONS.filter(o => o.paidOnly).map((option) => (
                           <button
                             key={option.id}
                             className={`coach-model-chip claude-chip ${activeCoachModel === option.id ? "active" : ""}`}
@@ -1410,7 +1417,7 @@ export default function AICoach() {
                     </div>
                   ) : (
                     <div className="coach-control-note">
-                      Coach chats recover through OpenRouter automatically. ULTRA unlocks model switching + Claude via Bedrock.
+                      Coach chats recover through OpenRouter automatically. PRO unlocks Claude models (3/day), ULTRA gets 25/day.
                     </div>
                   )}
                 </div>
@@ -1511,7 +1518,7 @@ export default function AICoach() {
                     <strong>{activeCoachStyleMeta.label}</strong>
                   </div>
                   <div className="coach-insight-pill">
-                    <span>{isUltra ? "ULTRA model" : "Coach model"}</span>
+                    <span>{isUltra ? "ULTRA model" : isPro ? "PRO model" : "Coach model"}</span>
                     <strong>{activeCoachModelMeta.label}</strong>
                   </div>
                 </div>
