@@ -41,8 +41,8 @@ const config: CapacitorConfig = {
       overlaysWebView: true,   // Content goes under the status bar (we handle safe area in CSS)
     },
     Keyboard: {
-      resize: 'body',          // Resize body when keyboard opens
-      style: 'DARK',
+      resize: 'body' as any,
+      style: 'DARK' as any,
       resizeOnFullScreen: true,
     },
     PushNotifications: {
@@ -60,7 +60,6 @@ const config: CapacitorConfig = {
     backgroundColor: '#070707',
     preferredContentMode: 'mobile',
     limitsNavigationsToAppBoundDomains: false,
-    scheme: 'repmax',
   },
 };
 
