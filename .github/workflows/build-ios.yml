@@ -5,6 +5,9 @@ on:
   push:
     branches: [release/ios]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: macos-15
@@ -36,35 +39,39 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Add Info.plist permissions
-        working-directory: app/ios/App/App
+      - name: Resolve Swift packages
+        working-directory: app/ios/App
         run: |
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'REPMAX needs camera access to scan food photos and barcodes'" Info.plist || true
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'REPMAX needs photo library access to select food photos'" Info.plist || true
-          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'REPMAX needs your location to track outdoor runs and find nearby gyms'" Info.plist || true
-          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'REPMAX needs microphone access for voice and video calls'" Info.plist || true
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme App \
+            -destination "generic/platform=iOS"
 
       - name: Build Xcode archive
         working-directory: app/ios/App
         run: |
           xcodebuild archive \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Release \
-            -archivePath build/App.xcarchive \
+            -archivePath $PWD/build/App.xcarchive \
             -destination "generic/platform=iOS" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_IDENTITY=- \
             CODE_SIGN_ENTITLEMENTS="" \
             DEVELOPMENT_TEAM="" \
-            | xcbeautify || tail -50
+            SKIP_INSTALL=NO \
+            BUILD_LIBRARY_FOR_DISTRIBUTION=YES
 
       - name: Create unsigned IPA
         working-directory: app/ios/App
         run: |
           mkdir -p build/ipa/Payload
-          cp -r build/App.xcarchive/Products/Applications/App.app build/ipa/Payload/
+          # Find the .app in the archive
+          APP_PATH=$(find build/App.xcarchive -name "*.app" -type d | head -1)
+          echo "Found app at: $APP_PATH"
+          cp -r "$APP_PATH" build/ipa/Payload/
           cd build/ipa
           zip -r ../REPMAX.ipa Payload
           echo "IPA size: $(du -h ../REPMAX.ipa | cut -f1)"
