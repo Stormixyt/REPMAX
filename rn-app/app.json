@@ -18,6 +18,7 @@
       "bundleIdentifier": "com.repmax.native",
       "backgroundColor": "#070707",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "REPMAX needs camera access to scan food photos and barcodes",
         "NSPhotoLibraryUsageDescription": "REPMAX needs photo library access to select food photos",
         "NSLocationWhenInUseUsageDescription": "REPMAX needs your location to track outdoor runs and find nearby gyms",
