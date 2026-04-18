@@ -22,7 +22,9 @@
         "NSPhotoLibraryUsageDescription": "REPMAX needs photo library access to select food photos",
         "NSLocationWhenInUseUsageDescription": "REPMAX needs your location to track outdoor runs and find nearby gyms",
         "NSMicrophoneUsageDescription": "REPMAX needs microphone access for voice and video calls",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       }
     },
     "android": {
@@ -31,18 +33,28 @@
         "backgroundColor": "#070707"
       },
       "package": "com.repmax.native",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-font",
       "expo-secure-store",
       [
         "expo-camera",
-        { "cameraPermission": "REPMAX needs camera access to scan food photos and barcodes" }
+        {
+          "cameraPermission": "REPMAX needs camera access to scan food photos and barcodes"
+        }
       ],
       [
         "expo-location",
-        { "locationWhenInUsePermission": "REPMAX needs your location to track outdoor runs and find nearby gyms" }
+        {
+          "locationWhenInUsePermission": "REPMAX needs your location to track outdoor runs and find nearby gyms"
+        }
       ],
       [
         "expo-notifications",
@@ -52,6 +64,11 @@
         }
       ],
       "expo-image-picker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "252fb8ca-7096-4479-aa06-16cbc0996265"
+      }
+    }
   }
 }
