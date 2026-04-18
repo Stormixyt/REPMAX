@@ -9,6 +9,16 @@
  */
 
 import { Capacitor } from '@capacitor/core'
+import { StatusBar, Style } from '@capacitor/status-bar'
+import { SplashScreen } from '@capacitor/splash-screen'
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
+import { Geolocation } from '@capacitor/geolocation'
+import { Share } from '@capacitor/share'
+import { Browser } from '@capacitor/browser'
+import { App } from '@capacitor/app'
+import { Keyboard } from '@capacitor/keyboard'
+import { LocalNotifications } from '@capacitor/local-notifications'
 
 // ── Platform Detection ──
 export const isNative = Capacitor.isNativePlatform()
@@ -19,7 +29,6 @@ export const isIOS = platform === 'ios'
 export async function initStatusBar() {
   if (!isNative) return
   try {
-    const { StatusBar, Style } = await import('@capacitor/status-bar')
     await StatusBar.setStyle({ style: Style.Dark })
     await StatusBar.setOverlaysWebView({ overlay: true })
   } catch (e) {
@@ -31,7 +40,6 @@ export async function initStatusBar() {
 export async function hideSplashScreen() {
   if (!isNative) return
   try {
-    const { SplashScreen } = await import('@capacitor/splash-screen')
     await SplashScreen.hide({ fadeOutDuration: 300 })
   } catch (e) {
     console.warn('[native] SplashScreen hide failed:', e.message)
@@ -42,7 +50,6 @@ export async function hideSplashScreen() {
 export async function hapticImpact(style = 'Medium') {
   if (!isNative) return
   try {
-    const { Haptics, ImpactStyle } = await import('@capacitor/haptics')
     await Haptics.impact({ style: ImpactStyle[style] || ImpactStyle.Medium })
   } catch (e) {
     // Silently fail — haptics are a nice-to-have
@@ -52,7 +59,6 @@ export async function hapticImpact(style = 'Medium') {
 export async function hapticNotification(type = 'Success') {
   if (!isNative) return
   try {
-    const { Haptics, NotificationType } = await import('@capacitor/haptics')
     await Haptics.notification({ type: NotificationType[type] || NotificationType.Success })
   } catch (e) {}
 }
@@ -60,7 +66,6 @@ export async function hapticNotification(type = 'Success') {
 export async function hapticSelection() {
   if (!isNative) return
   try {
-    const { Haptics } = await import('@capacitor/haptics')
     await Haptics.selectionStart()
     await Haptics.selectionChanged()
     await Haptics.selectionEnd()
@@ -71,7 +76,6 @@ export async function hapticSelection() {
 export async function takePhoto(options = {}) {
   if (!isNative) return null
   try {
-    const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera')
     const image = await Camera.getPhoto({
       quality: options.quality || 80,
       allowEditing: options.allowEditing ?? false,
@@ -106,7 +110,6 @@ export async function getCurrentPosition(options = {}) {
     })
   }
   try {
-    const { Geolocation } = await import('@capacitor/geolocation')
     const pos = await Geolocation.getCurrentPosition({
       enableHighAccuracy: true,
       timeout: 10000,
@@ -131,7 +134,6 @@ export async function watchPosition(callback, options = {}) {
     return () => navigator.geolocation.clearWatch(watchId)
   }
   try {
-    const { Geolocation } = await import('@capacitor/geolocation')
     const watchId = await Geolocation.watchPosition({
       enableHighAccuracy: true,
       ...options,
@@ -153,7 +155,6 @@ export async function nativeShare(options = {}) {
   }
   if (!isNative) return false
   try {
-    const { Share } = await import('@capacitor/share')
     await Share.share({
       title: options.title || 'REPMAX',
       text: options.text || '',
@@ -175,7 +176,6 @@ export async function openExternal(url) {
     return
   }
   try {
-    const { Browser } = await import('@capacitor/browser')
     await Browser.open({ url, presentationStyle: 'popover' })
   } catch (e) {
     window.open(url, '_blank')
@@ -186,7 +186,6 @@ export async function openExternal(url) {
 export async function addAppStateListener(callback) {
   if (!isNative) return () => {}
   try {
-    const { App } = await import('@capacitor/app')
     const listener = await App.addListener('appStateChange', callback)
     return () => listener.remove()
   } catch { return () => {} }
@@ -195,7 +194,6 @@ export async function addAppStateListener(callback) {
 export async function addAppUrlOpenListener(callback) {
   if (!isNative) return () => {}
   try {
-    const { App } = await import('@capacitor/app')
     const listener = await App.addListener('appUrlOpen', callback)
     return () => listener.remove()
   } catch { return () => {} }
@@ -205,7 +203,6 @@ export async function addAppUrlOpenListener(callback) {
 export async function addKeyboardListeners(onShow, onHide) {
   if (!isNative) return () => {}
   try {
-    const { Keyboard } = await import('@capacitor/keyboard')
     const showListener = await Keyboard.addListener('keyboardWillShow', onShow)
     const hideListener = await Keyboard.addListener('keyboardWillHide', onHide)
     return () => {
@@ -219,7 +216,6 @@ export async function addKeyboardListeners(onShow, onHide) {
 export async function scheduleLocalNotification(options = {}) {
   if (!isNative) return
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications')
     await LocalNotifications.schedule({
       notifications: [{
         title: options.title || 'REPMAX',
@@ -245,7 +241,6 @@ export async function initNativeApp() {
   
   // Keyboard dark mode
   try {
-    const { Keyboard } = await import('@capacitor/keyboard')
     await Keyboard.setStyle({ style: 'DARK' })
   } catch {}
 }
