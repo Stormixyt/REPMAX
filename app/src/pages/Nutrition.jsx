@@ -1455,6 +1455,30 @@ function AIPhotoScan({ onResult, onManualPrefill, isPaid = false }) {
     setScanPrefill("");
   }
 
+  async function handleCapture() {
+    const { isNative, takePhoto } = await import("../lib/native");
+    if (isNative) {
+      try {
+        const photo = await takePhoto({ quality: 80, width: 1200, height: 1200 });
+        if (!photo?.dataUrl) return;
+        resetDiagnostics();
+        setAnalyzing(true);
+        setScanState("analyzing");
+        setScanMessage("Checking the meal...");
+        setPreview(photo.dataUrl);
+        await analyzePhoto(photo.dataUrl);
+      } catch (e) {
+        if (!e?.message?.includes("cancel")) {
+          setScanState("error");
+          setScanMessage(e?.message || "Camera error.");
+          setAnalyzing(false);
+        }
+      }
+      return;
+    }
+    fileRef.current?.click();
+  }
+
   async function handleFileSelect(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1474,7 +1498,6 @@ function AIPhotoScan({ onResult, onManualPrefill, isPaid = false }) {
       setAnalyzing(false);
     }
 
-    // Reset input so the same file can be re-selected
     e.target.value = "";
   }
 
@@ -1552,7 +1575,7 @@ function AIPhotoScan({ onResult, onManualPrefill, isPaid = false }) {
       ) : (
         <button
           className="photo-capture-btn"
-          onClick={() => fileRef.current?.click()}
+          onClick={handleCapture}
         >
           <RiCameraFill size={22} />
           <span>Take Photo or Choose from Gallery</span>
@@ -1591,7 +1614,7 @@ function AIPhotoScan({ onResult, onManualPrefill, isPaid = false }) {
               onClick={() => {
                 setPreview(null);
                 resetDiagnostics();
-                fileRef.current?.click();
+                handleCapture();
               }}
             >
               <RiRefreshLine size={15} /> Try another photo

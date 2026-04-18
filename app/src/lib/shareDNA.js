@@ -1,5 +1,4 @@
-// Generates a shareable DNA card image using Canvas
-// Returns a Blob that can be shared via Web Share API
+import { isNative, nativeShare } from './native'
 
 export async function generateDNAImage(profile, stats, theme = 'green') {
   const canvas = document.createElement('canvas')
@@ -162,25 +161,34 @@ export async function generateDNAImage(profile, stats, theme = 'green') {
 export async function shareDNACard(profile, stats, theme) {
   const blob = await generateDNAImage(profile, stats, theme)
   const file = new File([blob], 'my-repmax-dna.png', { type: 'image/png' })
+  const shareTitle = `${profile?.display_name || 'Athlete'}'s REPMAX DNA`
+
+  if (isNative) {
+    return nativeShare({
+      title: shareTitle,
+      text: 'Check out my training stats on REPMAX',
+      url: 'https://www.rep-max.app',
+      dialogTitle: 'Share DNA Card',
+    })
+  }
 
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({
-      title: `${profile?.display_name || 'Athlete'}'s REPMAX DNA`,
-      text: 'Check out my training stats on REPMAX 💪',
+      title: shareTitle,
+      text: 'Check out my training stats on REPMAX',
       url: 'https://www.rep-max.app',
       files: [file]
     })
     return true
-  } else {
-    // Fallback: download
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'my-repmax-dna.png'
-    a.click()
-    URL.revokeObjectURL(url)
-    return false
   }
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'my-repmax-dna.png'
+  a.click()
+  URL.revokeObjectURL(url)
+  return false
 }
 
 function loadImage(src) {

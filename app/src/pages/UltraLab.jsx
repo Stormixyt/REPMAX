@@ -738,6 +738,21 @@ export default function UltraLab() {
     setImportStage(null)
   }
 
+  async function handleNativeImageCapture() {
+    const { isNative, takePhoto } = await import('../lib/native')
+    if (!isNative) return
+    try {
+      const photo = await takePhoto({ quality: 85, width: 1400, height: 1800, source: 'gallery' })
+      if (!photo?.dataUrl) return
+      const resp = await fetch(photo.dataUrl)
+      const blob = await resp.blob()
+      const file = new File([blob], `routine-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      setImageFiles(prev => [...prev, file])
+      setImportDiagnostics(null)
+      setImportStage(null)
+    } catch {}
+  }
+
   async function runImageImport() {
     if (!imageFiles.length) {
       showToast('Choose one or more routine screenshots first.')
@@ -1444,7 +1459,11 @@ export default function UltraLab() {
 
               {importMode === 'images' ? (
                 <div className="ultra-import-panel">
-                  <label className="ultra-upload-dropzone">
+                  <label className="ultra-upload-dropzone" onClick={(e) => {
+                    import('../lib/native').then(({ isNative }) => {
+                      if (isNative) { e.preventDefault(); handleNativeImageCapture() }
+                    })
+                  }}>
                     <input type="file" accept="image/*" multiple onChange={handleImageFilesChange} />
                     <RiImageAddLine size={20} />
                     <div className="ultra-upload-title">Drop routine screenshots here</div>

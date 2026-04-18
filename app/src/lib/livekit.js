@@ -1,4 +1,7 @@
 import { supabase } from './supabase'
+import { isNative } from './native'
+
+const API_BASE = isNative ? 'https://www.rep-max.app' : ''
 
 async function getAccessToken() {
   const { data: { session } } = await supabase.auth.getSession()
@@ -29,7 +32,7 @@ export async function fetchLiveKitCredentials({ roomName, participantName, parti
     throw new Error('Please sign in again before starting a call.')
   }
 
-  const response = await fetch('/api/livekit-token', {
+  const response = await fetch(API_BASE + '/api/livekit-token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

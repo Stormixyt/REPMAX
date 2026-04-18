@@ -26,6 +26,7 @@ import Layout from './components/Layout'
 import CallScreen from './components/CallScreen'
 import UsernameModal from './components/UsernameModal'
 import { syncPushSubscription, showLocalNotification } from './lib/pushNotifications'
+import { isNative, addAppStateListener } from './lib/native'
 
 export default function App() {
   const { user, profile, loading, isOnboarded, needsUsername, fetchProfile, isAdmin, isPro, isUltra } = useAuth()
@@ -137,9 +138,31 @@ export default function App() {
     }
   }, [user?.id])
 
+  // Check unread notifications when native app returns to foreground
+  useEffect(() => {
+    if (!isNative || !user?.id) return undefined
+    let cleanup = () => {}
+    addAppStateListener(async ({ isActive }) => {
+      if (!isActive) return
+      const { data } = await supabase
+        .from('notifications')
+        .select('id, title, body, type, data')
+        .eq('user_id', user.id)
+        .eq('read', false)
+        .order('created_at', { ascending: false })
+        .limit(5)
+      if (data?.length) {
+        showLocalNotification(
+          data[0].title || 'REPMAX',
+          data[0].body || `You have ${data.length} unread notification${data.length > 1 ? 's' : ''}`,
+          { tag: `fg-poll-${data[0].id}`, data: { url: '/notifications' } }
+        )
+      }
+    }).then(fn => { cleanup = fn })
+    return () => cleanup()
+  }, [user?.id])
+
   // ── Global message notification listener ──
-  // Shows an in-app banner + local browser notification when someone messages you
-  // and you're NOT on that chat page.
   useEffect(() => {
     if (!user?.id) return undefined
 

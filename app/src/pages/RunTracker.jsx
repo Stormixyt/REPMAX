@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RiArrowLeftLine, RiFootprintFill, RiMapPin2Fill, RiPauseCircleFill, RiPlayCircleFill, RiStopCircleFill, RiTimerFlashFill } from '@remixicon/react'
 import { useLanguage } from '../context/LanguageContext'
+import { watchPosition } from '../lib/native'
+import { hapticImpact, hapticNotification } from '../lib/native'
 
 const RUN_HISTORY_KEY = 'repmax-run-history'
 
@@ -64,12 +66,8 @@ export default function RunTracker() {
 
   useEffect(() => {
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current)
-      }
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-      }
+      if (typeof watchIdRef.current === 'function') watchIdRef.current()
+      if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [])
 
@@ -87,14 +85,8 @@ export default function RunTracker() {
     lastPointRef.current = null
     startedAtRef.current = null
     pausedAtRef.current = null
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current)
-      watchIdRef.current = null
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-      timerRef.current = null
-    }
+    if (typeof watchIdRef.current === 'function') { watchIdRef.current(); watchIdRef.current = null }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
   }
 
   function startTimer() {
@@ -105,14 +97,9 @@ export default function RunTracker() {
     }, 1000)
   }
 
-  function beginLocationWatch() {
-    if (!navigator.geolocation) {
-      setError('Location tracking is not supported on this device.')
-      return
-    }
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
+  async function beginLocationWatch() {
+    try {
+      const cleanup = await watchPosition((position) => {
         const { latitude, longitude, accuracy, speed } = position.coords
         setLastAccuracy(accuracy || null)
         setCurrentSpeedKmh(speed && speed > 0 ? speed * 3.6 : 0)
@@ -134,12 +121,11 @@ export default function RunTracker() {
         }
 
         lastPointRef.current = nextPoint
-      },
-      (positionError) => {
-        setError(positionError.message || 'Could not track your run.')
-      },
-      { enableHighAccuracy: true, maximumAge: 1500, timeout: 10000 }
-    )
+      }, { enableHighAccuracy: true, maximumAge: 1500, timeout: 10000 })
+      watchIdRef.current = cleanup
+    } catch (e) {
+      setError(e?.message || 'Could not track your run.')
+    }
   }
 
   function handleStartRun() {
@@ -153,6 +139,7 @@ export default function RunTracker() {
     pausedAtRef.current = null
     setIsRunning(true)
     setIsPaused(false)
+    hapticImpact('Medium')
     startTimer()
     beginLocationWatch()
   }
@@ -165,10 +152,7 @@ export default function RunTracker() {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current)
-      watchIdRef.current = null
-    }
+    if (typeof watchIdRef.current === 'function') { watchIdRef.current(); watchIdRef.current = null }
   }
 
   function handleResumeRun() {
@@ -198,6 +182,7 @@ export default function RunTracker() {
       averagePace: formatPace(distanceKm, finalElapsedSeconds),
     }
 
+    hapticNotification('Success')
     if (completedRun.distanceKm > 0.05 || completedRun.elapsedSeconds > 60) {
       const nextHistory = [completedRun, ...history].slice(0, 8)
       setHistory(nextHistory)

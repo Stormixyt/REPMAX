@@ -1,5 +1,4 @@
-// Finds nearby gyms using OpenStreetMap Overpass API (free, no API key needed)
-// Falls back to a simple search if geolocation is denied
+import { getCurrentPosition } from './native'
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
 const GYM_BRAND_REGEX = 'Basic[ -]?Fit|TrainMore|Anytime Fitness|David Lloyd|SportCity|Fit For Free|Vondelgym|BigGym|Club Pellikaan|Snap Fitness|The Gym'
@@ -10,17 +9,8 @@ let gymCache = { key: null, gyms: [], timestamp: 0 }
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 export async function getUserLocation() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation not supported'))
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      err => reject(err),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-    )
-  })
+  const pos = await getCurrentPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 })
+  return { lat: pos.coords.latitude, lon: pos.coords.longitude }
 }
 
 export async function findNearbyGyms(lat, lon, radiusMeters = 15000) {

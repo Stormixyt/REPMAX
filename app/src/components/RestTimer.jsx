@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { hapticNotification } from '../lib/native'
 
 export default function RestTimer({ duration, onClose, onDurationChange }) {
   const [timeLeft, setTimeLeft] = useState(duration)
@@ -50,7 +51,7 @@ export default function RestTimer({ duration, onClose, onDurationChange }) {
           if (prev <= 1) {
             clearInterval(intervalRef.current)
             playTimerDoneTone()
-            // Vibrate on timer complete
+            hapticNotification('Warning')
             if (navigator.vibrate) navigator.vibrate([200, 100, 200])
             return 0
           }

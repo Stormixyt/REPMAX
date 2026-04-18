@@ -4,6 +4,7 @@ import { RiHomeFill, RiHomeLine, RiBarChart2Fill, RiBarChart2Line, RiLeafFill, R
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { supabase } from '../lib/supabase'
+import { hapticSelection } from '../lib/native'
 
 export default function Layout() {
   const location = useLocation()
@@ -146,7 +147,7 @@ export default function Layout() {
             <button
               key={item.path}
               className={`bottom-nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => navigate(item.path)}
+              onClick={() => { hapticSelection(); navigate(item.path) }}
             >
               <IconComponent size={22} />
               <span>{item.label}</span>
