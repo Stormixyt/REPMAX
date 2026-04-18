@@ -1,0 +1,88 @@
+name: Build React Native iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [release/rn-ios]
+    paths:
+      - 'rn-app/**'
+      - '.github/workflows/build-rn-ios.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rn-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: rn-app
+        run: npm ci
+
+      - name: Expo Prebuild
+        working-directory: rn-app
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Resolve Swift Packages
+        working-directory: rn-app/ios
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -workspace REPMAX.xcworkspace \
+            -scheme REPMAX \
+            -destination "generic/platform=iOS" || echo "No swift packages to resolve"
+
+      - name: Build app
+        working-directory: rn-app/ios
+        run: |
+          xcodebuild build \
+            -workspace REPMAX.xcworkspace \
+            -scheme REPMAX \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath $PWD/build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM=""
+
+      - name: Create unsigned IPA
+        working-directory: rn-app/ios
+        run: |
+          # Find the built .app bundle
+          APP_PATH=$(find build/DerivedData -name "REPMAX.app" -type d | grep -v "\.dSYM" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find REPMAX.app!"
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          echo "App bundle size: $(du -sh "$APP_PATH" | cut -f1)"
+
+          # Package as IPA
+          mkdir -p build/ipa/Payload
+          cp -r "$APP_PATH" build/ipa/Payload/
+          cd build/ipa
+          zip -r ../REPMAX.ipa Payload
+          echo "=== Final IPA size ==="
+          du -h ../REPMAX.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: REPMAX-React-Native-iOS
+          path: rn-app/ios/build/REPMAX.ipa
+          retention-days: 90
