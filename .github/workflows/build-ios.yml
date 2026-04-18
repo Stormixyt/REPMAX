@@ -61,8 +61,7 @@ jobs:
             CODE_SIGN_IDENTITY=- \
             CODE_SIGN_ENTITLEMENTS="" \
             DEVELOPMENT_TEAM="" \
-            SKIP_INSTALL=NO \
-            BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+            SKIP_INSTALL=NO
 
       - name: Create unsigned IPA
         working-directory: app/ios/App
