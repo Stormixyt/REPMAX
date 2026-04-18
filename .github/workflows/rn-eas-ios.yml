@@ -70,11 +70,17 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Decode optional Apple API key
-        if: ${{ secrets.EXPO_ASC_API_KEY_BASE64 != '' }}
         shell: bash
+        env:
+          EXPO_ASC_API_KEY_BASE64: ${{ secrets.EXPO_ASC_API_KEY_BASE64 }}
         run: |
+          if [ -z "$EXPO_ASC_API_KEY_BASE64" ]; then
+            echo "No EXPO_ASC_API_KEY_BASE64 secret configured; skipping Apple API key decode."
+            exit 0
+          fi
+
           mkdir -p "$RUNNER_TEMP/eas"
-          echo "${{ secrets.EXPO_ASC_API_KEY_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/eas/AuthKey.p8"
+          echo "$EXPO_ASC_API_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/eas/AuthKey.p8"
           echo "EXPO_ASC_API_KEY_PATH=$RUNNER_TEMP/eas/AuthKey.p8" >> "$GITHUB_ENV"
 
       - name: Trigger EAS iOS build
