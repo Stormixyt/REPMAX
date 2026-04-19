@@ -10,7 +10,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  RCT_NEW_ARCH_ENABLED: 1
+  RCT_NEW_ARCH_ENABLED: 0
 
 jobs:
   build:
@@ -53,12 +53,14 @@ jobs:
             -workspace REPMAX.xcworkspace \
             -scheme REPMAX \
             -configuration Release \
-            -destination "generic/platform=iOS" \
+            -sdk iphoneos \
+            -arch arm64 \
             -derivedDataPath $PWD/build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=- \
-            DEVELOPMENT_TEAM="" 2>&1 | tee build/logs/xcodebuild.log
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO 2>&1 | tee build/logs/xcodebuild.log
 
       - name: Upload Xcode build log on failure
         if: failure()
