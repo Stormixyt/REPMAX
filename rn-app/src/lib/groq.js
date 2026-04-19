@@ -2,8 +2,8 @@ import { invokeServerApi, invokeEdgeFunction, supabase } from './supabase'
 
 export const COACH_MODEL_OPTIONS = [
   { id: 'llama-3.3-70b', label: 'Llama 3.3 70B', tier: 'free', provider: 'openrouter' },
-  { id: 'claude-sonnet-4', label: 'Claude Sonnet 4', tier: 'pro', provider: 'bedrock' },
-  { id: 'claude-haiku-4.5', label: 'Claude Haiku 4.5', tier: 'pro', provider: 'bedrock' },
+  { id: 'claude-sonnet-4', label: 'Claude Sonnet 4', tier: 'pro', provider: 'openrouter', paidOnly: true },
+  { id: 'claude-haiku-4.5', label: 'Claude Haiku 4.5', tier: 'pro', provider: 'openrouter', paidOnly: true },
 ]
 
 export const COACH_RESPONSE_STYLE_OPTIONS = [
@@ -44,15 +44,15 @@ export async function askCoach(message, context = {}, options = {}) {
     { role: 'user', content: message },
   ]
 
-  if (modelConfig.provider === 'bedrock') {
+  if (modelConfig.paidOnly) {
     const data = await invokeServerApi('/api/bedrock-proxy', {
       messages,
       system,
-      model: modelConfig.id,
+      model: `anthropic/${modelConfig.id}`,
       max_tokens: styleConfig.maxTokens,
       feature: 'coach',
     }, { timeoutMs: 30000 })
-    return data?.content || data?.response || data?.raw || ''
+    return data?.choices?.[0]?.message?.content || data?.content || data?.response || data?.raw || ''
   }
 
   const data = await invokeServerApi('/api/ai-proxy', {
@@ -72,15 +72,15 @@ export async function scanFoodPhoto(base64DataUrl, options = {}) {
         role: 'user',
         content: [
           { type: 'text', text: 'Analyze this food photo. Return JSON with: { "success": true, "food": { "name": "...", "calories": N, "protein": N, "carbs": N, "fat": N, "serving": "..." } } or { "success": false, "error": { "message": "..." }, "suggestedQuery": "..." }' },
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64DataUrl.replace(/^data:image\/\w+;base64,/, '') } },
+          { type: 'image_url', image_url: { url: base64DataUrl } },
         ],
       }],
-      model: 'claude-haiku-4.5',
+      model: 'anthropic/claude-haiku-4.5',
       max_tokens: 500,
       feature: 'photo_scan',
     }, { timeoutMs: 20000 })
 
-    const text = data?.content || data?.response || ''
+    const text = data?.choices?.[0]?.message?.content || data?.content || data?.response || ''
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/)
       if (jsonMatch) return JSON.parse(jsonMatch[0])
@@ -99,7 +99,7 @@ export async function requestRoutineChange(request, programId) {
   return askCoach(
     `I want to change my routine: ${request}. My current program ID is ${programId}. Suggest specific changes.`,
     {},
-    { model: 'claude-sonnet-4', style: 'deep' }
+    { model: 'claude-sonnet-4', style: 'deep', isPaid: true }
   )
 }
 

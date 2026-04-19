@@ -36,7 +36,7 @@ export const COACH_MODEL_OPTIONS = [
     shortLabel: "Sonnet 4",
     label: "Claude Sonnet 4",
     description: "Fast, intelligent, great balance of speed and depth. PRO: 3/day, ULTRA: 25/day.",
-    provider: "bedrock",
+    provider: "openrouter",
     paidOnly: true,
   },
   {
@@ -44,14 +44,14 @@ export const COACH_MODEL_OPTIONS = [
     shortLabel: "Haiku 4.5",
     label: "Claude Haiku 4.5",
     description: "Lightning-fast Claude model for instant coaching replies. PRO: 3/day, ULTRA: 25/day.",
-    provider: "bedrock",
+    provider: "openrouter",
     paidOnly: true,
   },
 ];
 
 export function isBedrockModel(modelId) {
   const meta = COACH_MODEL_OPTIONS.find(m => m.id === modelId);
-  return meta?.provider === "bedrock";
+  return meta?.paidOnly === true;
 }
 
 export const COACH_RESPONSE_STYLE_OPTIONS = [
@@ -434,11 +434,11 @@ async function callCoachModel(body, options = {}) {
           return await callGroq({ ...body, model: DEFAULT_COACH_MODEL }, { timeoutMs });
         } catch (fallbackError) {
           const combinedError = new Error(
-            `Claude via Bedrock failed (${error?.message || "unknown Bedrock error"}). OpenRouter fallback also failed (${fallbackError?.message || "unknown OpenRouter error"}).`
+            `Claude failed (${error?.message || "unknown error"}). Fallback also failed (${fallbackError?.message || "unknown fallback error"}).`
           );
           combinedError.status = fallbackError?.status || error?.status;
           combinedError.payload = {
-            bedrock: error?.payload || null,
+            claude: error?.payload || null,
             fallback: fallbackError?.payload || null,
           };
           throw combinedError;
@@ -2431,7 +2431,7 @@ Use this exact schema:
         usedBedrock = true;
       } catch (bedrockErr) {
         if (bedrockErr?.status === 429) throw bedrockErr;
-        console.warn("[PhotoScan] Bedrock failed, falling back to OpenRouter:", bedrockErr?.message);
+        console.warn("[PhotoScan] Claude failed, falling back to default model:", bedrockErr?.message);
       }
     }
 
