@@ -81,22 +81,23 @@ jobs:
           echo "Found app at: $APP_PATH"
           echo "App bundle size: $(du -sh "$APP_PATH" | cut -f1)"
 
-          mkdir -p build/ipa/Payload
-          ditto "$APP_PATH" "build/ipa/Payload/REPMAX.app"
-          cd build
-          IPA_NAME="REPMAX-rn-ios-${GITHUB_RUN_NUMBER}.ipa"
-          ditto -c -k --sequesterRsrc --keepParent ipa "$IPA_NAME"
-          test -f "$IPA_NAME"
+          mkdir -p Payload
+          ditto "$APP_PATH" "Payload/REPMAX.app"
+          IPA_NAME="REPMAX.ipa"
+          zip -r -y "$IPA_NAME" Payload/
           test -s "$IPA_NAME"
+          echo "=== IPA contents (should show Payload/REPMAX.app/) ==="
+          unzip -l "$IPA_NAME" | head -20
           echo "=== Final IPA size ==="
           du -h "$IPA_NAME"
           shasum -a 256 "$IPA_NAME"
-          cp "$IPA_NAME" ../..
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: REPMAX-React-Native-iOS-IPA
-          path: rn-app/REPMAX-rn-ios-${{ github.run_number }}.ipa
+          name: REPMAX-iOS
+          path: rn-app/ios/REPMAX.ipa
+          compression-level: 0
+          retention-days: 90
           compression-level: 0
           retention-days: 90
