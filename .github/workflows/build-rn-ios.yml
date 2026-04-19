@@ -30,37 +30,32 @@ jobs:
         working-directory: rn-app
         run: npm ci
 
-      - name: Expo Prebuild
-        working-directory: rn-app
-        run: npx expo prebuild --platform ios --clean
-
       - name: Set up Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
 
-      - name: Resolve Swift Packages
+      - name: Expo Prebuild
+        working-directory: rn-app
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods
         working-directory: rn-app/ios
-        run: |
-          xcodebuild -resolvePackageDependencies \
-            -workspace REPMAX.xcworkspace \
-            -scheme REPMAX \
-            -destination "generic/platform=iOS" || echo "No swift packages to resolve"
+        run: pod install --repo-update
 
       - name: Build app
         working-directory: rn-app/ios
         shell: bash
         run: |
-          mkdir -p build/logs
+          mkdir -p build/logs build/output
           set -o pipefail
-          xcodebuild archive \
+          xcodebuild build \
             -workspace REPMAX.xcworkspace \
             -scheme REPMAX \
             -configuration Release \
             -destination "generic/platform=iOS" \
-            -archivePath $PWD/build/REPMAX.xcarchive \
             -derivedDataPath $PWD/build/DerivedData \
-            SKIP_INSTALL=NO \
+            CONFIGURATION_BUILD_DIR=$PWD/build/output \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=- \
@@ -78,9 +73,10 @@ jobs:
         working-directory: rn-app/ios
         shell: bash
         run: |
-          APP_PATH="build/REPMAX.xcarchive/Products/Applications/REPMAX.app"
-          if [ ! -d "$APP_PATH" ]; then
-            echo "Error: Could not find REPMAX.app!"
+          APP_PATH=$(find build/output -name "REPMAX.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find REPMAX.app in build/output!"
+            find build/output -name "*.app" -type d 2>/dev/null || echo "No .app bundles found at all"
             exit 1
           fi
           echo "Found app at: $APP_PATH"
