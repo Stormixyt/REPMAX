@@ -10,7 +10,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  RCT_NEW_ARCH_ENABLED: 0
+  RCT_NEW_ARCH_ENABLED: 1
 
 jobs:
   build:
