@@ -17,6 +17,11 @@ import RunTrackerScreen from '../screens/standalone/RunTrackerScreen'
 import SettingsScreen from '../screens/standalone/SettingsScreen'
 import SubscriptionScreen from '../screens/standalone/SubscriptionScreen'
 import ChatRoomScreen from '../screens/standalone/ChatRoomScreen'
+import UltraLabScreen from '../screens/standalone/UltraLabScreen'
+import RecoveryScreen from '../screens/standalone/RecoveryScreen'
+import HomeExercisesScreen from '../screens/standalone/HomeExercisesScreen'
+import NotificationsScreen from '../screens/standalone/NotificationsScreen'
+import AdminScreen from '../screens/standalone/AdminScreen'
 
 const Tab = createBottomTabNavigator()
 const Stack = createNativeStackNavigator()
@@ -92,6 +97,11 @@ export default function AppNavigator() {
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
       <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
+      <Stack.Screen name="UltraLab" component={UltraLabScreen} />
+      <Stack.Screen name="Recovery" component={RecoveryScreen} />
+      <Stack.Screen name="HomeExercises" component={HomeExercisesScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="Admin" component={AdminScreen} />
     </Stack.Navigator>
   )
 }
