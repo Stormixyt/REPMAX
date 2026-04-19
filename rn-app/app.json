@@ -33,7 +33,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#070707"
       },
-      "package": "com.repmax.native",
+      "package": "com.repmaxapp.native",
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.CAMERA",

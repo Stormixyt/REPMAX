@@ -48,7 +48,10 @@ jobs:
 
       - name: Build app
         working-directory: rn-app/ios
+        shell: bash
         run: |
+          mkdir -p build/logs
+          set -o pipefail
           xcodebuild build \
             -workspace REPMAX.xcworkspace \
             -scheme REPMAX \
@@ -58,7 +61,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=- \
-            DEVELOPMENT_TEAM=""
+            DEVELOPMENT_TEAM="" 2>&1 | tee build/logs/xcodebuild.log
+
+      - name: Upload Xcode build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: REPMAX-React-Native-iOS-xcode-log
+          path: rn-app/ios/build/logs/xcodebuild.log
+          retention-days: 14
 
       - name: Create unsigned IPA
         working-directory: rn-app/ios

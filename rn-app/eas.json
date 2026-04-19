@@ -11,13 +11,14 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "simulator": false,
+        "simulator": true,
         "resourceClass": "m-medium"
       }
     },
     "sidestore": {
       "distribution": "internal",
       "ios": {
+        "simulator": true,
         "buildConfiguration": "Release",
         "resourceClass": "m-medium"
       }
