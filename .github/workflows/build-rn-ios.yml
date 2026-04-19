@@ -52,12 +52,14 @@ jobs:
         run: |
           mkdir -p build/logs
           set -o pipefail
-          xcodebuild build \
+          xcodebuild archive \
             -workspace REPMAX.xcworkspace \
             -scheme REPMAX \
             -configuration Release \
             -destination "generic/platform=iOS" \
+            -archivePath $PWD/build/REPMAX.xcarchive \
             -derivedDataPath $PWD/build/DerivedData \
+            SKIP_INSTALL=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=- \
@@ -73,23 +75,22 @@ jobs:
 
       - name: Create unsigned IPA
         working-directory: rn-app/ios
+        shell: bash
         run: |
-          # Find the built .app bundle
-          APP_PATH=$(find build/DerivedData -name "REPMAX.app" -type d | grep -v "\.dSYM" | head -1)
-          if [ -z "$APP_PATH" ]; then
+          APP_PATH="build/REPMAX.xcarchive/Products/Applications/REPMAX.app"
+          if [ ! -d "$APP_PATH" ]; then
             echo "Error: Could not find REPMAX.app!"
             exit 1
           fi
           echo "Found app at: $APP_PATH"
           echo "App bundle size: $(du -sh "$APP_PATH" | cut -f1)"
 
-          # Package as IPA
           mkdir -p build/ipa/Payload
-          cp -r "$APP_PATH" build/ipa/Payload/
-          cd build/ipa
-          zip -r ../REPMAX.ipa Payload
+          ditto "$APP_PATH" "build/ipa/Payload/REPMAX.app"
+          cd build
+          ditto -c -k --sequesterRsrc --keepParent ipa REPMAX.ipa
           echo "=== Final IPA size ==="
-          du -h ../REPMAX.ipa
+          du -h REPMAX.ipa
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4

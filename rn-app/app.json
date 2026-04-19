@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "scheme": "repmax",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -33,7 +33,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#070707"
       },
-      "package": "com.repmaxapp.native",
+      "package": "com.repmaxapp.mobile",
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.CAMERA",
