@@ -47,7 +47,7 @@ jobs:
         working-directory: rn-app/ios
         shell: bash
         run: |
-          mkdir -p build/logs build/output
+          mkdir -p build/logs
           set -o pipefail
           xcodebuild build \
             -workspace REPMAX.xcworkspace \
@@ -55,7 +55,6 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -derivedDataPath $PWD/build/DerivedData \
-            CONFIGURATION_BUILD_DIR=$PWD/build/output \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=- \
@@ -73,10 +72,10 @@ jobs:
         working-directory: rn-app/ios
         shell: bash
         run: |
-          APP_PATH=$(find build/output -name "REPMAX.app" -type d | head -1)
+          APP_PATH=$(find build/DerivedData/Build/Products -name "REPMAX.app" -type d | head -1)
           if [ -z "$APP_PATH" ]; then
-            echo "Error: Could not find REPMAX.app in build/output!"
-            find build/output -name "*.app" -type d 2>/dev/null || echo "No .app bundles found at all"
+            echo "Error: Could not find REPMAX.app in DerivedData products!"
+            find build/DerivedData/Build/Products -name "*.app" -type d 2>/dev/null || echo "No .app bundles found at all"
             exit 1
           fi
           echo "Found app at: $APP_PATH"
