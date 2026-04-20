@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../theme/ThemeContext'
-import { Card, CardLabel, Button, PageHeader } from '../../components/ui'
+import { supabase } from '../../lib/supabase'
+import { Card, CardLabel, Button, PageHeader, ProgressBar } from '../../components/ui'
 import { spacing, fontSize, fontWeight, radius } from '../../theme/spacing'
 
 const SORENESS_SCALE = [
@@ -29,14 +30,48 @@ const MOBILITY_DRILLS = [
 
 export default function RecoveryScreen() {
   const navigation = useNavigation()
-  const { profile } = useAuth()
+  const { user, profile } = useAuth()
   const { theme } = useTheme()
   const [soreness, setSoreness] = useState(null)
   const [water, setWater] = useState(0)
+  const mounted = useRef(true)
+
+  const dateKey = new Date().toISOString().split('T')[0]
+
+  useEffect(() => {
+    mounted.current = true
+    loadRecoveryData()
+    return () => { mounted.current = false }
+  }, [user?.id])
+
+  async function loadRecoveryData() {
+    if (!user?.id) return
+    try {
+      const [waterRes] = await Promise.all([
+        supabase.from('water_logs').select('glasses').eq('user_id', user.id).eq('logged_at', dateKey).maybeSingle(),
+      ])
+      if (!mounted.current) return
+      setWater(Number(waterRes.data?.glasses || 0))
+    } catch (err) {
+      console.error('Recovery load error:', err)
+    }
+  }
 
   function selectSoreness(val) {
     setSoreness(val)
     Haptics.selectionAsync().catch(() => {})
+  }
+
+  async function updateWater(next) {
+    const safe = Math.max(0, Math.min(next, 12))
+    setWater(safe)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+    if (!user?.id) return
+    try {
+      await supabase.from('water_logs').upsert({ user_id: user.id, logged_at: dateKey, glasses: safe }, { onConflict: 'user_id,logged_at' })
+    } catch (err) {
+      console.error('Water update error:', err)
+    }
   }
 
   return (
@@ -69,11 +104,12 @@ export default function RecoveryScreen() {
         <CardLabel>Water Intake</CardLabel>
         <View style={styles.waterRow}>
           {[1, 2, 3, 4, 5, 6, 7, 8].map(glass => (
-            <TouchableOpacity key={glass} onPress={() => { setWater(glass); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}) }}>
+            <TouchableOpacity key={glass} onPress={() => updateWater(glass)}>
               <Ionicons name={glass <= water ? 'water' : 'water-outline'} size={28} color={glass <= water ? theme.info : theme.text.tertiary} />
             </TouchableOpacity>
           ))}
         </View>
+        <ProgressBar progress={water / 8} color={theme.info} style={{ marginTop: spacing.sm }} />
         <Text style={[styles.waterLabel, { color: theme.text.secondary }]}>{water}/8 glasses</Text>
       </Card>
 

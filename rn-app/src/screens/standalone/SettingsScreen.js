@@ -7,8 +7,8 @@ import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useTheme } from '../../theme/ThemeContext'
 import { themes } from '../../theme/colors'
-import { invokeServerApi } from '../../lib/supabase'
-import { Button, Card, CardLabel, Input, PageHeader } from '../../components/ui'
+import { invokeServerApi, supabase } from '../../lib/supabase'
+import { Button, Card, CardLabel, Input, PageHeader, SectionHeader, Divider } from '../../components/ui'
 import { fontSize, fontWeight, radius, spacing } from '../../theme/spacing'
 
 const SKIN_OPTIONS = [
@@ -33,6 +33,7 @@ function formatPermission(status) {
 }
 
 export default function SettingsScreen() {
+  const navigation = require('@react-navigation/native').useNavigation()
   const mounted = useRef(true)
   const { user, profile, isPro, isUltra, signOut, updateProfile } = useAuth()
   const { language, setLanguage, languageOptions } = useLanguage()
@@ -42,6 +43,9 @@ export default function SettingsScreen() {
   const [loadingPush, setLoadingPush] = useState(true)
   const [savingName, setSavingName] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const themeOptions = useMemo(
     () => Object.entries(themes).map(([key, value]) => ({ key, color: value.accent })),
@@ -151,6 +155,52 @@ export default function SettingsScreen() {
         },
       ]
     )
+  }
+
+  async function changePassword() {
+    if (newPassword.length < 6) {
+      Alert.alert('Too short', 'Password must be at least 6 characters.')
+      return
+    }
+    setSavingPassword(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      setNewPassword('')
+      Alert.alert('Done', 'Password updated successfully.')
+    } catch (err) {
+      Alert.alert('Error', err?.message || 'Could not change password.')
+    } finally { if (mounted.current) setSavingPassword(false) }
+  }
+
+  async function exportData() {
+    setExporting(true)
+    try {
+      const [workoutsRes, prsRes, logsRes] = await Promise.all([
+        supabase.from('workouts').select('*').eq('user_id', user.id).not('completed_at', 'is', null).order('completed_at', { ascending: false }),
+        supabase.from('personal_records').select('*').eq('user_id', user.id),
+        supabase.from('food_logs').select('*').eq('user_id', user.id),
+      ])
+      const summary = {
+        exported_at: new Date().toISOString(),
+        workouts: (workoutsRes.data || []).length,
+        personal_records: (prsRes.data || []).length,
+        food_logs: (logsRes.data || []).length,
+      }
+      Alert.alert('Data Export', `Workouts: ${summary.workouts}\nPRs: ${summary.personal_records}\nFood logs: ${summary.food_logs}\n\nFull CSV export coming soon.`)
+    } catch (err) {
+      Alert.alert('Error', 'Could not export your data.')
+    } finally { if (mounted.current) setExporting(false) }
+  }
+
+  function reRunOnboarding() {
+    Alert.alert('Re-run Onboarding', 'This will take you through the setup flow again to regenerate your program.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Continue', onPress: async () => {
+        await updateProfile({ onboarded: false })
+        navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] })
+      }},
+    ])
   }
 
   return (
@@ -308,6 +358,39 @@ export default function SettingsScreen() {
 
       <Card>
         <CardLabel>Account Actions</CardLabel>
+        <Input
+          label="New Password"
+          value={newPassword}
+          onChangeText={setNewPassword}
+          placeholder="Min 6 characters"
+          secureTextEntry
+        />
+        <Button
+          title="Change Password"
+          variant="secondary"
+          onPress={changePassword}
+          loading={savingPassword}
+          disabled={newPassword.length < 6}
+          icon={<Ionicons name="key-outline" size={16} color={theme.text.primary} />}
+          style={styles.topButton}
+        />
+        <Divider />
+        <Button
+          title="Re-run Onboarding"
+          variant="secondary"
+          onPress={reRunOnboarding}
+          icon={<Ionicons name="refresh-outline" size={16} color={theme.text.primary} />}
+          style={styles.topButton}
+        />
+        <Button
+          title="Export My Data"
+          variant="secondary"
+          onPress={exportData}
+          loading={exporting}
+          icon={<Ionicons name="download-outline" size={16} color={theme.text.primary} />}
+          style={styles.topButton}
+        />
+        <Divider />
         <Button
           title="Sign Out"
           variant="secondary"

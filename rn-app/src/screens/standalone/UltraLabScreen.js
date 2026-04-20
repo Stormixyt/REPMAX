@@ -7,7 +7,7 @@ import { useTheme } from '../../theme/ThemeContext'
 import { supabase } from '../../lib/supabase'
 import { askCoach } from '../../lib/groq'
 import { formatWeight, formatVolume, weightLabel } from '../../lib/units'
-import { Card, CardLabel, Button, Badge, EmptyState } from '../../components/ui'
+import { Card, CardLabel, Button, Badge, EmptyState, PageHeader, SegmentedControl, SectionHeader, ProgressBar } from '../../components/ui'
 import { spacing, fontSize, fontWeight, radius } from '../../theme/spacing'
 
 const DAY_MS = 86400000
@@ -47,7 +47,7 @@ function buildInsights(profile, workouts, prs, unit) {
 export default function UltraLabScreen() {
   const { user, profile, isUltra, isPro } = useAuth()
   const { theme } = useTheme()
-  const [tab, setTab] = useState('intelligence')
+  const [tab, setTab] = useState(0)
   const [loading, setLoading] = useState(true)
   const [workouts, setWorkouts] = useState([])
   const [prs, setPrs] = useState([])
@@ -106,23 +106,18 @@ export default function UltraLabScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg.primary }]}>
-      <View style={styles.header}>
-        <Text style={[styles.pageTitle, { color: theme.text.primary }]}>ULTRA Lab</Text>
-      </View>
+      <PageHeader title="ULTRA Lab" subtitle="Advanced analytics and intelligence" />
 
-      <View style={styles.tabRow}>
-        {['intelligence', 'import', 'social'].map(t => (
-          <TouchableOpacity key={t} style={[styles.tabBtn, { backgroundColor: tab === t ? theme.accent : theme.bg.elevated }]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabLabel, { color: tab === t ? theme.text.onAccent : theme.text.secondary }]}>{t === 'intelligence' ? 'Intelligence' : t === 'import' ? 'Import Studio' : 'Social Edge'}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={{ paddingHorizontal: spacing.xl, marginBottom: spacing.md }}>
+        <SegmentedControl options={['Intelligence', 'Import Studio', 'Social Edge']} selectedIndex={tab} onChange={setTab} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         {loading && <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />}
 
-        {!loading && tab === 'intelligence' && (
+        {!loading && tab === 0 && (
           <>
+            <SectionHeader title="Insights" />
             <View style={styles.insightsGrid}>
               {insights.map(ins => (
                 <View key={ins.id} style={[styles.insightCard, { backgroundColor: theme.bg.card, borderColor: theme.border }]}>
@@ -146,7 +141,7 @@ export default function UltraLabScreen() {
           </>
         )}
 
-        {!loading && tab === 'import' && (
+        {!loading && tab === 1 && (
           <>
             <Card>
               <CardLabel>IMPORT FROM TEXT</CardLabel>
@@ -173,7 +168,7 @@ export default function UltraLabScreen() {
           </>
         )}
 
-        {!loading && tab === 'social' && (
+        {!loading && tab === 2 && (
           <EmptyState icon="🤝" title="Social Edge" description="Recurring training appointments, accountability boards, and crew nudges — coming soon." />
         )}
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl, Image, Linking } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
@@ -7,7 +8,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useTheme } from '../../theme/ThemeContext'
 import { supabase } from '../../lib/supabase'
-import { Card, CardTitle, CardLabel, StatBox, Button, Badge } from '../../components/ui'
+import { Card, CardLabel, StatBox, Button, Badge, IconButton, ProgressBar, SectionHeader, TierBadge } from '../../components/ui'
 import { spacing, fontSize, fontWeight, radius } from '../../theme/spacing'
 import { formatWeight, formatVolume, weightLabel } from '../../lib/units'
 
@@ -20,19 +21,24 @@ const MOTIVATIONS = [
   "Discipline outlasts motivation.",
   "Light weight, baby!",
   "Make yourself proud today.",
+  "The grind doesn't stop.",
+  "Earn your rest day.",
 ]
+
+const AURA_CONFIG = {
+  fire:   { emoji: '🔥', label: 'On Fire', glow: 'rgba(255, 100, 0, 0.35)' },
+  high:   { emoji: '⚡', label: 'High Energy', glow: 'rgba(204, 255, 0, 0.25)' },
+  medium: { emoji: '💪', label: 'Building', glow: 'rgba(204, 255, 0, 0.12)' },
+  low:    { emoji: '🌱', label: 'Growing', glow: null },
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max)
-}
+function clamp(v, min, max) { return Math.min(Math.max(v, min), max) }
 
 function formatSignedPercent(value) {
-  const rounded = Math.round(value)
-  if (rounded > 0) return `+${rounded}%`
-  if (rounded < 0) return `${rounded}%`
-  return '0%'
+  const r = Math.round(value)
+  return r > 0 ? `+${r}%` : r < 0 ? `${r}%` : '0%'
 }
 
 function getGreeting() {
@@ -138,12 +144,12 @@ function buildUltraInsights({ profile, workouts, recentPRs, unit }) {
   else if (loadRatio < 0.78) loadState = 'Undershooting'
 
   return [
-    { id: 'readiness', title: 'Readiness Index', value: `${readiness}/100`, note: `${readinessLabel} state` },
-    { id: 'momentum', title: 'Volume Momentum', value: formatSignedPercent(volumeTrend), note: `${last7.length} sessions this week` },
-    { id: 'adherence', title: 'Plan Adherence', value: `${weeklyAdherence}%`, note: `${weeklySessions}/${trainingTarget} sessions` },
-    { id: 'efficiency', title: 'Session Efficiency', value: efficiency > 0 ? `${formatWeight(efficiency, unit, 1)} ${unitName}/min` : 'No data', note: '' },
-    { id: 'pr', title: 'PR Chance', value: `${prProbability}%`, note: 'Next session forecast' },
-    { id: 'load', title: 'Load Ratio', value: `${loadRatio.toFixed(2)}x`, note: loadState },
+    { id: 'readiness', icon: '🧠', title: 'Readiness', value: `${readiness}`, note: readinessLabel, pct: readiness / 100 },
+    { id: 'momentum', icon: '📈', title: 'Momentum', value: formatSignedPercent(volumeTrend), note: `${last7.length} sessions`, pct: clamp(volumeTrend / 100 + 0.5, 0, 1) },
+    { id: 'adherence', icon: '🎯', title: 'Adherence', value: `${weeklyAdherence}%`, note: `${weeklySessions}/${trainingTarget}`, pct: weeklyAdherence / 100 },
+    { id: 'efficiency', icon: '⚡', title: 'Efficiency', value: efficiency > 0 ? `${formatWeight(efficiency, unit, 0)}` : '—', note: efficiency > 0 ? `${unitName}/min` : 'No data', pct: clamp(efficiency / 100, 0, 1) },
+    { id: 'pr', icon: '🏆', title: 'PR Chance', value: `${prProbability}%`, note: 'Next session', pct: prProbability / 100 },
+    { id: 'load', icon: '⚖️', title: 'Load Ratio', value: `${loadRatio.toFixed(2)}x`, note: loadState, pct: clamp(loadRatio / 2, 0, 1) },
   ]
 }
 
@@ -157,6 +163,7 @@ export default function DashboardScreen() {
   const [recentPRs, setRecentPRs] = useState([])
   const [workoutHistory, setWorkoutHistory] = useState([])
   const [stats, setStats] = useState({ total: 0, streak: 0, volume: 0 })
+  const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [startingWorkout, setStartingWorkout] = useState('')
@@ -171,10 +178,11 @@ export default function DashboardScreen() {
 
   async function loadDashboard() {
     try {
-      const [progRes, prsRes, workoutsRes] = await Promise.all([
+      const [progRes, prsRes, workoutsRes, notifRes] = await Promise.all([
         supabase.from('programs').select('*').eq('user_id', user.id).eq('active', true).order('created_at', { ascending: false }).limit(1).single(),
         supabase.from('personal_records').select('*').eq('user_id', user.id).order('achieved_at', { ascending: false }).limit(18),
         supabase.from('workouts').select('started_at, completed_at, total_volume, day_name').eq('user_id', user.id).not('completed_at', 'is', null).order('completed_at', { ascending: false }),
+        supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('read', false),
       ])
 
       if (progRes.data) {
@@ -195,6 +203,7 @@ export default function DashboardScreen() {
       if (!mounted.current) return
       setRecentPRs(prsRes.data || [])
       setWorkoutHistory(workoutsRes.data || [])
+      setUnreadCount(notifRes.count || 0)
 
       if (workoutsRes.data) {
         const totalVol = workoutsRes.data.reduce((s, w) => s + (w.total_volume || 0), 0)
@@ -239,8 +248,10 @@ export default function DashboardScreen() {
   const firstName = typeof profile?.display_name === 'string' ? profile.display_name.split(' ')[0] : 'Athlete'
   const unit = profile?.unit_preference || profile?.units || 'kg'
   const auraLevel = getAuraLevel(stats.streak)
+  const auraInfo = AURA_CONFIG[auraLevel]
   const avatarSeed = profile?.avatar_seed || user?.id || 'default'
   const avatarUrl = profile?.image_url || `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`
+  const tier = isUltra ? 'ultra' : isPro ? 'pro' : 'free'
 
   const ultraInsights = useMemo(() => {
     if (!isUltra) return []
@@ -264,115 +275,198 @@ export default function DashboardScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
+      {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.greeting, { color: theme.text.secondary }]}>{greeting},</Text>
-          <Text style={[styles.name, { color: theme.text.primary }]}>{firstName}</Text>
-          <Text style={[styles.motivation, { color: theme.text.tertiary }]}>{motivation}</Text>
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.7}>
-          <View style={[styles.avatarWrap, { borderColor: auraLevel ? theme.accent : theme.border }]}>
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+          <Text style={[styles.greeting, { color: theme.text.tertiary }]}>{greeting},</Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.name, { color: theme.text.primary }]}>{firstName}</Text>
+            <TierBadge tier={tier} />
           </View>
-        </TouchableOpacity>
+          <Text style={[styles.motivation, { color: theme.text.tertiary }]}>"{motivation}"</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Notifications')}
+            activeOpacity={0.7}
+            style={[styles.notifBtn, { backgroundColor: theme.bg.elevated }]}
+          >
+            <Ionicons name="notifications-outline" size={20} color={theme.text.secondary} />
+            {unreadCount > 0 && (
+              <View style={[styles.notifBadge, { backgroundColor: theme.accent }]}>
+                <Text style={[styles.notifBadgeText, { color: theme.text.onAccent }]}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.7}>
+            <View style={[styles.avatarWrap, { borderColor: auraInfo?.glow ? theme.accent : theme.border }, auraInfo?.glow && { shadowColor: theme.accent, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 }]}>
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Stats Row */}
+      {/* ── Aura Banner ── */}
+      {auraLevel && auraInfo && (
+        <View style={[styles.auraBanner, { backgroundColor: theme.bg.card, borderColor: theme.borderAccent }]}>
+          <Text style={styles.auraEmoji}>{auraInfo.emoji}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.auraTitle, { color: theme.accent }]}>{auraInfo.label} Aura</Text>
+            <Text style={[styles.auraDesc, { color: theme.text.tertiary }]}>{stats.streak} day streak</Text>
+          </View>
+          <Text style={[styles.auraStreak, { color: theme.accent }]}>🔥 {stats.streak}</Text>
+        </View>
+      )}
+
+      {/* ── Quick Stats ── */}
       <View style={styles.statRow}>
-        <StatBox value={stats.total} label={t('dashboard_workouts')} />
-        <StatBox value={stats.streak} label={t('dashboard_day_streak')} />
-        <StatBox value={formatVolume(stats.volume, unit)} label="Volume" />
+        <StatBox icon="💪" value={stats.total} label={t('dashboard_workouts')} />
+        <StatBox icon="⚡" value={stats.streak} label={t('dashboard_day_streak')} />
+        <StatBox icon="🏋️" value={formatVolume(stats.volume, unit)} label="Volume" />
       </View>
 
-      {/* Today's Workout Card */}
-      <Card>
-        <CardLabel>{isRestDay ? t('dashboard_rest_day') : t('dashboard_today_workout')}</CardLabel>
+      {/* ── Today's Workout ── */}
+      <Card glow={!isRestDay} accent={!isRestDay}>
+        <CardLabel accent={!isRestDay}>{isRestDay ? '😴 REST DAY' : '🎯 TODAY\'S WORKOUT'}</CardLabel>
         {isRestDay ? (
           <View>
             <Text style={[styles.restDayText, { color: theme.text.secondary }]}>
-              Recovery day. Let your muscles rebuild.
+              Recovery day — let your muscles rebuild and grow stronger.
             </Text>
-            <Button title={t('dashboard_recovery_hub')} variant="secondary" size="sm" onPress={() => navigation.navigate('Recovery')} style={{ marginTop: 12 }} />
+            <View style={styles.restActions}>
+              <Button title="Recovery Hub" variant="outline" size="sm" onPress={() => navigation.navigate('Recovery')} style={{ flex: 1 }} />
+              <Button title="Home Exercises" variant="ghost" size="sm" onPress={() => navigation.navigate('HomeExercises')} style={{ flex: 1 }} />
+            </View>
           </View>
         ) : (
           <View>
             <Text style={[styles.workoutTitle, { color: theme.text.primary }]}>{todayWorkout?.day_name || 'Workout'}</Text>
             {todayWorkout?.exercises?.length > 0 && (
-              <Text style={[styles.exerciseList, { color: theme.text.tertiary }]}>
-                {todayWorkout.exercises.slice(0, 4).map(e => e.name).join(' · ')}
-                {todayWorkout.exercises.length > 4 ? ` +${todayWorkout.exercises.length - 4} more` : ''}
-              </Text>
+              <View style={styles.exercisePreview}>
+                {todayWorkout.exercises.slice(0, 5).map((e, i) => (
+                  <View key={i} style={[styles.exercisePill, { backgroundColor: theme.bg.elevated }]}>
+                    <Text style={[styles.exercisePillText, { color: theme.text.secondary }]}>{e.name}</Text>
+                  </View>
+                ))}
+                {todayWorkout.exercises.length > 5 && (
+                  <View style={[styles.exercisePill, { backgroundColor: theme.bg.elevated }]}>
+                    <Text style={[styles.exercisePillText, { color: theme.text.tertiary }]}>+{todayWorkout.exercises.length - 5}</Text>
+                  </View>
+                )}
+              </View>
             )}
             <Button
               title={startingWorkout ? '' : t('dashboard_start_workout')}
               loading={!!startingWorkout}
               onPress={startWorkout}
               size="lg"
-              style={{ marginTop: 16 }}
-              icon={<Ionicons name="flash" size={18} color={theme.text.onAccent} />}
+              style={{ marginTop: spacing.lg }}
+              icon={!startingWorkout && <Ionicons name="flash" size={18} color={theme.text.onAccent} />}
             />
           </View>
         )}
       </Card>
 
-      {/* Program Info */}
+      {/* ── Quick Actions ── */}
+      <View style={styles.quickActions}>
+        {[
+          { icon: '🏃', label: 'Run', screen: 'RunTracker' },
+          { icon: '🧘', label: 'Recovery', screen: 'Recovery' },
+          { icon: '🏠', label: 'Home', screen: 'HomeExercises' },
+          { icon: '🤖', label: 'AI Coach', screen: 'Coach' },
+        ].map((a) => (
+          <TouchableOpacity key={a.screen} onPress={() => navigation.navigate(a.screen)} activeOpacity={0.7} style={[styles.quickAction, { backgroundColor: theme.bg.card, borderColor: theme.border }]}>
+            <Text style={styles.quickActionIcon}>{a.icon}</Text>
+            <Text style={[styles.quickActionLabel, { color: theme.text.secondary }]}>{a.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ── Program Info ── */}
       {program && (
         <Card>
-          <CardLabel>{t('dashboard_current_program')}</CardLabel>
+          <CardLabel>📋 CURRENT PROGRAM</CardLabel>
           <Text style={[styles.programName, { color: theme.text.primary }]}>{program.name || 'Training Program'}</Text>
-          <Text style={[styles.programMeta, { color: theme.text.tertiary }]}>
-            Week {program.current_week || 1} · {profile?.preferred_split?.replace('_', '/') || 'Custom'}
-          </Text>
-        </Card>
-      )}
-
-      {/* Ultra Insights */}
-      {isUltra && ultraInsights.length > 0 && (
-        <Card>
-          <CardLabel>ULTRA INSIGHTS</CardLabel>
-          <View style={styles.insightsGrid}>
-            {ultraInsights.map((insight) => (
-              <View key={insight.id} style={[styles.insightItem, { backgroundColor: theme.bg.elevated, borderColor: theme.border }]}>
-                <Text style={[styles.insightValue, { color: theme.accent }]}>{insight.value}</Text>
-                <Text style={[styles.insightTitle, { color: theme.text.secondary }]}>{insight.title}</Text>
-                {insight.note ? <Text style={[styles.insightNote, { color: theme.text.tertiary }]}>{insight.note}</Text> : null}
-              </View>
-            ))}
+          <View style={styles.programMeta}>
+            <Badge label={`Week ${program.current_week || 1}`} />
+            <Text style={[styles.programSplit, { color: theme.text.tertiary }]}>
+              {profile?.preferred_split?.replace('_', '/') || 'Custom'} split
+            </Text>
           </View>
         </Card>
       )}
 
-      {/* Recent PRs */}
-      {recentPRs.length > 0 && (
-        <Card>
-          <CardLabel>{t('dashboard_recent_prs')}</CardLabel>
-          {recentPRs.slice(0, 5).map((pr, i) => (
-            <View key={pr.id || i} style={[styles.prItem, i > 0 && { borderTopColor: theme.border, borderTopWidth: 1 }]}>
-              <View style={styles.prLeft}>
-                <Ionicons name="trophy" size={16} color={theme.accent} />
-                <Text style={[styles.prName, { color: theme.text.primary }]}>{pr.exercise_name}</Text>
+      {/* ── Ultra Insights ── */}
+      {isUltra && ultraInsights.length > 0 && (
+        <>
+          <SectionHeader title="ULTRA INSIGHTS" right={<Badge label="ULTRA" color="#b026ff" />} />
+          <View style={styles.insightsGrid}>
+            {ultraInsights.map((insight) => (
+              <View key={insight.id} style={[styles.insightCard, { backgroundColor: theme.bg.card, borderColor: theme.border }]}>
+                <View style={styles.insightHeader}>
+                  <Text style={styles.insightIcon}>{insight.icon}</Text>
+                  <Text style={[styles.insightTitle, { color: theme.text.tertiary }]}>{insight.title}</Text>
+                </View>
+                <Text style={[styles.insightValue, { color: theme.accent }]}>{insight.value}</Text>
+                <ProgressBar progress={insight.pct} height={3} style={{ marginTop: 6 }} />
+                <Text style={[styles.insightNote, { color: theme.text.tertiary }]}>{insight.note}</Text>
               </View>
-              <Text style={[styles.prValue, { color: theme.accent }]}>
-                {formatWeight(pr.weight, unit)} {weightLabel(unit)} x {pr.reps}
-              </Text>
-            </View>
-          ))}
-        </Card>
+            ))}
+          </View>
+        </>
       )}
 
-      {/* Run Tracker Beta */}
-      <Card>
-        <CardLabel>{t('dashboard_run_beta')}</CardLabel>
-        <Text style={[styles.cardDesc, { color: theme.text.secondary }]}>{t('dashboard_run_beta_desc')}</Text>
-        <Button title={t('dashboard_run_cta')} variant="secondary" size="sm" onPress={() => navigation.navigate('RunTracker')} style={{ marginTop: 12 }} />
+      {/* ── Recent PRs ── */}
+      {recentPRs.length > 0 && (
+        <>
+          <SectionHeader title="RECENT PRs" right={<TouchableOpacity onPress={() => navigation.navigate('Progress')}><Text style={{ color: theme.accent, fontSize: fontSize.sm, fontWeight: fontWeight.semibold }}>See all</Text></TouchableOpacity>} />
+          <Card>
+            {recentPRs.slice(0, 5).map((pr, i) => (
+              <View key={pr.id || i} style={[styles.prItem, i > 0 && { borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
+                <View style={[styles.prRank, { backgroundColor: i === 0 ? theme.accent : theme.bg.elevated }]}>
+                  <Text style={[styles.prRankText, { color: i === 0 ? theme.text.onAccent : theme.text.tertiary }]}>
+                    {i === 0 ? '🏆' : `#${i + 1}`}
+                  </Text>
+                </View>
+                <View style={styles.prBody}>
+                  <Text style={[styles.prName, { color: theme.text.primary }]}>{pr.exercise_name}</Text>
+                  <Text style={[styles.prDate, { color: theme.text.tertiary }]}>
+                    {pr.achieved_at ? new Date(pr.achieved_at).toLocaleDateString() : ''}
+                  </Text>
+                </View>
+                <Text style={[styles.prValue, { color: theme.accent }]}>
+                  {formatWeight(pr.weight, unit)}{weightLabel(unit)} × {pr.reps}
+                </Text>
+              </View>
+            ))}
+          </Card>
+        </>
+      )}
+
+      {/* ── Run Tracker ── */}
+      <Card onPress={() => navigation.navigate('RunTracker')}>
+        <View style={styles.promoCard}>
+          <Text style={styles.promoEmoji}>🏃‍♂️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.promoTitle, { color: theme.text.primary }]}>{t('dashboard_run_beta')}</Text>
+            <Text style={[styles.promoDesc, { color: theme.text.tertiary }]}>{t('dashboard_run_beta_desc')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.text.tertiary} />
+        </View>
       </Card>
 
-      {/* Discord Card */}
-      <Card>
-        <CardLabel>{t('dashboard_discord_title')}</CardLabel>
-        <Text style={[styles.cardDesc, { color: theme.text.secondary }]}>{t('dashboard_discord_body')}</Text>
-        <Button title={t('dashboard_discord_cta')} variant="secondary" size="sm" onPress={() => Linking.openURL('https://discord.gg/repmax')} style={{ marginTop: 12 }} />
+      {/* ── Discord ── */}
+      <Card onPress={() => Linking.openURL('https://discord.gg/repmax')}>
+        <View style={styles.promoCard}>
+          <Text style={styles.promoEmoji}>💬</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.promoTitle, { color: theme.text.primary }]}>{t('dashboard_discord_title')}</Text>
+            <Text style={[styles.promoDesc, { color: theme.text.tertiary }]}>{t('dashboard_discord_body')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.text.tertiary} />
+        </View>
       </Card>
 
       <View style={{ height: 40 }} />
@@ -384,27 +478,53 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: spacing.xl, paddingTop: 60 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.xl },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.lg },
   headerLeft: { flex: 1 },
-  greeting: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
-  name: { fontSize: fontSize.xxl, fontWeight: fontWeight.black, letterSpacing: -0.5, marginTop: 2 },
-  motivation: { fontSize: fontSize.xs, marginTop: 4, fontStyle: 'italic' },
-  avatarWrap: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, overflow: 'hidden' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  greeting: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, letterSpacing: 0.3 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  name: { fontSize: 28, fontWeight: fontWeight.black, letterSpacing: -0.8 },
+  motivation: { fontSize: fontSize.xs, marginTop: 6, fontStyle: 'italic', lineHeight: 16 },
+  notifBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  notifBadge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  notifBadgeText: { fontSize: 10, fontWeight: fontWeight.black },
+  avatarWrap: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, overflow: 'hidden' },
   avatar: { width: '100%', height: '100%' },
-  statRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
-  restDayText: { fontSize: fontSize.sm, lineHeight: 20 },
-  workoutTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold },
-  exerciseList: { fontSize: fontSize.sm, marginTop: 4, lineHeight: 18 },
-  programName: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
-  programMeta: { fontSize: fontSize.sm, marginTop: 2 },
-  insightsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  insightItem: { width: '48%', borderRadius: radius.md, borderWidth: 1, padding: spacing.md },
-  insightValue: { fontSize: fontSize.lg, fontWeight: fontWeight.extrabold },
-  insightTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, marginTop: 2 },
-  insightNote: { fontSize: 10, marginTop: 2 },
-  prItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm },
-  prLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  auraBanner: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.lg, borderWidth: 1, marginBottom: spacing.md, gap: spacing.sm },
+  auraEmoji: { fontSize: 24 },
+  auraTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold },
+  auraDesc: { fontSize: fontSize.xs, marginTop: 1 },
+  auraStreak: { fontSize: fontSize.lg, fontWeight: fontWeight.black },
+  statRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  restDayText: { fontSize: fontSize.sm, lineHeight: 20, marginBottom: spacing.sm },
+  restActions: { flexDirection: 'row', gap: spacing.sm },
+  workoutTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, letterSpacing: -0.3 },
+  exercisePreview: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.sm },
+  exercisePill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.full },
+  exercisePillText: { fontSize: 12, fontWeight: fontWeight.medium },
+  quickActions: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  quickAction: { flex: 1, alignItems: 'center', paddingVertical: spacing.md, borderRadius: radius.lg, borderWidth: 1 },
+  quickActionIcon: { fontSize: 22, marginBottom: 4 },
+  quickActionLabel: { fontSize: 11, fontWeight: fontWeight.semibold },
+  programName: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, marginBottom: spacing.sm },
+  programMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  programSplit: { fontSize: fontSize.sm },
+  insightsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.xl, marginBottom: spacing.md },
+  insightCard: { width: '47.5%', borderRadius: radius.lg, borderWidth: 1, padding: spacing.md },
+  insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  insightIcon: { fontSize: 14 },
+  insightTitle: { fontSize: 10, fontWeight: fontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5 },
+  insightValue: { fontSize: fontSize.xl, fontWeight: fontWeight.black, letterSpacing: -0.5 },
+  insightNote: { fontSize: 10, marginTop: 4 },
+  prItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: spacing.sm },
+  prRank: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  prRankText: { fontSize: 12, fontWeight: fontWeight.bold },
+  prBody: { flex: 1 },
   prName: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
-  prValue: { fontSize: fontSize.sm, fontWeight: fontWeight.bold },
-  cardDesc: { fontSize: fontSize.sm, lineHeight: 20 },
+  prDate: { fontSize: 10, marginTop: 1 },
+  prValue: { fontSize: fontSize.sm, fontWeight: fontWeight.black },
+  promoCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  promoEmoji: { fontSize: 28 },
+  promoTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  promoDesc: { fontSize: fontSize.xs, marginTop: 2, lineHeight: 16 },
 })

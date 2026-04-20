@@ -18,7 +18,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useTheme } from '../../theme/ThemeContext'
 import { supabase } from '../../lib/supabase'
-import { Badge, Button, Card, CardLabel, CardTitle, EmptyState, Input, PageHeader } from '../../components/ui'
+import { Badge, Button, Card, CardLabel, CardTitle, EmptyState, Input, PageHeader, SegmentedControl, SectionHeader } from '../../components/ui'
 import { fontSize, fontWeight, radius, spacing } from '../../theme/spacing'
 
 const TABS = [
@@ -56,7 +56,7 @@ export default function SocialScreen() {
   const { user, profile } = useAuth()
   const { theme } = useTheme()
   const { t } = useLanguage()
-  const [activeTab, setActiveTab] = useState('chats')
+  const [activeTab, setActiveTab] = useState(0)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -488,15 +488,13 @@ export default function SocialScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.primary }]}>
-      <PageHeader title={t('social_title')} subtitle="Chats, friends, and direct adds wired into the native stack." />
+      <PageHeader title={t('social_title')} subtitle="Connect with friends and gym partners." />
 
       <View style={styles.tabsWrap}>
-        <View style={styles.tabsRow}>
-          {TABS.map(renderTabButton)}
-        </View>
+        <SegmentedControl options={['Chats', 'Friends', 'Add']} selectedIndex={activeTab} onChange={setActiveTab} />
       </View>
 
-      {activeTab === 'chats' && (
+      {activeTab === 0 && (
         <FlatList
           data={chats}
           keyExtractor={(item) => item.id}
@@ -514,7 +512,7 @@ export default function SocialScreen() {
         />
       )}
 
-      {activeTab === 'friends' && (
+      {activeTab === 1 && (
         <FlatList
           data={friends}
           keyExtractor={(item) => item.friendshipId || item.id}
@@ -533,7 +531,7 @@ export default function SocialScreen() {
         />
       )}
 
-      {activeTab === 'add' && (
+      {activeTab === 2 && (
         <FlatList
           data={searchResults}
           keyExtractor={(item) => item.id}

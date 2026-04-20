@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../theme/ThemeContext'
 import { supabase } from '../../lib/supabase'
 import { formatWeight, weightLabel } from '../../lib/units'
-import { Badge, EmptyState } from '../../components/ui'
+import { Badge, EmptyState, PageHeader, ProgressBar, SectionHeader } from '../../components/ui'
 import { spacing, fontSize, fontWeight, radius } from '../../theme/spacing'
 
 const TABS = [
@@ -107,9 +107,7 @@ export default function CommunitiesScreen() {
         <View key={i} style={[styles.challengeCard, { backgroundColor: theme.bg.card, borderColor: theme.border }]}>
           <Text style={[styles.challengeTitle, { color: theme.text.primary }]}>{c.title}</Text>
           <Text style={[styles.challengeDesc, { color: theme.text.tertiary }]}>{c.desc}</Text>
-          <View style={[styles.progressTrack, { backgroundColor: theme.bg.elevated }]}>
-            <View style={[styles.progressFill, { width: `${c.progress}%`, backgroundColor: theme.accent }]} />
-          </View>
+          <ProgressBar progress={c.progress / 100} color={theme.accent} style={{ marginTop: spacing.md }} />
           <Text style={[styles.challengePct, { color: theme.text.secondary }]}>{Math.round(c.progress)}%</Text>
         </View>
       ))
@@ -141,8 +139,7 @@ export default function CommunitiesScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.bg.primary }]}>
       <View style={styles.header}>
-        <Text style={[styles.pageTitle, { color: theme.text.primary }]}>Communities</Text>
-      </View>
+        <PageHeader title="Communities" subtitle="Crews, leaderboards, and challenges." />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabRow} contentContainerStyle={styles.tabContent}>
         {TABS.map(t => (
           <TouchableOpacity key={t.id} style={[styles.tabBtn, { backgroundColor: tab === t.id ? theme.accent : theme.bg.elevated }]}

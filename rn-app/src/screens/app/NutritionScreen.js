@@ -17,7 +17,7 @@ import * as Haptics from 'expo-haptics'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../theme/ThemeContext'
 import { invokeServerApi, supabase } from '../../lib/supabase'
-import { Button, Card, CardLabel, CardTitle, EmptyState, Input, PageHeader } from '../../components/ui'
+import { Button, Card, CardLabel, CardTitle, EmptyState, Input, PageHeader, ProgressBar, SectionHeader, SegmentedControl, Badge } from '../../components/ui'
 import { fontSize, fontWeight, radius, spacing } from '../../theme/spacing'
 
 const ACTIVITY_LEVELS = [
@@ -166,18 +166,17 @@ function normalizeFoodResult(payload) {
 
 function MacroBar({ label, value, target, color, theme }) {
   const progress = target > 0 ? Math.min(1, value / target) : 0
+  const over = value > target && target > 0
 
   return (
     <View style={styles.macroBarWrap}>
       <View style={styles.rowBetween}>
         <Text style={[styles.macroLabel, { color: theme.text.secondary }]}>{label}</Text>
-        <Text style={[styles.macroValue, { color: theme.text.primary }]}>
+        <Text style={[styles.macroValue, { color: over ? theme.danger : theme.text.primary }]}>
           {Math.round(value)} / {Math.round(target || 0)}
         </Text>
       </View>
-      <View style={[styles.progressTrack, { backgroundColor: theme.bg.elevated }]}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: color }]} />
-      </View>
+      <ProgressBar progress={progress} color={over ? theme.danger : color} style={{ marginTop: spacing.xs }} />
     </View>
   )
 }
@@ -532,7 +531,7 @@ No markdown, no commentary.`
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
         showsVerticalScrollIndicator={false}
       >
-        <PageHeader title="Nutrition" subtitle="Track intake, hit your macros, and keep the day organized by meal." />
+        <PageHeader title="Nutrition" subtitle="Track intake, hit your macros, and stay on target." />
 
         <Card>
           <View style={styles.rowBetween}>
@@ -729,22 +728,8 @@ No markdown, no commentary.`
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.modeRow, { backgroundColor: theme.bg.card, borderColor: theme.border }]}>
-              {['search', 'manual'].map((mode) => {
-                const active = entryMode === mode
-                return (
-                  <TouchableOpacity
-                    key={mode}
-                    activeOpacity={0.85}
-                    onPress={() => setEntryMode(mode)}
-                    style={[styles.modeButton, { backgroundColor: active ? theme.accent : 'transparent' }]}
-                  >
-                    <Text style={[styles.modeText, { color: active ? theme.text.onAccent : theme.text.secondary }]}>
-                      {mode === 'search' ? 'Search' : 'Manual'}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
+            <View style={{ marginTop: spacing.lg, marginBottom: spacing.md }}>
+              <SegmentedControl options={['Search', 'Manual']} selectedIndex={entryMode === 'search' ? 0 : 1} onChange={(i) => setEntryMode(i === 0 ? 'search' : 'manual')} />
             </View>
 
             {entryMode === 'search' ? (

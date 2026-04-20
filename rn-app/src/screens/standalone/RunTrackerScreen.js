@@ -5,9 +5,11 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Location from 'expo-location'
 import * as Haptics from 'expo-haptics'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../theme/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
-import { Card, CardLabel, Button, PageHeader } from '../../components/ui'
+import { supabase } from '../../lib/supabase'
+import { Card, CardLabel, Button, PageHeader, StatBox } from '../../components/ui'
 import { spacing, fontSize, fontWeight, radius } from '../../theme/spacing'
 
 const RUN_HISTORY_KEY = 'repmax-run-history'
@@ -39,6 +41,7 @@ function formatPace(distanceKm, elapsedSeconds) {
 export default function RunTrackerScreen() {
   const navigation = useNavigation()
   const { theme } = useTheme()
+  const { user } = useAuth()
   const { t } = useLanguage()
   const [isRunning, setIsRunning] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -135,6 +138,17 @@ export default function RunTrackerScreen() {
       const next = [run, ...history].slice(0, 8)
       setHistory(next)
       AsyncStorage.setItem(RUN_HISTORY_KEY, JSON.stringify(next)).catch(() => {})
+      // Sync to Supabase
+      if (user?.id) {
+        supabase.from('run_logs').insert({
+          user_id: user.id,
+          distance_km: run.distanceKm,
+          duration_seconds: run.elapsedSeconds,
+          estimated_steps: run.estimatedSteps,
+          average_pace: run.averagePace,
+          finished_at: run.finishedAt,
+        }).catch(err => console.error('Run sync error:', err))
+      }
     }
     resetRun()
   }

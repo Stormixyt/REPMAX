@@ -7,7 +7,9 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../theme/ThemeContext'
 import { supabase } from '../../lib/supabase'
 import RestTimer from '../../components/RestTimer'
+import { ProgressBar } from '../../components/ui'
 import { spacing, fontSize, fontWeight, radius } from '../../theme/spacing'
+import { formatWeight, weightLabel } from '../../lib/units'
 
 function formatTime(seconds) {
   const m = Math.floor(seconds / 60)
@@ -188,38 +190,94 @@ export default function WorkoutScreen() {
   const totalSets = sets.length
   const progress = totalSets > 0 ? (completedCount / totalSets) * 100 : 0
   const exerciseEntries = Object.entries(exercises)
+  const unit = profile?.unit_preference || 'kg'
+
+  // Ghost beaten check — did we beat the ghost on total volume?
+  const ghostBeaten = useMemo(() => {
+    if (Object.keys(ghostData).length === 0) return null
+    let currentVol = 0, ghostVol = 0
+    sets.filter(s => s.completed).forEach(s => {
+      const w = s.actual_weight || s.target_weight || 0
+      const r = s.actual_reps || s.target_reps || 0
+      currentVol += w * r
+      const g = ghostData[`${s.exercise_name}_${s.set_number}`]
+      if (g) ghostVol += (g.weight || 0) * (g.reps || 0)
+    })
+    if (ghostVol === 0) return null
+    return currentVol > ghostVol
+  }, [sets, ghostData])
 
   if (loading) {
     return <View style={[styles.loadingWrap, { backgroundColor: theme.bg.primary }]}><ActivityIndicator color={theme.accent} size="large" /></View>
   }
 
   if (showSummary) {
-    const totalVolume = sets.filter(s => s.completed).reduce((sum, s) => sum + ((s.actual_weight || s.target_weight || 0) * (s.actual_reps || s.target_reps || 0)), 0)
+    const completedSets = sets.filter(s => s.completed)
+    const totalVolume = completedSets.reduce((sum, s) => sum + ((s.actual_weight || s.target_weight || 0) * (s.actual_reps || s.target_reps || 0)), 0)
+    const ghostTotalVol = Object.values(ghostData).reduce((sum, g) => sum + (g.weight || 0) * (g.reps || 0), 0)
+    const volFormatted = totalVolume > 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : String(totalVolume)
     return (
-      <View style={[styles.victoryOverlay, { backgroundColor: theme.bg.primary }]}>
-        <Ionicons name="trophy" size={56} color={theme.accent} />
+      <ScrollView style={[styles.victoryOverlay, { backgroundColor: theme.bg.primary }]} contentContainerStyle={styles.victoryContent}>
+        <Text style={styles.victoryEmoji}>🏆</Text>
         <Text style={[styles.victoryTitle, { color: theme.text.primary }]}>Session Complete</Text>
-        <View style={styles.victoryStats}>
-          <View style={styles.victoryStat}><Text style={[styles.victoryValue, { color: theme.accent }]}>{completedCount}</Text><Text style={[styles.victoryLabel, { color: theme.text.tertiary }]}>Sets</Text></View>
-          <View style={styles.victoryStat}><Text style={[styles.victoryValue, { color: theme.accent }]}>{formatTime(elapsed)}</Text><Text style={[styles.victoryLabel, { color: theme.text.tertiary }]}>Duration</Text></View>
-          <View style={styles.victoryStat}><Text style={[styles.victoryValue, { color: theme.accent }]}>{totalVolume > 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume}</Text><Text style={[styles.victoryLabel, { color: theme.text.tertiary }]}>Volume</Text></View>
-          <View style={styles.victoryStat}><Text style={[styles.victoryValue, { color: theme.accent }]}>{exerciseEntries.length}</Text><Text style={[styles.victoryLabel, { color: theme.text.tertiary }]}>Exercises</Text></View>
+        <Text style={[styles.victorySubtitle, { color: theme.text.tertiary }]}>{workout?.day_name || 'Workout'} — Week {workout?.week_number || 1}</Text>
+
+        {/* Stats Grid */}
+        <View style={styles.victoryGrid}>
+          {[
+            { icon: '✅', value: completedCount, label: 'Sets' },
+            { icon: '⏱️', value: formatTime(elapsed), label: 'Duration' },
+            { icon: '🏋️', value: volFormatted, label: `Volume (${weightLabel(unit)})` },
+            { icon: '💪', value: exerciseEntries.length, label: 'Exercises' },
+          ].map((s, i) => (
+            <View key={i} style={[styles.victoryStatCard, { backgroundColor: theme.bg.card, borderColor: theme.border }]}>
+              <Text style={styles.victoryStatIcon}>{s.icon}</Text>
+              <Text style={[styles.victoryValue, { color: theme.accent }]}>{s.value}</Text>
+              <Text style={[styles.victoryLabel, { color: theme.text.tertiary }]}>{s.label}</Text>
+            </View>
+          ))}
         </View>
+
+        {/* Ghost Beaten */}
+        {ghostBeaten !== null && (
+          <View style={[styles.ghostResult, { backgroundColor: ghostBeaten ? 'rgba(0,220,130,0.08)' : 'rgba(255,100,100,0.08)', borderColor: ghostBeaten ? 'rgba(0,220,130,0.2)' : 'rgba(255,100,100,0.2)' }]}>
+            <Text style={styles.ghostEmoji}>{ghostBeaten ? '👻💀' : '👻'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.ghostTitle, { color: ghostBeaten ? '#00dc82' : '#ff6b6b' }]}>
+                {ghostBeaten ? 'Ghost Beaten!' : 'Ghost Survived'}
+              </Text>
+              <Text style={[styles.ghostDesc, { color: theme.text.tertiary }]}>
+                {ghostBeaten
+                  ? `You beat your previous volume (${formatWeight(ghostTotalVol, unit, 0)} ${weightLabel(unit)})`
+                  : `Previous volume was ${formatWeight(ghostTotalVol, unit, 0)} ${weightLabel(unit)} — you'll get it next time`}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* New PRs */}
         {newPRs.length > 0 && (
-          <View style={[styles.prSection, { borderColor: theme.borderAccent }]}>
-            <Text style={[styles.prTitle, { color: theme.accent }]}>New Personal Records</Text>
+          <View style={[styles.prSection, { borderColor: theme.borderAccent, backgroundColor: theme.bg.card }]}>
+            <View style={styles.prSectionHeader}>
+              <Text style={styles.prSectionEmoji}>🏆</Text>
+              <Text style={[styles.prSectionTitle, { color: theme.accent }]}>New Personal Records</Text>
+            </View>
             {newPRs.map((pr, i) => (
-              <View key={i} style={styles.prRow}>
+              <View key={i} style={[styles.prRow, i > 0 && { borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
                 <Text style={[styles.prName, { color: theme.text.primary }]}>{pr.exercise}</Text>
-                <Text style={[styles.prWeight, { color: theme.accent }]}>{pr.weight} x {pr.reps}</Text>
+                <Text style={[styles.prWeight, { color: theme.accent }]}>{pr.weight}{weightLabel(unit)} × {pr.reps}</Text>
               </View>
             ))}
           </View>
         )}
-        <TouchableOpacity style={[styles.victoryBtn, { backgroundColor: theme.accent }]} onPress={() => navigation.navigate('MainTabs')}>
+
+        <TouchableOpacity style={[styles.victoryBtn, { backgroundColor: theme.accent }]} onPress={() => navigation.navigate('MainTabs')} activeOpacity={0.8}>
           <Text style={[styles.victoryBtnText, { color: theme.text.onAccent }]}>Back to Dashboard</Text>
         </TouchableOpacity>
-      </View>
+        <TouchableOpacity style={{ marginTop: spacing.md }} onPress={() => navigation.navigate('Progress')} activeOpacity={0.7}>
+          <Text style={{ color: theme.accent, fontSize: fontSize.sm, fontWeight: fontWeight.semibold }}>View Progress →</Text>
+        </TouchableOpacity>
+      </ScrollView>
     )
   }
 
@@ -256,10 +314,15 @@ export default function WorkoutScreen() {
           <Text style={[styles.progressLabel, { color: theme.text.secondary }]}>Session progress</Text>
           <Text style={[styles.progressCount, { color: theme.text.primary }]}>{completedCount}/{totalSets} sets</Text>
         </View>
-        <View style={[styles.progressTrack, { backgroundColor: theme.bg.elevated }]}>
-          <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: progress === 100 ? theme.success : theme.accent }]} />
-        </View>
+        <ProgressBar progress={progress / 100} color={progress === 100 ? theme.success : theme.accent} height={5} />
       </View>
+
+      {/* Ghost Beaten Banner (mid-workout) */}
+      {ghostBeaten === true && !showSummary && (
+        <View style={[styles.ghostBanner, { backgroundColor: 'rgba(0,220,130,0.08)', borderColor: 'rgba(0,220,130,0.2)' }]}>
+          <Text style={styles.ghostBannerText}>👻💀 Ghost beaten — you're ahead of last session!</Text>
+        </View>
+      )}
 
       {/* Exercise Cards */}
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -389,8 +452,8 @@ const styles = StyleSheet.create({
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   progressLabel: { fontSize: fontSize.xs },
   progressCount: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
-  progressTrack: { height: 4, borderRadius: 2 },
-  progressFill: { height: '100%', borderRadius: 2 },
+  ghostBanner: { marginHorizontal: spacing.xl, borderRadius: radius.md, borderWidth: 1, padding: spacing.sm, marginBottom: spacing.sm },
+  ghostBannerText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#00dc82', textAlign: 'center' },
   scroll: { flex: 1, paddingHorizontal: spacing.xl },
   exerciseCard: { borderRadius: radius.lg, borderWidth: 1, padding: spacing.lg, marginBottom: spacing.md },
   exerciseHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
@@ -415,15 +478,25 @@ const styles = StyleSheet.create({
   footer: { padding: spacing.xl, borderTopWidth: 1 },
   finishBtn: { height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   finishText: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
-  victoryOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
-  victoryTitle: { fontSize: fontSize.xxxl, fontWeight: fontWeight.black, marginTop: spacing.xl },
-  victoryStats: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.xxl },
-  victoryStat: { alignItems: 'center' },
-  victoryValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.extrabold },
-  victoryLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, textTransform: 'uppercase', marginTop: 2 },
-  prSection: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.xxl, width: '100%' },
-  prTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, marginBottom: spacing.sm },
-  prRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  victoryOverlay: { flex: 1 },
+  victoryContent: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingTop: 80, paddingBottom: 60 },
+  victoryEmoji: { fontSize: 64 },
+  victoryTitle: { fontSize: fontSize.xxxl, fontWeight: fontWeight.black, marginTop: spacing.lg, letterSpacing: -0.8 },
+  victorySubtitle: { fontSize: fontSize.sm, marginTop: spacing.xs },
+  victoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xxl, width: '100%' },
+  victoryStatCard: { width: '47.5%', borderRadius: radius.lg, borderWidth: 1, padding: spacing.lg, alignItems: 'center' },
+  victoryStatIcon: { fontSize: 22, marginBottom: 4 },
+  victoryValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.black, letterSpacing: -0.5 },
+  victoryLabel: { fontSize: 10, fontWeight: fontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 3 },
+  ghostResult: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.lg, borderWidth: 1, padding: spacing.lg, marginTop: spacing.lg, width: '100%', gap: spacing.md },
+  ghostEmoji: { fontSize: 28 },
+  ghostTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  ghostDesc: { fontSize: fontSize.xs, marginTop: 2, lineHeight: 16 },
+  prSection: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.lg, width: '100%' },
+  prSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
+  prSectionEmoji: { fontSize: 20 },
+  prSectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  prRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
   prName: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
   prWeight: { fontSize: fontSize.sm, fontWeight: fontWeight.bold },
   victoryBtn: { height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', marginTop: spacing.xxl, width: '100%' },

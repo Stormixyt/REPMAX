@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -238,13 +239,38 @@ export default function ChatRoomScreen() {
     }
   }
 
+  function handleLongPress(item) {
+    if (item.sender_id !== user?.id) return
+    Alert.alert('Delete Message', 'Remove this message?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await supabase.from('messages').delete().eq('id', item.id).eq('sender_id', user.id)
+            setMessages(prev => prev.filter(m => m.id !== item.id))
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+          } catch (err) {
+            console.error('Delete message error:', err)
+          }
+        },
+      },
+    ])
+  }
+
   function renderMessage({ item }) {
     const ownMessage = item.sender_id === user?.id
     const sender = item.sender || chatMeta?.members?.find((member) => member.user_id === item.sender_id)?.profiles
     const isGroup = chatMeta?.type === 'group'
 
     return (
-      <View style={[styles.messageWrap, ownMessage ? styles.messageWrapOwn : styles.messageWrapOther]}>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onLongPress={() => handleLongPress(item)}
+        delayLongPress={400}
+        style={[styles.messageWrap, ownMessage ? styles.messageWrapOwn : styles.messageWrapOther]}
+      >
         {!ownMessage && isGroup && (
           <View style={styles.senderRow}>
             <Image source={{ uri: getAvatarUri(sender) }} style={styles.senderAvatar} />
@@ -280,7 +306,7 @@ export default function ChatRoomScreen() {
         >
           {formatMessageTime(item.created_at)}
         </Text>
-      </View>
+      </TouchableOpacity>
     )
   }
 
