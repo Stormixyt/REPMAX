@@ -1,0 +1,103 @@
+name: Build React Native iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [release/rn-ios]
+    paths:
+      - 'rn-app/**'
+      - '.github/workflows/build-rn-ios.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RCT_NEW_ARCH_ENABLED: 1
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rn-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: rn-app
+        run: npm ci
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Expo Prebuild
+        working-directory: rn-app
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods
+        working-directory: rn-app/ios
+        run: pod install --repo-update
+
+      - name: Build app
+        working-directory: rn-app/ios
+        shell: bash
+        run: |
+          mkdir -p build/logs
+          set -o pipefail
+          xcodebuild build \
+            -workspace REPMAX.xcworkspace \
+            -scheme REPMAX \
+            -configuration Release \
+            -sdk iphoneos \
+            -arch arm64 \
+            -derivedDataPath $PWD/build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO 2>&1 | tee build/logs/xcodebuild.log
+
+      - name: Upload Xcode build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: REPMAX-React-Native-iOS-xcode-log
+          path: rn-app/ios/build/logs/xcodebuild.log
+          retention-days: 14
+
+      - name: Create unsigned IPA
+        working-directory: rn-app/ios
+        shell: bash
+        run: |
+          APP_PATH=$(find build/DerivedData/Build/Products -name "REPMAX.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find REPMAX.app in DerivedData products!"
+            find build/DerivedData/Build/Products -name "*.app" -type d 2>/dev/null || echo "No .app bundles found at all"
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          echo "App bundle size: $(du -sh "$APP_PATH" | cut -f1)"
+
+          mkdir -p Payload
+          ditto "$APP_PATH" "Payload/REPMAX.app"
+          IPA_NAME="REPMAX.ipa"
+          zip -r -y "$IPA_NAME" Payload/
+          test -s "$IPA_NAME"
+          echo "=== IPA contents (should show Payload/REPMAX.app/) ==="
+          unzip -l "$IPA_NAME" | head -20
+          echo "=== Final IPA size ==="
+          du -h "$IPA_NAME"
+          shasum -a 256 "$IPA_NAME"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: REPMAX-iOS
+          path: rn-app/ios/REPMAX.ipa
+          compression-level: 0
+          retention-days: 90

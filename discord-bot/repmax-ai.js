@@ -1,5 +1,5 @@
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct'
 const MAX_DISCORD_REPLY_LENGTH = 1800
 
 const REPMAX_SYSTEM_PROMPT = `
@@ -106,7 +106,7 @@ function trimForDiscord(text = '') {
 
 async function askRepmaxAI({ apiKey, model = DEFAULT_MODEL, question, username }) {
   if (!apiKey) {
-    throw new Error('The REPMAX AI command is not configured yet. Add GROQ_API_KEY to the bot environment.')
+    throw new Error('The REPMAX AI command is not configured yet. Add OPENROUTER_API_KEY to the bot environment.')
   }
 
   if (!question?.trim()) {
@@ -114,14 +114,16 @@ async function askRepmaxAI({ apiKey, model = DEFAULT_MODEL, question, username }
   }
 
   if (containsSensitiveRequest(question)) {
-    return 'I can help with public REPMAX info, training, features, pricing, and getting started, but I can’t share internal secrets or hidden system details.'
+    return 'I can help with public REPMAX info, training, features, pricing, and getting started, but I can\u2019t share internal secrets or hidden system details.'
   }
 
-  const response = await fetch(GROQ_API_URL, {
+  const response = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://www.rep-max.app',
+      'X-Title': 'REPMAX Discord Bot',
     },
     body: JSON.stringify({
       model,
@@ -140,14 +142,14 @@ async function askRepmaxAI({ apiKey, model = DEFAULT_MODEL, question, username }
   const payload = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    const message = payload?.error?.message || 'Groq request failed.'
+    const message = payload?.error?.message || 'OpenRouter request failed.'
     throw new Error(message)
   }
 
   const answer = payload?.choices?.[0]?.message?.content?.trim()
 
   if (!answer) {
-    throw new Error('Groq returned an empty reply.')
+    throw new Error('OpenRouter returned an empty reply.')
   }
 
   return trimForDiscord(answer)
@@ -163,18 +165,20 @@ function normalizeStringArray(value, limit = 5) {
 
 async function generateUpdateDraft({ apiKey, model = DEFAULT_MODEL, type, version, notes, headlineHint, username }) {
   if (!apiKey) {
-    throw new Error('The AI update drafting command is not configured yet. Add GROQ_API_KEY to the bot environment.')
+    throw new Error('The AI update drafting command is not configured yet. Add OPENROUTER_API_KEY to the bot environment.')
   }
 
   if (!notes?.trim()) {
     throw new Error('Add real update notes so I can draft something useful.')
   }
 
-  const response = await fetch(GROQ_API_URL, {
+  const response = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://www.rep-max.app',
+      'X-Title': 'REPMAX Discord Bot',
     },
     body: JSON.stringify({
       model,
@@ -201,21 +205,21 @@ async function generateUpdateDraft({ apiKey, model = DEFAULT_MODEL, type, versio
   const payload = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    const message = payload?.error?.message || 'Groq request failed.'
+    const message = payload?.error?.message || 'OpenRouter request failed.'
     throw new Error(message)
   }
 
   const raw = payload?.choices?.[0]?.message?.content?.trim()
 
   if (!raw) {
-    throw new Error('Groq returned an empty update draft.')
+    throw new Error('OpenRouter returned an empty update draft.')
   }
 
   let parsed
   try {
     parsed = JSON.parse(raw)
   } catch {
-    throw new Error('Groq returned invalid JSON for the update draft.')
+    throw new Error('OpenRouter returned invalid JSON for the update draft.')
   }
 
   return {

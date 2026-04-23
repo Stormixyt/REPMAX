@@ -30,16 +30,22 @@ export const COACH_MODEL_OPTIONS = [
     label: "Fast Replies",
     description: "Quicker coach answers when you just want the move.",
     provider: "openrouter",
-    isVisionCapable: true,
+  },
+  {
+    id: "anthropic/claude-sonnet-4",
+    shortLabel: "Sonnet 4",
+    label: "Claude Sonnet 4",
+    description: "Fast, intelligent, great balance of speed and depth. PRO: 3/day, ULTRA: 25/day.",
+    provider: "openrouter",
+    paidOnly: true,
   },
   {
     id: "anthropic/claude-haiku-4.5",
     shortLabel: "Haiku 4.5",
     label: "Claude Haiku 4.5",
-    description: "Lightning-fast Claude model. Free: 1/day · Pro: 5/day · Ultra: 10/day.",
+    description: "Lightning-fast Claude model for instant coaching replies. PRO: 3/day, ULTRA: 25/day.",
     provider: "openrouter",
     paidOnly: true,
-    isVisionCapable: true,
   },
 ];
 
@@ -1245,7 +1251,6 @@ export async function askCoach({
   toneMode = "coach",
   responseStyle = "balanced",
   modelPreference = DEFAULT_COACH_MODEL,
-  imageDataUrl = null,
 }) {
   const trimmedQuestion = question?.trim();
   if (!trimmedQuestion) throw new Error("Question is required");
@@ -1254,21 +1259,6 @@ export async function askCoach({
   if (specialResponse) return specialResponse;
 
   const memoryPrompt = buildCoachMemoryPrompt(memory);
-
-  let effectiveModel = modelPreference;
-  if (imageDataUrl) {
-    const meta = COACH_MODEL_OPTIONS.find(m => m.id === effectiveModel);
-    if (!meta?.isVisionCapable) {
-      effectiveModel = "meta-llama/llama-4-scout";
-    }
-  }
-
-  const userContent = imageDataUrl
-    ? [
-        { type: "text", text: trimmedQuestion },
-        { type: "image_url", image_url: { url: imageDataUrl } },
-      ]
-    : trimmedQuestion;
 
   const data = await callCoachModel({
     messages: [
@@ -1281,13 +1271,13 @@ export async function askCoach({
       },
       ...(memoryPrompt ? [{ role: "system", content: memoryPrompt }] : []),
       ...sanitizeCoachHistory(history),
-      { role: "user", content: userContent },
+      { role: "user", content: trimmedQuestion },
     ],
     temperature: toneMode === "gymbro" ? 0.7 : 0.55,
     max_tokens: getCoachMaxTokens(responseStyle, toneMode),
   }, {
-    modelPreference: effectiveModel,
-    timeoutMs: imageDataUrl ? 30000 : 18000,
+    modelPreference,
+    timeoutMs: 18000,
   });
 
   const content = data?.choices?.[0]?.message?.content?.trim();
@@ -2433,7 +2423,7 @@ Use this exact schema:
               ],
             },
           ],
-          model: "anthropic/claude-haiku-4.5",
+          model: "anthropic/claude-sonnet-4",
           feature: "photo_scan",
           temperature: 0.1,
           max_tokens: 700,
@@ -2567,20 +2557,9 @@ Rules:
       throw new Error("Routine text conversion returned empty output");
     }
 
-    let parsedProgram;
-    try {
-      parsedProgram = JSON.parse(content);
-    } catch {
-      try {
-        parsedProgram = JSON.parse(extractJsonCandidate(content));
-      } catch {
-        parsedProgram = await repairVisionProgramJson(content);
-      }
-    }
-
     return {
       success: true,
-      program: normalizeVisionProgramPayload(parsedProgram),
+      program: normalizeVisionProgramPayload(JSON.parse(content)),
       cleanedText,
     };
   } catch (error) {

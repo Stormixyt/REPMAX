@@ -11,8 +11,7 @@ export function convertToLbs(value, fromUnit) {
 }
 
 export function formatWeight(valueLbs, unit, decimal = 0) {
-  const val = Number(valueLbs) || 0
-  const converted = unit === 'kg' ? val * LB_TO_KG : val
+  const converted = unit === 'kg' ? valueLbs * LB_TO_KG : valueLbs
   return decimal > 0 ? converted.toFixed(decimal) : Math.round(converted).toString()
 }
 
@@ -21,8 +20,7 @@ export function weightLabel(unit) {
 }
 
 export function formatVolume(volumeLbs, unit) {
-  const val = Number(volumeLbs) || 0
-  const converted = unit === 'kg' ? val * LB_TO_KG : val
+  const converted = unit === 'kg' ? volumeLbs * LB_TO_KG : volumeLbs
   if (converted >= 1000000) return `${(converted / 1000000).toFixed(1)}M`
   if (converted >= 1000) return `${(converted / 1000).toFixed(1)}k`
   return Math.round(converted).toString()

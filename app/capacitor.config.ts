@@ -27,8 +27,8 @@ const config: CapacitorConfig = {
 
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
-      launchAutoHide: false, // We'll hide it manually after auth check
+      launchShowDuration: 1500,
+      launchAutoHide: true,
       backgroundColor: '#070707',
       showSpinner: false,
       launchFadeOutDuration: 300,

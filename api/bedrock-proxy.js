@@ -5,13 +5,15 @@ const OPENROUTER_SITE_URL = 'https://www.rep-max.app'
 const OPENROUTER_SITE_NAME = 'REPMAX'
 
 const MODEL_MAP = {
+  'anthropic/claude-sonnet-4': 'anthropic/claude-sonnet-4',
   'anthropic/claude-haiku-4.5': 'anthropic/claude-haiku-4.5',
+  'claude-sonnet-4': 'anthropic/claude-sonnet-4',
   'claude-haiku-4.5': 'anthropic/claude-haiku-4.5',
 }
 
 const DAILY_LIMITS = {
-  coach: { free: 1, pro: 5, ultra: 10 },
-  photo_scan: { free: 1, pro: 3, ultra: 10 },
+  coach: { pro: 3, ultra: 25 },
+  photo_scan: { pro: 3, ultra: 20 },
 }
 
 const VALID_FEATURES = ['coach', 'photo_scan']
@@ -130,8 +132,8 @@ module.exports = async (req, res) => {
   const tier = await getUserSubscriptionTier(user.id)
   const featureLimits = DAILY_LIMITS[feature]
   const dailyLimit = featureLimits?.[tier]
-  if (dailyLimit === undefined || dailyLimit === null) {
-    return res.status(403).json({ error: 'This feature is not available for your subscription tier.' })
+  if (!dailyLimit) {
+    return res.status(403).json({ error: 'Claude models require a PRO or ULTRA subscription.' })
   }
 
   const used = await getDailyUsage(user.id, feature)
@@ -143,8 +145,8 @@ module.exports = async (req, res) => {
     })
   }
 
-  const requestedModel = body.model || 'anthropic/claude-haiku-4.5'
-  const openRouterModel = MODEL_MAP[requestedModel] || MODEL_MAP['anthropic/claude-haiku-4.5']
+  const requestedModel = body.model || 'anthropic/claude-sonnet-4'
+  const openRouterModel = MODEL_MAP[requestedModel] || MODEL_MAP['anthropic/claude-sonnet-4']
 
   const messages = body.messages || []
   const systemMessages = messages.filter(m => m.role === 'system')

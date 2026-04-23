@@ -44,7 +44,7 @@ const {
 // ═══════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════
-const { BOT_TOKEN, GUILD_ID, GROQ_API_KEY, GROQ_MODEL } = getBotConfig()
+const { BOT_TOKEN, GUILD_ID, OPENROUTER_API_KEY, OPENROUTER_MODEL } = getBotConfig()
 
 const C = {
   accent: 0xCCFF00, gold: 0xFFD700, purple: 0x7C3AED, green: 0x22C55E,
@@ -654,8 +654,8 @@ client.on(Events.InteractionCreate, async interaction => {
         }
 
         const draft = await generateUpdateDraft({
-          apiKey: GROQ_API_KEY,
-          model: GROQ_MODEL || DEFAULT_MODEL,
+          apiKey: OPENROUTER_API_KEY,
+          model: OPENROUTER_MODEL || DEFAULT_MODEL,
           type,
           version,
           notes,
@@ -777,8 +777,8 @@ client.on(Events.InteractionCreate, async interaction => {
 
       try {
         const answer = await askRepmaxAI({
-          apiKey: GROQ_API_KEY,
-          model: GROQ_MODEL || DEFAULT_MODEL,
+          apiKey: OPENROUTER_API_KEY,
+          model: OPENROUTER_MODEL || DEFAULT_MODEL,
           question,
           username: interaction.user.username,
         })

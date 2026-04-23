@@ -43,8 +43,8 @@ function getBotConfig() {
   return {
     BOT_TOKEN: requiredEnv('DISCORD_BOT_TOKEN'),
     GUILD_ID: requiredEnv('DISCORD_GUILD_ID'),
-    GROQ_API_KEY: optionalEnv('GROQ_API_KEY'),
-    GROQ_MODEL: optionalEnv('GROQ_MODEL'),
+    OPENROUTER_API_KEY: optionalEnv('OPENROUTER_API_KEY'),
+    OPENROUTER_MODEL: optionalEnv('OPENROUTER_MODEL'),
   }
 }
 

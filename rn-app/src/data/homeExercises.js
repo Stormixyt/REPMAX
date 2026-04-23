@@ -1,0 +1,22 @@
+export const EXERCISE_CATEGORIES = ['Chest', 'Back', 'Shoulders', 'Arms', 'Core', 'Legs', 'Full Body', 'Stretching']
+
+export const EXERCISES = [
+  { id: 'pushup', name: 'Push-Up', category: 'Chest', difficulty: 'beginner', muscles: ['Chest', 'Triceps'], equipment: 'none', reps: '3 x 12-15', steps: ['Start in plank position', 'Lower chest to floor', 'Push back up'] },
+  { id: 'diamond-pushup', name: 'Diamond Push-Up', category: 'Chest', difficulty: 'intermediate', muscles: ['Triceps', 'Chest'], equipment: 'none', reps: '3 x 10-12', steps: ['Hands close together forming diamond', 'Lower chest', 'Push up'] },
+  { id: 'decline-pushup', name: 'Decline Push-Up', category: 'Chest', difficulty: 'intermediate', muscles: ['Upper Chest', 'Shoulders'], equipment: 'none', reps: '3 x 10-12', steps: ['Feet elevated on bench/chair', 'Lower chest to floor', 'Push back up'] },
+  { id: 'pullup', name: 'Pull-Up', category: 'Back', difficulty: 'intermediate', muscles: ['Lats', 'Biceps'], equipment: 'pull-up bar', reps: '3 x 6-10', steps: ['Hang from bar overhand grip', 'Pull chin above bar', 'Lower controlled'] },
+  { id: 'inverted-row', name: 'Inverted Row', category: 'Back', difficulty: 'beginner', muscles: ['Back', 'Biceps'], equipment: 'low bar/table', reps: '3 x 10-12', steps: ['Lie under bar/table edge', 'Pull chest to bar', 'Lower back down'] },
+  { id: 'pike-pushup', name: 'Pike Push-Up', category: 'Shoulders', difficulty: 'intermediate', muscles: ['Shoulders', 'Triceps'], equipment: 'none', reps: '3 x 8-10', steps: ['Start in downward dog', 'Bend arms, head toward floor', 'Push back up'] },
+  { id: 'dip', name: 'Chair Dip', category: 'Arms', difficulty: 'beginner', muscles: ['Triceps', 'Chest'], equipment: 'chair', reps: '3 x 12-15', steps: ['Hands on chair edge behind you', 'Lower body by bending arms', 'Push back up'] },
+  { id: 'plank', name: 'Plank', category: 'Core', difficulty: 'beginner', muscles: ['Core', 'Shoulders'], equipment: 'none', reps: '3 x 30-60s', steps: ['Forearm plank position', 'Keep body straight', 'Hold for time'] },
+  { id: 'crunch', name: 'Crunch', category: 'Core', difficulty: 'beginner', muscles: ['Abs'], equipment: 'none', reps: '3 x 15-20', steps: ['Lie on back, knees bent', 'Curl shoulders off floor', 'Lower back down'] },
+  { id: 'leg-raise', name: 'Leg Raise', category: 'Core', difficulty: 'intermediate', muscles: ['Lower Abs', 'Hip Flexors'], equipment: 'none', reps: '3 x 10-15', steps: ['Lie flat, legs straight', 'Raise legs to 90 degrees', 'Lower slowly'] },
+  { id: 'squat', name: 'Bodyweight Squat', category: 'Legs', difficulty: 'beginner', muscles: ['Quads', 'Glutes'], equipment: 'none', reps: '3 x 15-20', steps: ['Stand shoulder width', 'Sit back and down', 'Stand back up'] },
+  { id: 'lunge', name: 'Walking Lunge', category: 'Legs', difficulty: 'beginner', muscles: ['Quads', 'Glutes', 'Hamstrings'], equipment: 'none', reps: '3 x 12 each', steps: ['Step forward', 'Lower back knee to floor', 'Push off front foot'] },
+  { id: 'bulgarian', name: 'Bulgarian Split Squat', category: 'Legs', difficulty: 'intermediate', muscles: ['Quads', 'Glutes'], equipment: 'bench/chair', reps: '3 x 10 each', steps: ['Rear foot on bench', 'Lower front knee to 90°', 'Push back up'] },
+  { id: 'calf-raise', name: 'Calf Raise', category: 'Legs', difficulty: 'beginner', muscles: ['Calves'], equipment: 'none', reps: '3 x 20', steps: ['Stand on edge of step', 'Rise onto toes', 'Lower heels below step'] },
+  { id: 'burpee', name: 'Burpee', category: 'Full Body', difficulty: 'intermediate', muscles: ['Full Body'], equipment: 'none', reps: '3 x 10', steps: ['Squat down, hands on floor', 'Jump feet back to plank', 'Push-up, jump feet forward, jump up'] },
+  { id: 'mountain-climber', name: 'Mountain Climber', category: 'Full Body', difficulty: 'beginner', muscles: ['Core', 'Shoulders', 'Legs'], equipment: 'none', reps: '3 x 20 each', steps: ['Start in plank', 'Drive knees to chest alternating', 'Keep hips level'] },
+  { id: 'hip-stretch', name: 'Hip Flexor Stretch', category: 'Stretching', difficulty: 'beginner', muscles: ['Hip Flexors'], equipment: 'none', reps: '2 x 30s each', steps: ['Kneel on one knee', 'Push hips forward', 'Hold stretch'] },
+  { id: 'hamstring-stretch', name: 'Standing Hamstring Stretch', category: 'Stretching', difficulty: 'beginner', muscles: ['Hamstrings'], equipment: 'none', reps: '2 x 30s each', steps: ['Stand, one foot forward', 'Hinge at hips', 'Reach toward toes'] },
+]
