@@ -10,6 +10,7 @@ import PaywallGate from '../components/PaywallGate'
 import ProBadge from '../components/ProBadge'
 import UltraInsights from '../components/UltraInsights'
 import './ultra-lab.css'
+import '../styles/ultra-lab-polish.css'
 import {
   RiArrowLeftLine,
   RiArrowDownSLine,

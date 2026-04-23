@@ -5,6 +5,10 @@ const DEFAULT_TEXT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/l
 const OPENROUTER_SITE_URL = process.env.OPENROUTER_SITE_URL || 'https://www.rep-max.app'
 const OPENROUTER_SITE_NAME = process.env.OPENROUTER_SITE_NAME || 'REPMAX'
 
+const DAILY_LIMITS = {
+  repmax_ai: { free: 3, pro: 50 },
+}
+
 function getUpstreamErrorMessage(payload, fallback) {
   if (!payload) return fallback
   if (typeof payload === 'string') return payload
@@ -52,6 +56,75 @@ async function getAuthenticatedUser(accessToken) {
   return response.json()
 }
 
+function getServiceRoleHeaders() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+  }
+}
+
+async function getUserSubscriptionTier(userId) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=subscription_tier`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+    }
+  })
+  if (!response.ok) return 'free'
+  const data = await response.json()
+  return data?.[0]?.subscription_tier || 'free'
+}
+
+async function getDailyUsage(userId, feature) {
+  const today = new Date().toISOString().slice(0, 10)
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}&feature=eq.${feature}&select=message_count`,
+    { headers: getServiceRoleHeaders() }
+  )
+  if (!response.ok) return 0
+  const data = await response.json()
+  return data?.[0]?.message_count || 0
+}
+
+async function incrementDailyUsage(userId, feature) {
+  const today = new Date().toISOString().slice(0, 10)
+  const headers = getServiceRoleHeaders()
+
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}&feature=eq.${feature}`,
+    { headers: { ...headers, Prefer: 'return=representation' } }
+  )
+  const existing = response.ok ? await response.json() : []
+
+  if (existing.length > 0) {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/claude_daily_usage?user_id=eq.${userId}&usage_date=eq.${today}&feature=eq.${feature}`,
+      {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          message_count: existing[0].message_count + 1,
+          updated_at: new Date().toISOString(),
+        }),
+      }
+    )
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/claude_daily_usage`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        user_id: userId,
+        usage_date: today,
+        feature,
+        message_count: 1,
+      }),
+    })
+  }
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -86,6 +159,21 @@ module.exports = async (req, res) => {
 
   if (!body || typeof body !== 'object') {
     return res.status(400).json({ error: 'Missing request body' })
+  }
+
+  const tier = await getUserSubscriptionTier(user.id)
+  const featureLimits = DAILY_LIMITS.repmax_ai
+  const dailyLimit = featureLimits[tier]
+
+  if (dailyLimit !== undefined && dailyLimit !== null) {
+    const used = await getDailyUsage(user.id, 'repmax_ai')
+    if (used >= dailyLimit) {
+      return res.status(429).json({
+        error: `Daily REPMAX AI limit reached (${dailyLimit}/${dailyLimit}). Resets at midnight UTC.`,
+        limit: dailyLimit,
+        used,
+      })
+    }
   }
 
   const payload = {
@@ -125,6 +213,15 @@ module.exports = async (req, res) => {
       ),
       details: data,
     })
+  }
+
+  if (dailyLimit !== undefined && dailyLimit !== null) {
+    await incrementDailyUsage(user.id, 'repmax_ai')
+    const used = await getDailyUsage(user.id, 'repmax_ai')
+    data.repmax_ai_daily_usage = {
+      used,
+      limit: dailyLimit,
+    }
   }
 
   return res.status(upstreamRes.status).json(data)

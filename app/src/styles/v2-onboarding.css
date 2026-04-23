@@ -1,0 +1,169 @@
+/* ================================================================
+   REPMAX v2.0 — Onboarding re-skin
+   ================================================================ */
+
+body[data-v2="true"] .onboarding-page {
+  background:
+    radial-gradient(900px 600px at 20% -10%, rgba(176, 38, 255, 0.14), transparent 55%),
+    radial-gradient(900px 600px at 80% 110%, rgba(204, 255, 0, 0.08), transparent 55%),
+    var(--bg) !important;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body[data-v2="true"] .onboarding-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 80%);
+  z-index: 0;
+}
+
+/* Generating screen */
+body[data-v2="true"] .onboarding-generating-title {
+  font-family: var(--font-display) !important;
+  font-size: var(--v2-fs-24) !important;
+  font-weight: 900 !important;
+  letter-spacing: var(--v2-tracking-tight);
+}
+body[data-v2="true"] .onboarding-generating-copy {
+  color: var(--text-secondary) !important;
+  font-size: var(--v2-fs-14) !important;
+  line-height: 1.55 !important;
+}
+
+/* Chooser */
+body[data-v2="true"] .onboarding-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--v2-r-pill);
+  background: var(--v2-gradient-ultra);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: var(--v2-fs-12);
+  font-weight: 800;
+  letter-spacing: var(--v2-tracking-widest);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(176, 38, 255, 0.28);
+}
+
+body[data-v2="true"] .onboarding-path-card {
+  padding: 22px !important;
+  border-radius: var(--v2-r-2xl) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)),
+              var(--bg-card) !important;
+  border: 1px solid var(--v2-border-soft) !important;
+  transition: transform var(--v2-dur-fast) var(--v2-ease-out),
+              border-color var(--v2-dur-fast),
+              box-shadow var(--v2-dur-fast) !important;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+body[data-v2="true"] .onboarding-path-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-accent) !important;
+  box-shadow: var(--v2-shadow-glow);
+}
+body[data-v2="true"] .onboarding-path-card-secondary {
+  background:
+    radial-gradient(500px 300px at 100% 0%, rgba(176, 38, 255, 0.14), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+    var(--bg-card) !important;
+}
+
+/* Progress bar in step view */
+body[data-v2="true"] .onboarding-progress-fill {
+  background: var(--accent) !important;
+  box-shadow: 0 0 8px var(--accent-glow-strong);
+  border-radius: var(--v2-r-pill) !important;
+}
+
+body[data-v2="true"] .onboarding-step-shell {
+  position: relative;
+  z-index: 1;
+}
+
+/* Choice cards */
+body[data-v2="true"] .onboarding-choice-card {
+  padding: 16px !important;
+  border-radius: var(--v2-r-xl) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+              var(--bg-card) !important;
+  border: 1px solid var(--v2-border-soft) !important;
+  transition: all var(--v2-dur-fast) !important;
+  cursor: pointer;
+}
+body[data-v2="true"] .onboarding-choice-card:hover {
+  border-color: var(--v2-border-strong) !important;
+}
+body[data-v2="true"] .onboarding-choice-card.is-selected {
+  border-color: var(--accent) !important;
+  background:
+    radial-gradient(300px 200px at 50% 0%, var(--accent-glow), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)),
+    var(--bg-card) !important;
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 24px var(--accent-glow);
+}
+
+/* Pills / chips */
+body[data-v2="true"] .onboarding-day-pill,
+body[data-v2="true"] .onboarding-toggle-pill,
+body[data-v2="true"] .onboarding-chip {
+  padding: 8px 14px !important;
+  border-radius: var(--v2-r-pill) !important;
+  background: var(--v2-surface-ghost) !important;
+  border: 1px solid var(--v2-border-hair) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 700 !important;
+  font-size: var(--v2-fs-13) !important;
+  cursor: pointer;
+  transition: all var(--v2-dur-fast);
+}
+body[data-v2="true"] .onboarding-day-pill.is-selected,
+body[data-v2="true"] .onboarding-toggle-pill.is-selected,
+body[data-v2="true"] .onboarding-chip.is-selected {
+  background: var(--accent) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 4px 12px var(--accent-glow-strong);
+}
+
+/* Preview card */
+body[data-v2="true"] .onboarding-preview-card {
+  padding: 20px !important;
+  border-radius: var(--v2-r-2xl) !important;
+  background:
+    radial-gradient(500px 300px at 50% -20%, var(--accent-glow), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+    var(--bg-card) !important;
+  border: 1px solid var(--border-accent) !important;
+}
+
+/* CTA button */
+body[data-v2="true"] .onboarding-cta {
+  height: 54px !important;
+  border-radius: var(--v2-r-pill) !important;
+  font-family: var(--font-display) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  transition: all var(--v2-dur-fast) var(--v2-ease-spring) !important;
+  position: relative;
+  z-index: 1;
+}
+body[data-v2="true"] .onboarding-cta.is-ready {
+  box-shadow: var(--v2-shadow-glow);
+}
+body[data-v2="true"] .onboarding-cta.is-ready:hover {
+  transform: translateY(-2px);
+}

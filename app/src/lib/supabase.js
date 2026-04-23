@@ -1,8 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
-import { isNative } from './native'
 
 const supabaseUrl = 'https://hqwnyzmipumhhqmvdzus.supabase.co'
-const API_BASE = isNative ? 'https://www.rep-max.app' : ''
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI'
 
 export const SUPABASE_URL = supabaseUrl
@@ -176,7 +174,7 @@ export async function invokeServerApi(path, body, options = {}) {
       throw new Error('You need to be signed in to use this feature.')
     }
 
-    const response = await fetch(API_BASE + path, {
+    const response = await fetch(path, {
       method: 'POST',
       headers,
       body: JSON.stringify(body ?? {}),

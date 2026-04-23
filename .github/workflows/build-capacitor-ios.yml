@@ -1,0 +1,147 @@
+diname: Build Capacitor iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [release/capacitor-ios, main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/build-capacitor-ios.yml'
+
+concurrency:
+  group: capacitor-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    name: Build & Package unsigned IPA
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install web app dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Build web assets (Vite)
+        working-directory: app
+        run: npm run build
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Capacitor sync iOS
+        working-directory: app
+        run: npx cap sync ios
+
+      - name: Resolve Swift Package dependencies
+        working-directory: app/ios/App
+        shell: bash
+        run: |
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme App || true
+
+      - name: Build App.app (Release, unsigned)
+        working-directory: app/ios/App
+        shell: bash
+        run: |
+          mkdir -p build/logs
+          set -o pipefail
+          xcodebuild build \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -arch arm64 \
+            -derivedDataPath $PWD/build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM="" \
+            ONLY_ACTIVE_ARCH=NO 2>&1 | tee build/logs/xcodebuild.log
+
+      - name: Upload Xcode log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: REPMAX-Capacitor-iOS-xcodebuild-log
+          path: app/ios/App/build/logs/xcodebuild.log
+          retention-days: 14
+
+      - name: Package unsigned IPA
+        working-directory: app/ios/App
+        shell: bash
+        run: |
+          APP_PATH=$(find build/DerivedData/Build/Products/Release-iphoneos -name "App.app" -type d -maxdepth 2 2>/dev/null | head -1)
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH=$(find build/DerivedData/Build/Products -name "App.app" -type d | head -1)
+          fi
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::Could not find App.app after build"
+            find build/DerivedData/Build/Products -name "*.app" -type d 2>/dev/null || true
+            exit 1
+          fi
+          echo "Found app bundle at: $APP_PATH"
+          echo "Bundle size: $(du -sh "$APP_PATH" | cut -f1)"
+
+          rm -rf Payload
+          mkdir -p Payload
+          ditto "$APP_PATH" "Payload/App.app"
+
+          IPA_NAME="REPMAX.ipa"
+          rm -f "$IPA_NAME"
+          zip -r -y "$IPA_NAME" Payload/
+
+          test -s "$IPA_NAME"
+          echo "=== IPA contents ==="
+          unzip -l "$IPA_NAME" | head -20
+          echo "=== IPA size ==="
+          du -h "$IPA_NAME"
+          shasum -a 256 "$IPA_NAME"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: REPMAX-Capacitor-iOS
+          path: app/ios/App/REPMAX.ipa
+          compression-level: 0
+          retention-days: 90
+
+      - name: Write build summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## REPMAX Capacitor iOS IPA"
+            echo ""
+            if [ -f "app/ios/App/REPMAX.ipa" ]; then
+              SIZE=$(du -h "app/ios/App/REPMAX.ipa" | cut -f1)
+              SHA=$(shasum -a 256 "app/ios/App/REPMAX.ipa" | awk '{print $1}')
+              echo "- Build: **OK**"
+              echo "- Size: \`$SIZE\`"
+              echo "- SHA-256: \`$SHA\`"
+              echo "- Download the **REPMAX-Capacitor-iOS** artifact below and sideload (AltStore / SideStore / Xcode)."
+            else
+              echo "- Build: **FAILED** — see the xcodebuild log artifact."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

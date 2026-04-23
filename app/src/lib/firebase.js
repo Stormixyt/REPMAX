@@ -14,16 +14,21 @@ const firebaseConfig = {
 
 const VAPID_KEY = 'BLSvlmEe58YkUFallFM3lXITHiEBbAzrOWc9DwFuV5QJZtKaFded_2WV_FF1oBPaJccFhZW-H82GxlY8gRG7c_0'
 
+import { Capacitor } from '@capacitor/core'
+
 let app = null
 let messaging = null
 let analytics = null
 
 try {
   app = initializeApp(firebaseConfig)
-  // Only init analytics in browser (not during SSR/build)
+  // Only init analytics and messaging in browser (not native or SSR)
   if (typeof window !== 'undefined') {
     analytics = getAnalytics(app)
-    messaging = getMessaging(app)
+    // Skip FCM messaging on native — Capacitor handles push via APNs
+    if (!Capacitor.isNativePlatform()) {
+      messaging = getMessaging(app)
+    }
   }
 } catch (err) {
   console.warn('Firebase init:', err.message)

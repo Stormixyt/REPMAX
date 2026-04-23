@@ -25,12 +25,17 @@ import Communities from './pages/Communities'
 import Layout from './components/Layout'
 import CallScreen from './components/CallScreen'
 import UsernameModal from './components/UsernameModal'
+import IncomingCallSheet from './components/v2/IncomingCallSheet'
+import MessageBanner from './components/v2/MessageBanner'
+import CallToastV2 from './components/v2/CallToastV2'
+import { useV2 } from './context/V2Context'
 import { syncPushSubscription, showLocalNotification } from './lib/pushNotifications'
 import { isNative, addAppStateListener } from './lib/native'
 
 export default function App() {
   const { user, profile, loading, isOnboarded, needsUsername, fetchProfile, isAdmin, isPro, isUltra } = useAuth()
   const { activeCall, clearActiveCall, callMinimized, setCallMinimized, callToast, showCallToast } = useCall()
+  const { v2 } = useV2()
   const navigate = useNavigate()
   const location = useLocation()
   const [incomingCallPrompt, setIncomingCallPrompt] = useState(null)
@@ -58,7 +63,8 @@ export default function App() {
       'skin-default',
       'skin-ultra-signature',
       'skin-v5',
-      'skin-v6'
+      'skin-v6',
+      'skin-v7'
     )
 
     if (profile?.theme_color) {
@@ -77,7 +83,8 @@ export default function App() {
 
     const skinValue = profile?.interface_skin
     let interfaceSkin = 'skin-default'
-    if (skinValue === 'v6' && isUltra) interfaceSkin = 'skin-v6'
+    if (skinValue === 'v7' && isUltra) interfaceSkin = 'skin-v7'
+    else if (skinValue === 'v6' && isUltra) interfaceSkin = 'skin-v6'
     else if (skinValue === 'v5' && (isPro || isUltra)) interfaceSkin = 'skin-v5'
     else if (skinValue === 'ultra-signature' && isUltra) interfaceSkin = 'skin-ultra-signature'
 
@@ -86,6 +93,10 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
+    // On Capacitor iOS we use the native Keyboard plugin (see lib/native.js)
+    // which drives body.kb-open + --kb-offset. Skip the visualViewport-based
+    // path so they don't fight each other.
+    if (isNative) return undefined
 
     const root = document.documentElement
     const body = document.body
@@ -427,59 +438,75 @@ export default function App() {
     )
   }
 
+  const answerIncomingCall = () => {
+    if (!incomingCallPrompt?.chatId) return
+    navigate(`/chat/${incomingCallPrompt.chatId}`)
+    setIncomingCallPrompt(null)
+  }
+
+  const openMessageBanner = (b) => {
+    if (b?.chatId) navigate(`/chat/${b.chatId}`)
+    setMessageBanner(null)
+  }
+
   return (
     <>
       {incomingCallPrompt?.chatId && (
-        <div style={{
-          position: 'fixed',
-          top: 'calc(var(--safe-top) + 12px)',
-          left: 'calc(var(--safe-left) + 12px)',
-          right: 'calc(var(--safe-right) + 12px)',
-          zIndex: 10001,
-          display: 'flex',
-          justifyContent: 'center',
-          pointerEvents: 'none'
-        }}>
+        v2 ? (
+          <IncomingCallSheet
+            prompt={incomingCallPrompt}
+            onDismiss={() => setIncomingCallPrompt(null)}
+            onAnswer={answerIncomingCall}
+          />
+        ) : (
           <div style={{
-            width: 'min(440px, 100%)',
-            pointerEvents: 'auto',
-            background: 'rgba(14,16,20,0.96)',
-            border: '1px solid rgba(212,255,0,0.22)',
-            borderRadius: 22,
-            padding: 18,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
-            backdropFilter: 'blur(12px)'
+            position: 'fixed',
+            top: 'calc(var(--safe-top) + 12px)',
+            left: 'calc(var(--safe-left) + 12px)',
+            right: 'calc(var(--safe-right) + 12px)',
+            zIndex: 10001,
+            display: 'flex',
+            justifyContent: 'center',
+            pointerEvents: 'none'
           }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 6 }}>
-              Incoming {incomingCallPrompt.withVideo ? 'Video' : 'Voice'} Call
-            </div>
-            <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 6 }}>
-              {incomingCallPrompt.callerName} is calling you
-            </div>
-            <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: 14 }}>
-              Open the chat to answer before the call expires.
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                className="btn btn-secondary"
-                style={{ flex: 1, justifyContent: 'center' }}
-                onClick={() => setIncomingCallPrompt(null)}
-              >
-                Dismiss
-              </button>
-              <button
-                className="btn btn-primary"
-                style={{ flex: 1, justifyContent: 'center' }}
-                onClick={() => {
-                  navigate(`/chat/${incomingCallPrompt.chatId}`)
-                  setIncomingCallPrompt(null)
-                }}
-              >
-                Answer In Chat
-              </button>
+            <div style={{
+              width: 'min(440px, 100%)',
+              pointerEvents: 'auto',
+              background: 'rgba(14,16,20,0.96)',
+              border: '1px solid rgba(212,255,0,0.22)',
+              borderRadius: 22,
+              padding: 18,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+              backdropFilter: 'blur(12px)'
+            }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                Incoming {incomingCallPrompt.withVideo ? 'Video' : 'Voice'} Call
+              </div>
+              <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 6 }}>
+                {incomingCallPrompt.callerName} is calling you
+              </div>
+              <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: 14 }}>
+                Open the chat to answer before the call expires.
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                  onClick={() => setIncomingCallPrompt(null)}
+                >
+                  Dismiss
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                  onClick={answerIncomingCall}
+                >
+                  Answer In Chat
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {activeCall && (
@@ -496,21 +523,28 @@ export default function App() {
         />
       )}
 
-      {callToast && <div className="toast fade-in">{callToast}</div>}
+      {callToast && (v2 ? <CallToastV2 message={callToast} /> : <div className="toast fade-in">{callToast}</div>)}
 
-      {/* In-app message notification banner */}
       {messageBanner && (
-        <div className="message-banner" onClick={() => {
-          if (messageBanner.chatId) navigate(`/chat/${messageBanner.chatId}`)
-          setMessageBanner(null)
-        }}>
-          <div className="message-banner-icon">💬</div>
-          <div className="message-banner-content">
-            <div className="message-banner-title">{messageBanner.title}</div>
-            <div className="message-banner-body">{messageBanner.body}</div>
+        v2 ? (
+          <MessageBanner
+            banner={messageBanner}
+            onOpen={openMessageBanner}
+            onClose={() => setMessageBanner(null)}
+          />
+        ) : (
+          <div className="message-banner" onClick={() => {
+            if (messageBanner.chatId) navigate(`/chat/${messageBanner.chatId}`)
+            setMessageBanner(null)
+          }}>
+            <div className="message-banner-icon">💬</div>
+            <div className="message-banner-content">
+              <div className="message-banner-title">{messageBanner.title}</div>
+              <div className="message-banner-body">{messageBanner.body}</div>
+            </div>
+            <button className="message-banner-close" onClick={(e) => { e.stopPropagation(); setMessageBanner(null) }}>✕</button>
           </div>
-          <button className="message-banner-close" onClick={(e) => { e.stopPropagation(); setMessageBanner(null) }}>✕</button>
-        </div>
+        )
       )}
 
       {/* Username modal — blocks the app until user picks a username */}

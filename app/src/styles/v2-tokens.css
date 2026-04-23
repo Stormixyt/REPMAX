@@ -1,0 +1,217 @@
+/* ================================================================
+   REPMAX v2.0 — Design Tokens
+   ================================================================
+   Loaded AFTER index.css so it extends / refines the existing layer.
+   Nothing here deletes v1 tokens; it adds a richer spacing / motion /
+   elevation / radius scale and a few semantic surfaces.
+   ================================================================ */
+
+:root {
+  /* ——————————————————————————————————————————
+     Type scale — modular 1.125 ratio, fluid clamps
+     —————————————————————————————————————————— */
+  --v2-fs-12: clamp(0.72rem, 0.70rem + 0.1vw, 0.78rem);
+  --v2-fs-13: clamp(0.78rem, 0.76rem + 0.1vw, 0.84rem);
+  --v2-fs-14: clamp(0.84rem, 0.82rem + 0.1vw, 0.9rem);
+  --v2-fs-16: clamp(0.94rem, 0.92rem + 0.1vw, 1rem);
+  --v2-fs-18: clamp(1.05rem, 1rem + 0.2vw, 1.12rem);
+  --v2-fs-20: clamp(1.15rem, 1.1rem + 0.3vw, 1.25rem);
+  --v2-fs-24: clamp(1.3rem, 1.2rem + 0.5vw, 1.5rem);
+  --v2-fs-32: clamp(1.6rem, 1.4rem + 0.8vw, 2rem);
+  --v2-fs-40: clamp(2rem, 1.7rem + 1.4vw, 2.5rem);
+  --v2-fs-56: clamp(2.6rem, 2rem + 2.6vw, 3.5rem);
+  --v2-fs-80: clamp(3.2rem, 2.4rem + 4vw, 5rem);
+
+  --v2-lh-tight: 1.05;
+  --v2-lh-snug: 1.2;
+  --v2-lh-base: 1.5;
+  --v2-lh-loose: 1.65;
+
+  --v2-tracking-tight: -0.03em;
+  --v2-tracking-snug: -0.015em;
+  --v2-tracking-base: 0;
+  --v2-tracking-wide: 0.08em;
+  --v2-tracking-widest: 0.18em;
+
+  /* ——————————————————————————————————————————
+     Spacing — 4px base, exponential rhythm
+     —————————————————————————————————————————— */
+  --v2-sp-1: 4px;
+  --v2-sp-2: 8px;
+  --v2-sp-3: 12px;
+  --v2-sp-4: 16px;
+  --v2-sp-5: 20px;
+  --v2-sp-6: 24px;
+  --v2-sp-8: 32px;
+  --v2-sp-10: 40px;
+  --v2-sp-12: 48px;
+  --v2-sp-16: 64px;
+  --v2-sp-20: 80px;
+  --v2-sp-24: 96px;
+  --v2-sp-32: 128px;
+
+  /* ——————————————————————————————————————————
+     Radii — bigger, more confident curves
+     —————————————————————————————————————————— */
+  --v2-r-xs: 6px;
+  --v2-r-sm: 10px;
+  --v2-r-md: 14px;
+  --v2-r-lg: 20px;
+  --v2-r-xl: 28px;
+  --v2-r-2xl: 36px;
+  --v2-r-3xl: 44px;
+  --v2-r-pill: 999px;
+
+  /* ——————————————————————————————————————————
+     Elevation — layered, soft, color-aware
+     —————————————————————————————————————————— */
+  --v2-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --v2-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.22);
+  --v2-shadow-md: 0 8px 28px rgba(0, 0, 0, 0.28);
+  --v2-shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.34);
+  --v2-shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.42);
+  --v2-shadow-glow: 0 0 0 1px var(--accent-glow-strong, rgba(204, 255, 0, 0.25)),
+                    0 12px 48px var(--accent-glow, rgba(204, 255, 0, 0.18));
+
+  /* ——————————————————————————————————————————
+     Surfaces — layered glass
+     —————————————————————————————————————————— */
+  --v2-surface-0: rgba(8, 8, 10, 0.96);
+  --v2-surface-1: rgba(14, 14, 17, 0.88);
+  --v2-surface-2: rgba(22, 22, 26, 0.76);
+  --v2-surface-3: rgba(32, 32, 38, 0.68);
+  --v2-surface-ghost: rgba(255, 255, 255, 0.04);
+  --v2-surface-ghost-hover: rgba(255, 255, 255, 0.07);
+
+  --v2-border-hair: rgba(255, 255, 255, 0.06);
+  --v2-border-soft: rgba(255, 255, 255, 0.10);
+  --v2-border-mid:  rgba(255, 255, 255, 0.16);
+  --v2-border-hard: rgba(255, 255, 255, 0.24);
+
+  /* ——————————————————————————————————————————
+     Motion — universal easing curves
+     —————————————————————————————————————————— */
+  --v2-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --v2-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --v2-ease-smooth: cubic-bezier(0.45, 0, 0.55, 1);
+  --v2-ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+
+  --v2-dur-instant: 0.08s;
+  --v2-dur-fast: 0.16s;
+  --v2-dur-base: 0.28s;
+  --v2-dur-slow: 0.45s;
+  --v2-dur-slower: 0.7s;
+  --v2-dur-cinematic: 1.1s;
+
+  /* ——————————————————————————————————————————
+     Z-index scale
+     —————————————————————————————————————————— */
+  --v2-z-base: 1;
+  --v2-z-raised: 10;
+  --v2-z-sticky: 40;
+  --v2-z-nav: 100;
+  --v2-z-overlay: 500;
+  --v2-z-modal: 900;
+  --v2-z-toast: 1200;
+  --v2-z-max: 9999;
+
+  /* ——————————————————————————————————————————
+     Semantic gradients (accent-aware)
+     —————————————————————————————————————————— */
+  --v2-gradient-accent: linear-gradient(135deg, var(--accent) 0%, color-mix(in oklab, var(--accent), white 20%) 100%);
+  --v2-gradient-ultra: linear-gradient(135deg, #ff2a85 0%, #b026ff 55%, #00d4ff 120%);
+  --v2-gradient-gold:  linear-gradient(135deg, #ffd76a 0%, #ffb800 50%, #ff7a00 100%);
+  --v2-gradient-fade-top: linear-gradient(180deg, rgba(7,7,10,0) 0%, rgba(7,7,10,0.9) 100%);
+  --v2-gradient-fade-bot: linear-gradient(0deg, rgba(7,7,10,0) 0%, rgba(7,7,10,0.9) 100%);
+
+  /* ——————————————————————————————————————————
+     Layout tokens
+     —————————————————————————————————————————— */
+  --v2-page-max: 520px;
+  --v2-page-max-wide: 1120px;
+  --v2-page-px: clamp(16px, 4vw, 24px);
+  --v2-nav-h: 72px;
+  --v2-topbar-h: 56px;
+  --v2-safe-top: env(safe-area-inset-top, 0px);
+  --v2-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ——————————————————————————————————————————————
+   Ultra skin v7 — REPMAX v2.0 apex nocturne skin
+   —————————————————————————————————————————————— */
+body.skin-v7 {
+  --v2-surface-0: rgba(10, 6, 14, 0.96);
+  --v2-surface-1: rgba(16, 10, 22, 0.9);
+  --v2-surface-2: rgba(26, 14, 36, 0.8);
+  --v2-border-hair: rgba(255, 42, 133, 0.08);
+  --v2-border-soft: rgba(255, 42, 133, 0.14);
+}
+
+body.skin-v7 .bottom-nav,
+body.skin-v7 .v2-tabbar {
+  background: linear-gradient(180deg, rgba(18, 10, 24, 0.96), rgba(8, 4, 14, 0.96));
+  border-top-color: rgba(255, 42, 133, 0.22);
+}
+
+body.skin-v7 .v2-card,
+body.skin-v7 .meal-section,
+body.skin-v7 .settings-item,
+body.skin-v7 .chat-list-item,
+body.skin-v7 .v3-friend-card,
+body.skin-v7 .stat-box,
+body.skin-v7 .run-stat-card {
+  border-color: rgba(255, 42, 133, 0.16);
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(255, 42, 133, 0.06), transparent 45%),
+    radial-gradient(ellipse at 0% 100%, rgba(176, 38, 255, 0.06), transparent 50%),
+    var(--bg-card);
+}
+
+body.skin-v7 .onboarding-path-card,
+body.skin-v7 .profile-hero,
+body.skin-v7 .calorie-ring-card,
+body.skin-v7 .ultra-command-card,
+body.skin-v7 .run-tracker-hero,
+body.skin-v7 .social-crew-panel,
+body.skin-v7 .auth-form {
+  border-color: rgba(255, 42, 133, 0.22) !important;
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(255, 42, 133, 0.14), transparent 55%),
+    radial-gradient(700px 500px at 100% 100%, rgba(176, 38, 255, 0.14), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)),
+    var(--bg-card) !important;
+}
+
+body.skin-v7 .coach-primary-action,
+body.skin-v7 .onboarding-cta,
+body.skin-v7 .invite-accept-btn,
+body.skin-v7 .auth-form .btn.btn-primary.btn-full.btn-lg {
+  background: linear-gradient(135deg, #ff2a85 0%, #b026ff 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 30px rgba(255, 42, 133, 0.35);
+}
+
+/* Preview tile for Settings selector */
+.theme-style-preview.v7 {
+  background:
+    radial-gradient(400px 200px at 100% 0%, rgba(255, 42, 133, 0.45), transparent 55%),
+    radial-gradient(400px 200px at 0% 100%, rgba(176, 38, 255, 0.45), transparent 55%),
+    linear-gradient(180deg, #0a060e, #10081a);
+}
+.theme-style-preview.v7 .theme-style-preview-top { background: rgba(255, 42, 133, 0.5); }
+.theme-style-preview.v7 .theme-style-preview-card { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 42, 133, 0.3); }
+.theme-style-preview.v7 .theme-style-preview-pill { background: linear-gradient(135deg, #ff2a85, #b026ff); }
+
+/* ——————————————————————————————————————————————
+   Reduced-motion honors everything
+   —————————————————————————————————————————————— */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --v2-dur-instant: 0.01s;
+    --v2-dur-fast: 0.01s;
+    --v2-dur-base: 0.01s;
+    --v2-dur-slow: 0.01s;
+    --v2-dur-slower: 0.01s;
+    --v2-dur-cinematic: 0.01s;
+  }
+}

@@ -1,5 +1,7 @@
 // Push notification system for REPMAX
-// Uses Web Push API with the service worker
+// Uses Web Push API with the service worker, or native APNs via Capacitor on iOS
+
+import { isNative, platform } from './native'
 
 // The VAPID Public Key must match your backend's VAPID keys!
 const VAPID_PUBLIC_KEY = 'BNBo_jz-q5KOGSbK1Y43HB_UoZim9DwFNVOPGmUThMBDYihvSnX2zPCpqtck6NSiUE--C7ag2p5N4vv97aXh_Hg'
@@ -7,6 +9,9 @@ const PUSH_SYNC_KEY = 'repmax-push-last-sync'
 const PUSH_DEVICE_ID_KEY = 'repmax-push-device-id'
 
 function canUsePushNotifications() {
+  // Native Capacitor apps use APNs directly
+  if (isNative) return true
+  
   return (
     typeof window !== 'undefined' &&
     'Notification' in window &&
@@ -139,7 +144,78 @@ async function persistSubscription(userId, subscription) {
   } catch {}
 }
 
+// ── Native push registration (Capacitor / APNs) ──
+async function registerNativePush(userId) {
+  if (!isNative) return null
+  try {
+    const { PushNotifications } = await import('@capacitor/push-notifications')
+    
+    // Request permission
+    const permResult = await PushNotifications.requestPermissions()
+    if (permResult.receive !== 'granted') return null
+    
+    // Register with APNs
+    await PushNotifications.register()
+    
+    // Listen for the registration token
+    return new Promise((resolve) => {
+      PushNotifications.addListener('registration', async (token) => {
+        console.log('[REPMAX] Native push token:', token.value?.slice(-12))
+        
+        // Store APNs token in Supabase
+        if (userId) {
+          const { supabase } = await import('./supabase')
+          const deviceId = getPushDeviceId()
+          
+          await supabase
+            .from('profiles')
+            .update({
+              push_subscription: {
+                type: 'apns',
+                token: token.value,
+                platform: platform,
+                device_id: deviceId,
+              }
+            })
+            .eq('id', userId)
+        }
+        
+        resolve(token.value)
+      })
+      
+      PushNotifications.addListener('registrationError', (err) => {
+        console.warn('[REPMAX] Native push registration failed:', err)
+        resolve(null)
+      })
+      
+      // Handle received notifications while app is in foreground
+      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        console.log('[REPMAX] Push received in foreground:', notification.title)
+      })
+      
+      // Handle notification tap
+      PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+        const data = action.notification?.data
+        if (data?.url) {
+          window.location.hash = data.url
+        }
+      })
+    })
+  } catch (e) {
+    console.warn('[REPMAX] Native push setup error:', e)
+    return null
+  }
+}
+
 export async function requestNotificationPermission() {
+  if (isNative) {
+    try {
+      const { PushNotifications } = await import('@capacitor/push-notifications')
+      const result = await PushNotifications.requestPermissions()
+      return result.receive === 'granted'
+    } catch { return false }
+  }
+  
   if (!canUsePushNotifications()) return false
   if (Notification.permission === 'granted') return true
   if (Notification.permission === 'denied') return false
@@ -150,6 +226,11 @@ export async function requestNotificationPermission() {
 
 export async function subscribeToPush(userId = null, { prompt = true } = {}) {
   try {
+    // On native iOS, use APNs instead of web push
+    if (isNative) {
+      return registerNativePush(userId)
+    }
+    
     if (!canUsePushNotifications()) return null
 
     const granted = Notification.permission === 'granted'
@@ -236,6 +317,22 @@ export async function getPushDeviceStatus() {
 }
 
 export function showLocalNotification(title, body, options = {}) {
+  // On native, use Capacitor local notifications
+  if (isNative) {
+    import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+      LocalNotifications.schedule({
+        notifications: [{
+          title,
+          body,
+          id: Math.floor(Math.random() * 100000),
+          sound: undefined,
+          extra: options.data || {},
+        }]
+      }).catch(() => {})
+    }).catch(() => {})
+    return
+  }
+  
   if (!canUsePushNotifications()) return
   if (Notification.permission !== 'granted') return
 

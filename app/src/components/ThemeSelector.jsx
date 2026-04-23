@@ -41,6 +41,13 @@ const INTERFACE_STYLES = [
     previewClass: 'v6',
     requiredTier: 'ultra',
   },
+  {
+    id: 'v7',
+    name: 'V7 Nocturne',
+    description: 'REPMAX v2.0 apex skin — violet-black glass, pink accents, tuned for the new five-tab shell. ULTRA only.',
+    previewClass: 'v7',
+    requiredTier: 'ultra',
+  },
 ]
 
 export default function ThemeSelector() {
@@ -51,6 +58,7 @@ export default function ThemeSelector() {
   const currentTheme = profile?.theme_color || 'green'
   const currentInterfaceSkin = (() => {
     const skin = profile?.interface_skin
+    if (skin === 'v7' && isUltra) return 'v7'
     if (skin === 'v6' && isUltra) return 'v6'
     if (skin === 'v5' && isPro) return 'v5'
     if (skin === 'ultra-signature' && isUltra) return 'ultra-signature'
@@ -88,7 +96,7 @@ export default function ThemeSelector() {
 
   async function handleInterfaceSkinChange(id) {
     if (!isPro || savingSkin === id) return
-    if ((id === 'ultra-signature' || id === 'v6') && !isUltra) return
+    if ((id === 'ultra-signature' || id === 'v6' || id === 'v7') && !isUltra) return
 
     setSavingSkin(id)
     try {
@@ -97,7 +105,8 @@ export default function ThemeSelector() {
         console.error('[ThemeSelector] interface_skin update failed:', result.error)
         const msg = String(result.error?.message || result.error)
         if (/check constraint|violates check/i.test(msg)) {
-          alert(`Skin "${id}" is not yet enabled on your database.\nRun fix-v6-skin.sql in the Supabase SQL editor, then try again.`)
+          const migration = id === 'v7' ? 'fix-v7-skin.sql' : 'fix-v6-skin.sql'
+          alert(`Skin "${id}" is not yet enabled on your database.\nRun ${migration} in the Supabase SQL editor, then try again.`)
         } else {
           alert(`Could not save skin: ${msg}`)
         }
@@ -209,7 +218,8 @@ export default function ThemeSelector() {
                     <div className="theme-style-helper">
                       {style.id === 'default' ? 'Restrained premium shell'
                         : style.id === 'v5' ? 'Next-gen glass interface'
-                        : style.id === 'v6' ? 'ULTRA only · apex skin'
+                        : style.id === 'v6' ? 'ULTRA only · aurora'
+                        : style.id === 'v7' ? 'ULTRA only · v2.0 nocturne'
                         : 'High-contrast luxury shell'}
                     </div>
                     <div className="theme-style-description">{style.description}</div>

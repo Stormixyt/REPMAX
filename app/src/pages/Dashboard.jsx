@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
+import { useV2 } from '../context/V2Context'
+import DashboardV2 from './DashboardV2'
 import { supabase } from '../lib/supabase'
 import { shareDNACard } from '../lib/shareDNA'
 import { subscribeToPush, showLocalNotification } from '../lib/pushNotifications'
@@ -304,6 +306,12 @@ function buildSetTemplatesFromLoggedSets(sets = []) {
 }
 
 export default function Dashboard() {
+  const { v2 } = useV2()
+  if (v2) return <DashboardV2 />
+  return <DashboardLegacy />
+}
+
+function DashboardLegacy() {
   const { user, profile, isPro, isUltra, subscriptionTier } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()

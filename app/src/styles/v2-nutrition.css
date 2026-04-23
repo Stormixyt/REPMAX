@@ -1,0 +1,399 @@
+/* ================================================================
+   REPMAX v2.0 — Nutrition re-skin
+   ================================================================ */
+
+body[data-v2="true"] .nutrition-page {
+  padding-bottom: calc(var(--v2-nav-h) + var(--v2-safe-bottom) + 24px);
+}
+
+/* Date nav */
+body[data-v2="true"] .nutrition-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--v2-r-xl);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+              var(--bg-card);
+  border: 1px solid var(--v2-border-hair);
+  margin-bottom: 14px;
+}
+body[data-v2="true"] .date-nav-arrow {
+  width: 36px; height: 36px;
+  border-radius: var(--v2-r-pill);
+  background: var(--v2-surface-ghost);
+  border: 1px solid var(--v2-border-hair);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--v2-dur-fast);
+}
+body[data-v2="true"] .date-nav-arrow:hover {
+  background: var(--v2-surface-ghost-hover);
+  color: var(--text-primary);
+}
+body[data-v2="true"] .date-nav-days {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  justify-content: space-between;
+}
+body[data-v2="true"] .date-nav-day {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--v2-r-md);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--v2-dur-fast);
+  position: relative;
+  min-width: 42px;
+}
+body[data-v2="true"] .date-nav-day:hover {
+  background: var(--v2-surface-ghost);
+}
+body[data-v2="true"] .date-nav-day.active {
+  background: var(--accent-glow);
+  border-color: var(--border-accent);
+  color: var(--accent);
+}
+body[data-v2="true"] .date-nav-day-name {
+  font-size: var(--v2-fs-11);
+  font-weight: 700;
+  letter-spacing: var(--v2-tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+body[data-v2="true"] .date-nav-day.active .date-nav-day-name { color: var(--accent); }
+body[data-v2="true"] .date-nav-day-num {
+  font-family: var(--font-display);
+  font-size: var(--v2-fs-16);
+  font-weight: 800;
+}
+body[data-v2="true"] .date-nav-dot {
+  position: absolute;
+  bottom: 4px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Calorie ring hero card */
+body[data-v2="true"] .calorie-ring-card {
+  background:
+    radial-gradient(800px 400px at 50% -20%, rgba(204, 255, 0, 0.10), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+    var(--bg-card);
+  border: 1px solid var(--v2-border-hair);
+  border-radius: var(--v2-r-2xl);
+  padding: 22px 20px;
+}
+body[data-v2="true"] .calorie-ring-card .ring-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+body[data-v2="true"] .calorie-ring .ring-bg {
+  fill: none;
+  stroke: var(--v2-border-soft);
+  stroke-width: 8;
+}
+body[data-v2="true"] .calorie-ring .ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transform-origin: center;
+  transform: rotate(-90deg);
+  filter: drop-shadow(0 0 8px var(--accent-glow-strong));
+  transition: stroke-dashoffset var(--v2-dur-slow) var(--v2-ease-out);
+}
+body[data-v2="true"] .ring-center {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+body[data-v2="true"] .ring-value {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: var(--v2-tracking-tight);
+}
+body[data-v2="true"] .ring-label {
+  font-size: var(--v2-fs-11);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--v2-tracking-widest);
+  font-weight: 700;
+}
+
+body[data-v2="true"] .calorie-stats {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  justify-content: center;
+}
+body[data-v2="true"] .cal-stat {
+  padding: 10px 14px;
+  border-radius: var(--v2-r-md);
+  background: var(--v2-surface-1);
+  border: 1px solid var(--v2-border-hair);
+  text-align: center;
+  min-width: 100px;
+}
+body[data-v2="true"] .cal-stat-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--v2-fs-18);
+  font-weight: 800;
+}
+body[data-v2="true"] .cal-stat-label {
+  font-size: var(--v2-fs-11);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--v2-tracking-widest);
+  font-weight: 700;
+}
+body[data-v2="true"] .diet-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border-radius: var(--v2-r-pill);
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-size: var(--v2-fs-11);
+  font-weight: 800;
+  letter-spacing: var(--v2-tracking-wide);
+  text-transform: uppercase;
+}
+
+/* Macros */
+body[data-v2="true"] .macro-bars {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+              var(--bg-card);
+  border: 1px solid var(--v2-border-hair);
+  border-radius: var(--v2-r-2xl);
+  padding: 18px;
+  margin-top: 12px;
+}
+body[data-v2="true"] .macro-row {
+  margin-bottom: 14px;
+}
+body[data-v2="true"] .macro-row:last-child { margin-bottom: 0; }
+body[data-v2="true"] .macro-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+body[data-v2="true"] .macro-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--v2-fs-14);
+}
+body[data-v2="true"] .macro-count {
+  font-size: var(--v2-fs-12);
+  color: var(--text-tertiary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+body[data-v2="true"] .macro-bar-track {
+  height: 8px;
+  border-radius: var(--v2-r-pill);
+  background: var(--v2-surface-ghost);
+  overflow: hidden;
+  border: 1px solid var(--v2-border-hair);
+}
+body[data-v2="true"] .macro-bar-fill {
+  height: 100%;
+  border-radius: var(--v2-r-pill);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+  transition: width var(--v2-dur-slow) var(--v2-ease-out);
+}
+body[data-v2="true"] .macro-row:nth-child(1) .macro-bar-fill { background: #ff9f43; }
+body[data-v2="true"] .macro-row:nth-child(2) .macro-bar-fill { background: var(--accent); }
+body[data-v2="true"] .macro-row:nth-child(3) .macro-bar-fill { background: #7c5cff; }
+body[data-v2="true"] .macro-row:nth-child(4) .macro-bar-fill { background: #34d399; }
+
+/* Meals */
+body[data-v2="true"] .section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0 10px;
+}
+body[data-v2="true"] .section-label-text {
+  font-family: var(--font-display);
+  font-size: var(--v2-fs-18);
+  font-weight: 800;
+  letter-spacing: var(--v2-tracking-snug);
+  margin: 0;
+}
+
+body[data-v2="true"] .meal-section {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+              var(--bg-card);
+  border: 1px solid var(--v2-border-hair);
+  border-radius: var(--v2-r-xl);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+body[data-v2="true"] .meal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--v2-border-hair);
+}
+body[data-v2="true"] .meal-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--v2-fs-14);
+  letter-spacing: var(--v2-tracking-snug);
+}
+body[data-v2="true"] .meal-cals {
+  font-size: var(--v2-fs-12);
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-v2="true"] .food-log-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--v2-border-hair);
+}
+body[data-v2="true"] .food-log-item:last-child { border-bottom: none; }
+body[data-v2="true"] .food-log-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+body[data-v2="true"] .food-log-name {
+  font-weight: 700;
+  font-size: var(--v2-fs-14);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body[data-v2="true"] .food-log-detail {
+  font-size: var(--v2-fs-12);
+  color: var(--text-tertiary);
+}
+body[data-v2="true"] .food-log-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+body[data-v2="true"] .food-log-cals {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--v2-fs-13);
+  font-variant-numeric: tabular-nums;
+}
+body[data-v2="true"] .food-log-delete {
+  width: 28px; height: 28px;
+  border-radius: var(--v2-r-pill);
+  background: transparent;
+  border: 1px solid var(--v2-border-hair);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--v2-dur-fast);
+}
+body[data-v2="true"] .food-log-delete:hover {
+  background: rgba(255, 68, 68, 0.12);
+  border-color: rgba(255, 68, 68, 0.4);
+  color: #ff6b6b;
+}
+
+/* Water tracker */
+body[data-v2="true"] .water-tracker {
+  background:
+    radial-gradient(500px 300px at 50% -20%, rgba(66, 165, 245, 0.10), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+    var(--bg-card);
+  border: 1px solid var(--v2-border-hair);
+  border-radius: var(--v2-r-2xl);
+  padding: 18px;
+}
+body[data-v2="true"] .water-tracker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+body[data-v2="true"] .water-tracker-ring svg .ring-bg {
+  fill: none;
+  stroke: var(--v2-border-soft);
+  stroke-width: 6;
+}
+body[data-v2="true"] .water-tracker-ring svg .ring-fill {
+  fill: none;
+  stroke: #42a5f5;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transform-origin: center;
+  transform: rotate(-90deg);
+  filter: drop-shadow(0 0 6px rgba(66, 165, 245, 0.5));
+}
+body[data-v2="true"] .water-tracker-value {
+  font-family: var(--font-display);
+  font-size: var(--v2-fs-22);
+  font-weight: 900;
+}
+body[data-v2="true"] .water-tracker-label {
+  font-size: var(--v2-fs-11);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--v2-tracking-widest);
+  font-weight: 700;
+}
+
+/* Setup modal */
+body[data-v2="true"] .glass-modal {
+  background: linear-gradient(180deg, rgba(20,20,24,0.95), rgba(14,14,18,0.95));
+  border: 1px solid var(--v2-border-hair);
+  border-radius: var(--v2-r-2xl);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: var(--v2-shadow-3);
+}
+body[data-v2="true"] .glass-input {
+  background: var(--v2-surface-1);
+  border: 1px solid var(--v2-border-hair);
+  border-radius: var(--v2-r-md);
+  color: var(--text-primary);
+  transition: border-color var(--v2-dur-fast), box-shadow var(--v2-dur-fast);
+}
+body[data-v2="true"] .glass-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+  outline: none;
+}
+body[data-v2="true"] .glass-btn {
+  border-radius: var(--v2-r-pill);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}

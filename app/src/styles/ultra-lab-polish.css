@@ -1,0 +1,626 @@
+/* ============================================
+   ULTRA LAB — Polish layer (v1 + v2)
+   ============================================
+   Clean hierarchy, calmer surfaces, better rhythm.
+   Loads AFTER ultra-lab.css so overrides stick. */
+
+:root {
+  --ul-bg: #0a0810;
+  --ul-surface: rgba(18, 14, 26, 0.86);
+  --ul-surface-2: rgba(26, 20, 36, 0.72);
+  --ul-border: rgba(182, 123, 255, 0.10);
+  --ul-border-strong: rgba(182, 123, 255, 0.22);
+  --ul-accent: #ccff00;
+  --ul-violet: #b67bff;
+  --ul-pink: #ff2a85;
+  --ul-text: #f4f0fa;
+  --ul-text-2: rgba(244, 240, 250, 0.72);
+  --ul-text-3: rgba(244, 240, 250, 0.5);
+}
+
+/* ── Page shell ── */
+.ultra-lab-page.page {
+  max-width: 1180px;
+  padding: calc(32px + var(--safe-top, 0px)) clamp(16px, 3vw, 32px) calc(120px + var(--safe-bottom, 0px));
+  background:
+    radial-gradient(1200px 700px at 50% -20%, rgba(176, 38, 255, 0.08), transparent 55%),
+    var(--ul-bg, var(--bg));
+}
+
+/* ── Header ── */
+.ultra-lab-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--ul-border);
+}
+.ultra-lab-header h1.page-title {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  margin: 6px 0 10px;
+  line-height: 1;
+}
+.ultra-lab-subtitle {
+  font-size: 0.94rem;
+  color: var(--ul-text-2);
+  line-height: 1.55;
+  max-width: 58ch;
+}
+.ultra-lab-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: linear-gradient(120deg, rgba(204, 255, 0, 0.14), rgba(176, 38, 255, 0.14));
+  border: 1px solid rgba(204, 255, 0, 0.2);
+  color: var(--ul-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ── Tabs ── calm pill bar ── */
+.ultra-tab-bar {
+  display: inline-flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--ul-surface);
+  border: 1px solid var(--ul-border);
+  margin-bottom: 24px;
+  max-width: 100%;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.ultra-tab-bar::-webkit-scrollbar { display: none; }
+.ultra-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--ul-text-2);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s;
+}
+.ultra-tab-btn:hover { color: var(--ul-text); }
+.ultra-tab-btn.active {
+  background: linear-gradient(120deg, var(--ul-accent), #a5e000);
+  color: #0a0a0a;
+  box-shadow: 0 4px 14px rgba(204, 255, 0, 0.28);
+}
+
+/* ── Stacked page ── */
+.ultra-page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Command / Focus hero ── calmer, single-accent ── */
+.ultra-command-card,
+.ultra-focus-hero,
+.ultra-intelligence-hero {
+  padding: 28px !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(600px 360px at 12% 0%, rgba(204, 255, 0, 0.08), transparent 55%),
+    radial-gradient(600px 360px at 88% 100%, rgba(176, 38, 255, 0.08), transparent 55%),
+    var(--ul-surface) !important;
+  border: 1px solid var(--ul-border-strong) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.ultra-focus-hero-main,
+.ultra-intelligence-topline {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+}
+
+.ultra-command-kicker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ul-accent);
+  margin-bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ultra-command-copy h3,
+.ultra-command-copy h2,
+.ultra-intelligence-copy h2,
+.ultra-intelligence-copy h3 {
+  font-size: clamp(1.3rem, 2vw, 1.7rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 8px;
+}
+.ultra-command-copy p,
+.ultra-intelligence-copy p {
+  color: var(--ul-text-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+  max-width: 62ch;
+}
+
+/* Readiness ring — refined */
+.ultra-command-ring,
+.ultra-hero-ring {
+  --ultra-progress: 0%;
+  width: 128px !important;
+  height: 128px !important;
+  border-radius: 50%;
+  background:
+    conic-gradient(var(--ul-accent) var(--ultra-progress), rgba(255, 255, 255, 0.06) 0) !important;
+  padding: 6px;
+  position: relative;
+  filter: drop-shadow(0 4px 12px rgba(204, 255, 0, 0.18));
+}
+.ultra-command-ring-inner {
+  background: var(--ul-bg) !important;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.ultra-command-ring-label {
+  font-size: 0.58rem;
+  color: var(--ul-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+}
+.ultra-command-ring-value {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ul-text);
+}
+
+/* Quick signals rail */
+.ultra-command-rail,
+.ultra-compact-signals {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+  gap: 12px !important;
+  margin-top: 20px !important;
+}
+.ultra-command-rail-card,
+.ultra-quick-card {
+  padding: 14px !important;
+  border-radius: 14px !important;
+  background: var(--ul-surface-2) !important;
+  border: 1px solid var(--ul-border) !important;
+}
+.ultra-quick-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ul-text-3);
+  margin-bottom: 4px;
+}
+.ultra-quick-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ul-text);
+}
+.ultra-quick-note {
+  font-size: 0.78rem;
+  color: var(--ul-text-2);
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+/* ── Overview grid — cleaner feature cards ── */
+.ultra-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.ultra-feature-card {
+  position: relative;
+  padding: 22px !important;
+  border-radius: 20px !important;
+  background: var(--ul-surface) !important;
+  border: 1px solid var(--ul-border) !important;
+  transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ultra-feature-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--ul-border-strong);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+}
+.ultra-feature-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.ultra-feature-icon {
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--ul-accent), #a5e000);
+  color: #0a0a0a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ultra-feature-card.feature-intelligence .ultra-feature-icon { background: linear-gradient(135deg, var(--ul-violet), #6f4cff); color: #fff; }
+.ultra-feature-card.feature-import .ultra-feature-icon       { background: linear-gradient(135deg, #ff9640, #ff5a4a); color: #fff; }
+.ultra-feature-card.feature-social .ultra-feature-icon       { background: linear-gradient(135deg, var(--ul-pink), var(--ul-violet)); color: #fff; }
+
+.ultra-feature-kicker {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ul-text-3);
+}
+.ultra-feature-card h3 {
+  font-size: 1.12rem;
+  font-weight: 800;
+  letter-spacing: -0.018em;
+  margin: 0;
+  line-height: 1.25;
+}
+.ultra-feature-card p {
+  font-size: 0.88rem;
+  color: var(--ul-text-2);
+  line-height: 1.55;
+  margin: 0;
+}
+.ultra-open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ul-border);
+  color: var(--ul-text);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.ultra-open-link:hover {
+  background: rgba(204, 255, 0, 0.08);
+  border-color: rgba(204, 255, 0, 0.28);
+}
+
+.ultra-feature-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.ultra-feature-preview {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ul-surface-2);
+  border: 1px solid var(--ul-border);
+}
+.ultra-feature-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.ultra-feature-preview-head span {
+  font-size: 0.78rem;
+  color: var(--ul-text-3);
+  font-weight: 600;
+}
+.ultra-feature-preview-head strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--ul-text);
+  letter-spacing: -0.01em;
+}
+.ultra-feature-preview-note {
+  font-size: 0.76rem;
+  color: var(--ul-text-2);
+  line-height: 1.45;
+}
+
+/* ── Analysis groups — clean up the pattern map ── */
+.ultra-analysis-groups {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+  gap: 14px !important;
+}
+.ultra-analysis-group {
+  padding: 20px !important;
+  border-radius: 20px !important;
+  background: var(--ul-surface) !important;
+  border: 1px solid var(--ul-border) !important;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.ultra-analysis-group:hover {
+  border-color: var(--ul-border-strong);
+  transform: translateY(-2px);
+}
+.ultra-analysis-group-head {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ul-border);
+}
+.ultra-analysis-group-head .ultra-command-kicker {
+  color: var(--ul-violet);
+  margin-bottom: 4px;
+}
+.ultra-analysis-group-head h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+/* ── Intelligence details section ── */
+.ultra-intelligence-details {
+  padding: 24px !important;
+  border-radius: 20px !important;
+  background: var(--ul-surface) !important;
+  border: 1px solid var(--ul-border) !important;
+}
+.ultra-section-head {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ul-border);
+}
+.ultra-section-head .ultra-command-kicker {
+  margin-bottom: 4px;
+}
+.ultra-section-head h2 {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin: 0;
+}
+
+/* "Still learning" / data gap hero */
+.ultra-lock-cta {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 22px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(120deg, var(--ul-accent), #a5e000) !important;
+  color: #0a0a0a !important;
+  font-weight: 800 !important;
+  font-size: 0.88rem !important;
+  letter-spacing: 0.02em !important;
+  border: none !important;
+  cursor: pointer;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.ultra-lock-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(204, 255, 0, 0.3);
+}
+
+/* Status pills */
+.ultra-confidence-pill,
+.ultra-source-chip,
+.ultra-step-pill {
+  padding: 4px 12px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--ul-border) !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  color: var(--ul-text-2) !important;
+  text-transform: uppercase;
+}
+
+/* ── Loading state — more refined ── */
+.ultra-loading-hero {
+  padding: 80px 28px !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(176, 123, 255, 0.10) 0%, transparent 55%),
+    var(--ul-surface) !important;
+  border: 1px solid var(--ul-border-strong) !important;
+}
+.ultra-loading-kicker {
+  color: var(--ul-accent) !important;
+  font-size: 0.62rem !important;
+  letter-spacing: 0.2em !important;
+  font-weight: 800 !important;
+}
+.ultra-loading-title {
+  font-size: 1rem !important;
+  color: var(--ul-text-2) !important;
+}
+
+/* ── Preview shell (locked / non-ULTRA) ── */
+.ultra-preview-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ultra-preview-hero {
+  padding: 26px !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(800px 400px at 50% 0%, rgba(176, 38, 255, 0.10), transparent 55%),
+    var(--ul-surface) !important;
+  border: 1px solid var(--ul-border-strong) !important;
+}
+.ultra-preview-kicker {
+  font-size: 0.64rem !important;
+  letter-spacing: 0.18em !important;
+  color: var(--ul-pink) !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.ultra-preview-hero h2 {
+  font-size: clamp(1.3rem, 2.2vw, 1.8rem) !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.15;
+  margin-bottom: 10px;
+}
+.ultra-preview-hero p {
+  color: var(--ul-text-2) !important;
+  font-size: 0.92rem !important;
+  line-height: 1.55 !important;
+  max-width: 62ch;
+}
+
+.ultra-preview-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  gap: 12px !important;
+}
+.ultra-preview-card {
+  padding: 18px !important;
+  border-radius: 16px !important;
+  background: var(--ul-surface) !important;
+  border: 1px solid var(--ul-border) !important;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.ultra-preview-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ul-border-strong);
+}
+.ultra-preview-label {
+  font-size: 0.66rem !important;
+  letter-spacing: 0.16em !important;
+  color: var(--ul-text-3) !important;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.ultra-preview-value {
+  font-size: 1.3rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--ul-text) !important;
+  margin-bottom: 4px;
+}
+.ultra-preview-card p {
+  font-size: 0.8rem !important;
+  color: var(--ul-text-2) !important;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ultra-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ultra-preview-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px !important;
+  border-radius: 14px !important;
+  background: var(--ul-surface) !important;
+  border: 1px solid var(--ul-border) !important;
+  font-size: 0.88rem;
+  color: var(--ul-text-2);
+  line-height: 1.5;
+}
+.ultra-preview-bullet {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(204, 255, 0, 0.2), rgba(176, 38, 255, 0.2));
+  color: var(--ul-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Back button ── */
+.ultra-lab-page .back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ul-border);
+  color: var(--ul-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.ultra-lab-page .back-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Mobile ── */
+@media (max-width: 720px) {
+  .ultra-lab-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .ultra-focus-hero-main,
+  .ultra-intelligence-topline {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    text-align: left;
+  }
+  .ultra-command-ring,
+  .ultra-hero-ring {
+    margin: 0;
+  }
+  .ultra-command-card,
+  .ultra-focus-hero,
+  .ultra-intelligence-hero,
+  .ultra-intelligence-details {
+    padding: 20px !important;
+  }
+}
+
+/* ── V2 shell — slightly tuned accent ── */
+body[data-v2="true"] .ultra-lab-page.page {
+  padding-bottom: calc(var(--v2-nav-h, 72px) + var(--v2-safe-bottom, 0px) + 32px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ultra-loading-pulse { animation: none; }
+  .ultra-feature-card:hover,
+  .ultra-analysis-group:hover,
+  .ultra-preview-card:hover {
+    transform: none;
+  }
+}

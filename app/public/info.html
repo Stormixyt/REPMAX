@@ -32,6 +32,7 @@
     }
   </script>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="polish.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
 </head>
 <body>
@@ -1279,6 +1280,18 @@
       }
       update();
       setInterval(update, 1000);
+    })();
+  </script>
+  <script>
+    (function () {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      document.querySelectorAll('.feature-card, .pricing-card, .step, .stat-item').forEach(el => {
+        el.addEventListener('pointermove', (e) => {
+          const r = el.getBoundingClientRect();
+          el.style.setProperty('--mx', ((e.clientX - r.left) / r.width) * 100 + '%');
+          el.style.setProperty('--my', ((e.clientY - r.top) / r.height) * 100 + '%');
+        }, { passive: true });
+      });
     })();
   </script>
 </body>

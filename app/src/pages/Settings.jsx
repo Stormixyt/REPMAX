@@ -7,10 +7,13 @@ import { triggerPushNotification } from '../lib/notifications'
 import ProBadge from '../components/ProBadge'
 import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine, RiImageFill, RiTranslate2 } from '@remixicon/react'
 import { getPushDeviceStatus, getPushSupportState, requestNotificationPermission, showLocalNotification, subscribeToPush } from '../lib/pushNotifications'
+import { useV2 } from '../context/V2Context'
+import { RiFlaskFill, RiSparklingFill } from '@remixicon/react'
 
 export default function Settings() {
   const { user, profile, signOut, updateProfile, isPro, isUltra, isAdmin, subscriptionTier } = useAuth()
   const { language, setLanguage, t, languageOptions } = useLanguage()
+  const { v2, canUseV2, toggle: toggleV2 } = useV2()
   const navigate = useNavigate()
   const [editName, setEditName] = useState(false)
   const [nameValue, setNameValue] = useState(profile?.display_name || '')
@@ -248,6 +251,53 @@ export default function Settings() {
       </div>
 
       {/* App Settings */}
+      {canUseV2 && (
+        <>
+          <div className="settings-section-title">
+            <RiFlaskFill size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--accent)' }} />
+            Experimental — Early Access
+          </div>
+
+          <div className="settings-item" onClick={() => toggleV2()} style={{ cursor: 'pointer' }}>
+            <div className="settings-item-left">
+              <div className="settings-icon" style={{
+                background: 'linear-gradient(135deg, #ff2a85, #b026ff)',
+                color: '#fff',
+                border: 'none'
+              }}>
+                <RiSparklingFill size={18} />
+              </div>
+              <div>
+                <div className="settings-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  REPMAX v2.0
+                  <span style={{
+                    fontSize: 9, padding: '2px 6px', borderRadius: 999,
+                    background: 'rgba(255, 42, 133, 0.18)',
+                    color: '#ff5ca0', fontWeight: 800, letterSpacing: '0.1em'
+                  }}>BETA</span>
+                </div>
+                <div className="settings-value">
+                  {v2 ? 'Enabled — restart recommended' : 'New design system + 5-tab shell. ULTRA early access.'}
+                </div>
+              </div>
+            </div>
+            <div className={`settings-switch ${v2 ? 'on active' : ''}`}>
+              <div className="settings-switch-thumb" />
+            </div>
+          </div>
+
+          <div style={{
+            padding: '10px 14px',
+            fontSize: 12,
+            color: 'var(--text-tertiary)',
+            lineHeight: 1.5,
+            marginBottom: 8
+          }}>
+            As an ULTRA member you get early access to experimental builds. v2.0 rewrites the home, coach, progress, and profile screens with a new design system. Toggle off anytime to return to the stable release.
+          </div>
+        </>
+      )}
+
       <div className="settings-section-title">App Settings</div>
 
       <div className="settings-item" onClick={cycleLanguage}>

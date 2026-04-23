@@ -9,6 +9,10 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="REPMAX">
+  <meta name="format-detection" content="telephone=no">
+  
+  <!-- CSP: allow Capacitor schemes + Supabase + API connections -->
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob: capacitor: ionic:; connect-src * 'self' ws: wss: https:; img-src * 'self' data: blob: capacitor: ionic:; media-src * 'self' data: blob: capacitor:;">
   
   <!-- Open Graph -->
   <meta property="og:title" content="REPMAX — Train Smarter">

@@ -9,12 +9,14 @@ import {
   DEFAULT_COACH_MODEL,
   requestRoutineChange,
 } from "../lib/groq";
-import PaywallGate from "../components/PaywallGate";
+import { optimizeImageForVision } from "../lib/visionImages";
 import {
   RiArrowRightSLine,
   RiBrainFill,
   RiCheckLine,
+  RiCloseLine,
   RiHeartPulseFill,
+  RiImageAddFill,
   RiLoader4Line,
   RiQuestionLine,
   RiRestaurantFill,
@@ -815,8 +817,10 @@ export default function AICoach() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [coachContext, setCoachContext] = useState(DEFAULT_COACH_CONTEXT);
+  const [pendingImage, setPendingImage] = useState(null);
   const messagesEndRef = useRef(null);
   const composerRef = useRef(null);
+  const imageInputRef = useRef(null);
 
   const activeConversation =
     conversations.find((conversation) => conversation.id === activeConversationId) ||
@@ -1124,6 +1128,7 @@ export default function AICoach() {
         : deriveConversationTitle(trimmed);
 
     const userMessage = createMessage("user", trimmed);
+    const currentImage = pendingImage;
 
     setConversations((prev) =>
       insertMessageIntoConversation(
@@ -1135,6 +1140,7 @@ export default function AICoach() {
     );
     setActiveConversationId(targetConversationId);
     setInput("");
+    setPendingImage(null);
     setLoading(true);
 
     persistCoachMessage(targetConversationId, nextTitle, userMessage).catch((err) => {
@@ -1144,7 +1150,7 @@ export default function AICoach() {
     try {
       let assistantContent = "";
 
-      if (canAttemptRoutineChange(trimmed, coachContext)) {
+      if (!currentImage && canAttemptRoutineChange(trimmed, coachContext)) {
         const routineChange = await requestRoutineChange({
           question: trimmed,
           profile,
@@ -1172,6 +1178,7 @@ export default function AICoach() {
           toneMode: coachMode,
           responseStyle,
           modelPreference: activeCoachModel,
+          imageDataUrl: currentImage || null,
         });
       }
 
@@ -1209,7 +1216,7 @@ export default function AICoach() {
       console.error("[Coach] sendMessage failed:", err);
       const isRateLimit = err?.status === 429 || /daily.*limit|limit reached/i.test(err?.message || '');
       const errorText = isRateLimit
-        ? `You've reached your daily Claude limit. ${isUltra ? '25' : '3'} messages per day — resets at midnight UTC. Try a free model in the meantime!`
+        ? (err?.message || "You've reached your daily message limit. Resets at midnight UTC. Try switching models!")
         : "I hit a connection issue. Try sending that again in a second.";
       const errorMessage = createMessage(
         "assistant",
@@ -1246,6 +1253,19 @@ export default function AICoach() {
     window.setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, 260);
+  }
+
+  async function handleImageSelect(event) {
+    const file = event.target.files?.[0];
+    if (imageInputRef.current) imageInputRef.current.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+
+    try {
+      const optimized = await optimizeImageForVision(file);
+      setPendingImage(optimized);
+    } catch (err) {
+      console.warn("[Coach] image optimization failed:", err);
+    }
   }
 
   const coachFacts = [
@@ -1574,7 +1594,35 @@ export default function AICoach() {
           </div>
 
           <div className="coach-composer">
+            {pendingImage && (
+              <div className="coach-image-preview">
+                <img src={pendingImage} alt="Attached" />
+                <button className="coach-image-remove" onClick={() => setPendingImage(null)}>
+                  <RiCloseLine size={14} />
+                </button>
+              </div>
+            )}
             <div className="coach-composer-shell">
+              {isUltra && (
+                <>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="coach-image-input"
+                    onChange={handleImageSelect}
+                    style={{ display: "none" }}
+                  />
+                  <button
+                    className="coach-attach-btn"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={loading}
+                    title="Attach image"
+                  >
+                    <RiImageAddFill size={18} />
+                  </button>
+                </>
+              )}
               <textarea
                 ref={composerRef}
                 className="coach-composer-input"
@@ -1602,12 +1650,6 @@ export default function AICoach() {
       </div>
     </div>
   );
-
-  if (!isPro) {
-    return (
-      <PaywallGate feature="AI Coach">{coachContent}</PaywallGate>
-    );
-  }
 
   return coachContent;
 }

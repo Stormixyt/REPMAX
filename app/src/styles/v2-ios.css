@@ -1,0 +1,112 @@
+/* ================================================================
+   REPMAX v2.0 — iOS / Capacitor regression rules
+   ================================================================
+   Handles safe areas, keyboard avoidance, notch, and home indicator.
+   Loaded last so it wins against earlier v2 modules when needed.
+   ================================================================ */
+
+/* ——————————————————————————————————————————————
+   Safe areas on every scroll container
+   —————————————————————————————————————————————— */
+body[data-v2="true"] .app-content,
+body[data-v2="true"] .app-content--v2,
+body[data-v2="true"] .page {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Top bars honor notch */
+body[data-v2="true"] .v2-shell-topbar,
+body[data-v2="true"] .chat-header {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
+}
+
+/* Bottom nav / tabbars honor home indicator */
+body[data-v2="true"] .v2-tabbar,
+body[data-v2="true"] .bottom-nav {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+}
+
+/* ——————————————————————————————————————————————
+   Keyboard-open state (set by useVirtualKeyboard in App.jsx)
+   —————————————————————————————————————————————— */
+body.keyboard-open[data-v2="true"] .v2-tabbar,
+body.keyboard-open[data-v2="true"] .v2-fab,
+body.keyboard-open[data-v2="true"] .bottom-nav {
+  transform: translateY(120%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--v2-dur-fast) var(--v2-ease-out), opacity var(--v2-dur-fast);
+}
+
+body.keyboard-open[data-v2="true"] .coach-composer,
+body.keyboard-open[data-v2="true"] .chat-input-bar {
+  bottom: 0;
+  padding-bottom: 10px;
+}
+
+/* Auto-scroll safety for inputs — avoid iOS zoom on small font */
+body[data-v2="true"] .v2-input,
+body[data-v2="true"] .auth-form .input,
+body[data-v2="true"] .glass-input,
+body[data-v2="true"] .chat-input,
+body[data-v2="true"] .coach-composer-input,
+body[data-v2="true"] .v3-search-input {
+  font-size: max(16px, var(--v2-fs-14));
+}
+
+/* ——————————————————————————————————————————————
+   Haptic press feedback — visual complement
+   —————————————————————————————————————————————— */
+body[data-v2="true"] .v2-btn:active,
+body[data-v2="true"] .v2-tabbar__item:active,
+body[data-v2="true"] .onboarding-choice-card:active,
+body[data-v2="true"] .coach-suggestion-card:active,
+body[data-v2="true"] .settings-item:active,
+body[data-v2="true"] .chat-list-item:active {
+  transform: scale(0.98);
+  transition: transform 0.08s ease-out;
+}
+
+/* ——————————————————————————————————————————————
+   Standalone PWA / native window treatment
+   —————————————————————————————————————————————— */
+@media (display-mode: standalone) {
+  body[data-v2="true"] .v2-shell-topbar {
+    background: linear-gradient(180deg, rgba(7,7,10,0.96), rgba(7,7,10,0.82));
+  }
+}
+
+/* Notch pages (standalone iOS) — ensure dark status bar blend */
+@supports (padding-top: env(safe-area-inset-top)) {
+  body[data-v2="true"] .auth-page,
+  body[data-v2="true"] .onboarding-page {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 24px);
+  }
+}
+
+/* Scroll momentum for overflowing containers on iOS */
+@supports (-webkit-touch-callout: none) {
+  body[data-v2="true"] .app-content,
+  body[data-v2="true"] .chat-messages,
+  body[data-v2="true"] .coach-messages {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  body[data-v2="true"] {
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Long-press selection disabled on interactive chrome */
+body[data-v2="true"] .v2-tabbar,
+body[data-v2="true"] .v2-fab,
+body[data-v2="true"] .v2-shell-topbar,
+body[data-v2="true"] .chat-header,
+body[data-v2="true"] .coach-composer,
+body[data-v2="true"] .chat-input-bar {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

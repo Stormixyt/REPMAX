@@ -1,0 +1,334 @@
+/* ================================================================
+   REPMAX — iOS Capacitor polish layer (v1)
+   ================================================================
+   Applied when running as a Capacitor iOS IPA (body.native-ios).
+   Responsibilities:
+   - Safe area for notch/home indicator on every piece of chrome
+   - Proper scroll momentum + contained overscroll
+   - No rubber-band on body/root
+   - Cancel default tap highlight, selection on chrome
+   - Native-feel press feedback (0.97 scale)
+   - Keyboard-aware: hide bottom nav/FAB + lift composers when keyboard shows
+   - Min 44px tap targets for hit safety
+   ================================================================ */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  /* Base native keyboard offset — updated dynamically by native.js */
+  --kb-offset: 0px;
+}
+
+/* ──────────────────────────────────────────────
+   Only apply iOS-specific rules on the native shell
+   ────────────────────────────────────────────── */
+body.native-ios {
+  /* Apple system font stack for any default text that slips through */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  /* Prevent rubber-band on root */
+  overscroll-behavior: none;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+  touch-action: manipulation;
+}
+
+body.native-ios #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The app shell lives inside #root; let it fill height */
+body.native-ios .app-wrapper,
+body.native-ios .app-wrapper--v2 {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+body.native-ios .app-content,
+body.native-ios .app-content--v2 {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Kill tap highlight across the app */
+body.native-ios,
+body.native-ios * {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Lock text selection on chrome/interactive elements */
+body.native-ios button,
+body.native-ios a,
+body.native-ios [role="button"],
+body.native-ios .bottom-nav,
+body.native-ios .v2-tabbar,
+body.native-ios .v2-fab,
+body.native-ios .v2-shell-topbar,
+body.native-ios .app-header,
+body.native-ios .chat-header,
+body.native-ios .workout-topbar {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow selection where it matters */
+body.native-ios input,
+body.native-ios textarea,
+body.native-ios .coach-msg-bubble,
+body.native-ios .msg-bubble,
+body.native-ios [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* ──────────────────────────────────────────────
+   Scroll momentum on every scrollable container
+   ────────────────────────────────────────────── */
+body.native-ios .app-content,
+body.native-ios .app-content--v2,
+body.native-ios .page,
+body.native-ios .chat-messages,
+body.native-ios .coach-messages,
+body.native-ios .modal,
+body.native-ios [data-scroll="y"] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* ──────────────────────────────────────────────
+   Safe area — fixed chrome top-offsets
+   The iOS status bar overlays the WebView so we must
+   push fixed headers / top bars down by the notch.
+   ────────────────────────────────────────────── */
+body.native-ios .app-header,
+body.native-ios .v2-shell-topbar,
+body.native-ios .chat-header,
+body.native-ios .workout-topbar,
+body.native-ios .ultra-lab-page .back-btn,
+body.native-ios .sticky-top {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
+}
+
+/* Pages: top padding should respect the notch */
+body.native-ios .page,
+body.native-ios .app-content,
+body.native-ios .app-content--v2 {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Auth / Onboarding are full-screen roots — ensure they clear the notch */
+body.native-ios .auth-page,
+body.native-ios .onboarding-page {
+  padding-top: max(env(safe-area-inset-top, 0px), 24px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 24px);
+  min-height: 100dvh;
+}
+
+/* Pages with their own headers — just add the safe-top */
+body.native-ios .page .page-header:first-child,
+body.native-ios .page .app-header {
+  padding-top: 12px; /* already padded by parent */
+}
+
+/* Bottom nav / tabbar — home indicator space + extra touch padding */
+body.native-ios .bottom-nav,
+body.native-ios .v2-tabbar {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+  height: calc(var(--nav-height, 72px) + max(env(safe-area-inset-bottom, 0px), 12px));
+}
+
+/* FAB lifts above home indicator + nav */
+body.native-ios .v2-fab {
+  bottom: calc(var(--nav-height, 72px) + max(env(safe-area-inset-bottom, 0px), 12px) + 12px);
+}
+
+/* Horizontal safe area on any full-bleed content */
+body.native-ios .app-wrapper,
+body.native-ios .app-wrapper--v2 {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* ──────────────────────────────────────────────
+   Composer / input bar — hug keyboard when open
+   ────────────────────────────────────────────── */
+body.native-ios .coach-composer,
+body.native-ios .chat-input-bar,
+body.native-ios .composer-bar,
+body.native-ios .sticky-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 10px);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Body class set by native.js when native keyboard shows */
+body.native-ios.kb-open .bottom-nav,
+body.native-ios.kb-open .v2-tabbar,
+body.native-ios.kb-open .v2-fab {
+  transform: translateY(200%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s;
+}
+
+/* Drop composer bottom padding while keyboard is open (kb covers home indicator) */
+body.native-ios.kb-open .coach-composer,
+body.native-ios.kb-open .chat-input-bar,
+body.native-ios.kb-open .composer-bar,
+body.native-ios.kb-open .sticky-bottom {
+  padding-bottom: 8px;
+}
+
+/* Lock page scroll / let keyboard handle the offset */
+body.native-ios.kb-open .app-content,
+body.native-ios.kb-open .app-content--v2 {
+  padding-bottom: calc(var(--kb-offset, 0px) + 12px);
+}
+
+/* ──────────────────────────────────────────────
+   iOS press feedback — scale-down on touch for any
+   pressable element without an explicit active style
+   ────────────────────────────────────────────── */
+body.native-ios button:active,
+body.native-ios a:active,
+body.native-ios [role="button"]:active,
+body.native-ios .btn:active,
+body.native-ios .bottom-nav-item:active,
+body.native-ios .v2-tabbar__item:active,
+body.native-ios .settings-item:active,
+body.native-ios .quick-action:active,
+body.native-ios .chat-list-item:active,
+body.native-ios .f-card:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease-out;
+}
+
+/* Except elements with their own press/transform */
+body.native-ios [data-no-press]:active,
+body.native-ios .no-press:active {
+  transform: none;
+}
+
+/* ──────────────────────────────────────────────
+   Tap targets — 44pt minimum (Apple HIG)
+   ────────────────────────────────────────────── */
+body.native-ios .icon-btn,
+body.native-ios .btn-sm,
+body.native-ios .settings-icon,
+body.native-ios .bottom-nav-item,
+body.native-ios .v2-tabbar__item,
+body.native-ios .back-btn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ──────────────────────────────────────────────
+   Input focus — softer accent ring instead of blunt blue
+   ────────────────────────────────────────────── */
+body.native-ios input:focus,
+body.native-ios textarea:focus {
+  outline: none;
+}
+
+/* Prevent zoom on focus — enforce ≥16px font-size */
+body.native-ios input,
+body.native-ios textarea,
+body.native-ios select {
+  font-size: max(16px, 1rem);
+}
+
+/* ──────────────────────────────────────────────
+   Modal sheets — push under the notch, hug bottom
+   ────────────────────────────────────────────── */
+body.native-ios .modal-overlay,
+body.native-ios .sheet-overlay {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+body.native-ios .modal,
+body.native-ios .sheet,
+body.native-ios .bottom-sheet {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+
+/* Sheet drag handle alignment */
+body.native-ios .v2-sheet,
+body.native-ios .v2-sheet__inner {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+}
+
+/* ──────────────────────────────────────────────
+   Scrollbars — invisible on iOS (match native)
+   ────────────────────────────────────────────── */
+body.native-ios ::-webkit-scrollbar {
+  display: none;
+}
+body.native-ios * {
+  scrollbar-width: none;
+}
+
+/* ──────────────────────────────────────────────
+   Link behaviors — solid underline off by default
+   ────────────────────────────────────────────── */
+body.native-ios a {
+  -webkit-touch-callout: none;
+}
+
+/* ──────────────────────────────────────────────
+   Image / avatar rendering
+   ────────────────────────────────────────────── */
+body.native-ios img {
+  -webkit-user-drag: none;
+}
+
+/* ──────────────────────────────────────────────
+   Modal transitions — springier on iOS
+   ────────────────────────────────────────────── */
+body.native-ios .modal,
+body.native-ios .sheet {
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.24s ease;
+}
+
+/* ──────────────────────────────────────────────
+   Splash transition — fade the app in
+   ────────────────────────────────────────────── */
+body.native-ios.app-ready {
+  animation: native-ios-fade 0.45s ease both;
+}
+
+@keyframes native-ios-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ──────────────────────────────────────────────
+   Back-swipe gesture safe area
+   ────────────────────────────────────────────── */
+body.native-ios .page,
+body.native-ios .app-content,
+body.native-ios .app-content--v2 {
+  touch-action: pan-y;
+}
+
+/* ──────────────────────────────────────────────
+   Keyboard-lift specific elements — opt-in via data-lift-kb
+   ────────────────────────────────────────────── */
+body.native-ios.kb-open [data-lift-kb] {
+  transform: translateY(calc(var(--kb-offset, 0px) * -1));
+}

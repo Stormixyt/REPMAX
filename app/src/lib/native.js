@@ -27,6 +27,115 @@ export async function initStatusBar() {
   }
 }
 
+// ── Platform body classes ─────────────────────────────
+// Applied once at boot so CSS can specialise per-platform
+export function applyPlatformClasses() {
+  if (typeof document === 'undefined') return
+  const body = document.body
+  if (!body) return
+  body.classList.toggle('native-platform', isNative)
+  body.classList.toggle('web-platform', !isNative)
+  body.classList.toggle('native-ios', isNative && isIOS)
+  body.classList.toggle('native-android', isNative && platform === 'android')
+}
+
+// ── Native keyboard (iOS/Android) ─────────────────────
+// Listens to Capacitor Keyboard plugin and mirrors state onto <body>
+// as `kb-open` and a CSS variable `--kb-offset` so the web UI can
+// lift composers / hide nav consistently.
+export function initNativeKeyboard() {
+  if (!isNative) return () => {}
+  const root = document.documentElement
+  const body = document.body
+
+  const show = (info) => {
+    const height = info?.keyboardHeight || 0
+    root.style.setProperty('--kb-offset', `${Math.round(height)}px`)
+    body?.classList.add('kb-open')
+  }
+  const hide = () => {
+    root.style.setProperty('--kb-offset', '0px')
+    body?.classList.remove('kb-open')
+  }
+
+  let showL, hideL
+  try {
+    Keyboard.addListener('keyboardWillShow', show).then(h => { showL = h })
+    Keyboard.addListener('keyboardDidShow', show).then(h => { showL = h })
+    Keyboard.addListener('keyboardWillHide', hide).then(h => { hideL = h })
+    Keyboard.addListener('keyboardDidHide', hide).then(h => { hideL = h })
+  } catch {}
+
+  // Keyboard should never resize the webview (we handle it in CSS)
+  try { Keyboard.setResizeMode?.({ mode: 'none' }) } catch {}
+  try { Keyboard.setScroll?.({ isDisabled: true }) } catch {}
+
+  return () => {
+    try { showL?.remove() } catch {}
+    try { hideL?.remove() } catch {}
+  }
+}
+
+// ── Tap haptic — unified helper for buttons/nav ────────
+// Safe to call from web (no-op). Default: selection-like tick.
+export function tapHaptic(style = 'selection') {
+  if (!isNative) return
+  try {
+    if (style === 'selection') {
+      Haptics.selectionStart().then(() => Haptics.selectionEnd()).catch(() => {})
+    } else if (style === 'light') {
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+    } else if (style === 'medium') {
+      Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
+    } else if (style === 'heavy') {
+      Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {})
+    } else if (style === 'success') {
+      Haptics.notification({ type: NotificationType.Success }).catch(() => {})
+    } else if (style === 'warning') {
+      Haptics.notification({ type: NotificationType.Warning }).catch(() => {})
+    } else if (style === 'error') {
+      Haptics.notification({ type: NotificationType.Error }).catch(() => {})
+    }
+  } catch {}
+}
+
+// Global auto-haptic on common interactive elements.
+// By default fires `selection` on bottom-nav, fab, primary buttons,
+// settings items, chat list rows, and quick actions — matching the
+// Apple HIG feel. Opt-out anywhere with `data-no-haptic`.
+// Override style per-element with `data-haptic="medium"` etc.
+const HAPTIC_SELECTORS = [
+  '.bottom-nav-item',
+  '.v2-tabbar__item',
+  '.v2-fab',
+  '.btn-primary',
+  '.btn-accent',
+  '.settings-item',
+  '.chat-list-item',
+  '.quick-action',
+  '.v2-card--interactive',
+  '[data-haptic]',
+  '.haptic',
+]
+
+export function installTapHapticDelegate() {
+  if (!isNative || typeof document === 'undefined') return () => {}
+  const selector = HAPTIC_SELECTORS.join(',')
+  const handler = (e) => {
+    let el = e.target
+    while (el && el !== document.body) {
+      if (el.dataset?.noHaptic !== undefined) return
+      if (el.matches?.(selector)) {
+        tapHaptic(el.dataset?.haptic || 'selection')
+        return
+      }
+      el = el.parentElement
+    }
+  }
+  document.addEventListener('pointerdown', handler, { passive: true })
+  return () => document.removeEventListener('pointerdown', handler)
+}
+
 // ── Splash Screen ──
 export async function hideSplashScreen() {
   if (!isNative) return
@@ -237,15 +346,26 @@ export async function scheduleLocalNotification(options = {}) {
 
 // ── Init all native services ──
 export async function initNativeApp() {
+  applyPlatformClasses()
+
   if (!isNative) return
 
   console.log(`[REPMAX] Running on native ${platform}`)
 
   await initStatusBar()
-  
-  // Keyboard dark mode
+
+  // Keyboard dark mode + listeners
   try {
     const { Keyboard } = await import('@capacitor/keyboard')
     await Keyboard.setStyle({ style: 'DARK' })
   } catch {}
+  initNativeKeyboard()
+
+  // Delegate haptics on tap for any [data-haptic] element
+  installTapHapticDelegate()
+
+  // Mark ready — enables native-ios splash fade
+  if (typeof document !== 'undefined') {
+    requestAnimationFrame(() => document.body.classList.add('app-ready'))
+  }
 }
