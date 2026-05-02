@@ -29,16 +29,16 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 1500,
       launchAutoHide: true,
-      backgroundColor: '#070707',
+      backgroundColor: '#000000',
       showSpinner: false,
       launchFadeOutDuration: 300,
       splashFullScreen: true,
       splashImmersive: true,
     },
     StatusBar: {
-      style: 'DARK',           // Light text on dark background
-      backgroundColor: '#070707',
-      overlaysWebView: true,   // Content goes under the status bar (we handle safe area in CSS)
+      style: 'DARK',
+      backgroundColor: '#000000',
+      overlaysWebView: true,
     },
     Keyboard: {
       resize: 'body' as any,
@@ -48,18 +48,23 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
-    Camera: {
-      // No special config needed — permissions in Info.plist
-    },
+    Camera: {},
   },
 
   ios: {
     contentInset: 'automatic',
     allowsLinkPreview: false,
     scrollEnabled: true,
-    backgroundColor: '#070707',
+    backgroundColor: '#000000',
     preferredContentMode: 'mobile',
     limitsNavigationsToAppBoundDomains: false,
+  },
+
+  android: {
+    backgroundColor: '#000000',
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: false,
   },
 };
 

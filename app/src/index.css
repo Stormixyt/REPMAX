@@ -4,17 +4,17 @@
    REPMAX APP — Design System
    ============================================ */
 :root {
-    --bg-primary: #070707;
-    --bg-secondary: #0d0d0d;
-    --bg-card: #111111;
-    --bg-card-hover: #161616;
-    --bg-elevated: #1a1a1a;
-    --bg-input: #141414;
+    --bg-primary: #000000;
+    --bg-secondary: #070707;
+    --bg-card: #0a0a0a;
+    --bg-card-hover: #111111;
+    --bg-elevated: #161616;
+    --bg-input: #0a0a0a;
 
-    --accent: #ccff00;
-    --accent-dim: #9ec400;
-    --accent-glow: rgba(204, 255, 0, 0.12);
-    --accent-glow-strong: rgba(204, 255, 0, 0.25);
+    --accent: #D4FF00;
+    --accent-dim: #b2d600;
+    --accent-glow: rgba(212, 255, 0, 0.15);
+    --accent-glow-strong: rgba(212, 255, 0, 0.35);
 
     --success: #22c55e;
     --warning: #f59e0b;
@@ -22,13 +22,13 @@
     --info: #3b82f6;
 
     --text-primary: #ffffff;
-    --text-secondary: #a0a0a0;
-    --text-tertiary: #606060;
-    --text-on-accent: #070707;
+    --text-secondary: #888888;
+    --text-tertiary: #555555;
+    --text-on-accent: #000000;
 
-    --border: rgba(255, 255, 255, 0.06);
-    --border-hover: rgba(255, 255, 255, 0.12);
-    --border-accent: rgba(204, 255, 0, 0.2);
+    --border: rgba(255, 255, 255, 0.1);
+    --border-hover: rgba(255, 255, 255, 0.2);
+    --border-accent: rgba(212, 255, 0, 0.3);
 
     --font-display: "Space Grotesk", sans-serif;
 }
@@ -206,10 +206,10 @@ body.appearance-syncing *::after {
     --font-display: "Space Grotesk", sans-serif;
     --font-body: "Inter", sans-serif;
 
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
     --radius-full: 999px;
 
     --nav-height: 72px;
