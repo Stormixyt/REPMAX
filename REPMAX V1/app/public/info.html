@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="google-site-verification" content="swYh-1tH72Kkf1dtF7C8WjvA7gJ0_MoBgD_K2Olo0gQ" />
+  <meta name="robots" content="index, follow">
+  <meta name="description" content="REPMAX — AI-powered workout programming that adapts to you. Real progressive overload, real periodization, real results. Join the waitlist, explore the community, and train smarter.">
+  <meta name="keywords" content="AI workout, gym programming, fitness app, progressive overload, workout plan, training program, gym AI">
+  <meta name="author" content="REPMAX">
+  <meta property="og:title" content="REPMAX — Your AI Training Partner">
+  <meta property="og:description" content="Stop following cookie-cutter programs. REPMAX builds and adapts real training programs using AI that actually understands progressive overload.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.rep-max.app/">
+  <meta name="theme-color" content="#CCFF00">
+  <link rel="canonical" href="https://www.rep-max.app/">
+  <title>REPMAX — AI-Powered Workout Programming</title>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": ["WebSite", "SoftwareApplication"],
+      "name": "REPMAX",
+      "url": "https://www.rep-max.app/",
+      "applicationCategory": "HealthApplication",
+      "operatingSystem": "Web",
+      "description": "AI-powered workout programming that adapts to you with progressive overload, periodization, logging, community, and coaching.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body>
+
+  <!-- ===== NAVIGATION ===== -->
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" id="nav-logo">
+        REPMAX<span class="dot"></span>
+      </a>
+
+      <div class="nav-links" id="nav-links">
+        <a href="#features" id="nav-features">Features</a>
+        <a href="#how-it-works" id="nav-how">How It Works</a>
+        <a href="#community" id="nav-community">Community</a>
+        <a href="#pricing" id="nav-pricing">Pricing</a>
+        <a href="https://discord.gg/repmax" class="nav-discord" id="nav-discord" target="_blank" rel="noopener noreferrer">Join Discord</a>
+        <a href="/app" class="nav-cta" id="nav-cta">Open App</a>
+      </div>
+
+      <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero section" id="hero">
+    <div class="hero-bg">
+      <div class="hero-gradient hero-gradient-1"></div>
+      <div class="hero-gradient hero-gradient-2"></div>
+      <div class="hero-grid-bg"></div>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-badge reveal">
+        <span class="pulse"></span>
+        🚀 Launching May 7th — All Waitlist Members Get Access
+      </div>
+
+      <h1 class="hero-title reveal reveal-delay-1">
+        <span class="line">Your AI</span>
+        <span class="line"><span class="highlight">Training Partner</span></span>
+      </h1>
+
+      <p class="hero-subtitle reveal reveal-delay-2">
+        Stop following cookie-cutter programs. REPMAX builds real training programs with progressive overload, periodization, and adapts every week based on how you perform.
+      </p>
+
+      <div class="reveal reveal-delay-3" id="countdown-section" style="margin-bottom: 28px; text-align: center;">
+        <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255,255,255,0.5); margin-bottom: 12px; font-weight: 600;">Doors open in</div>
+        <div id="countdown-timer" style="display: flex; justify-content: center; gap: 12px; font-family: 'Inter', sans-serif;">
+          <div style="text-align: center;"><div id="cd-days" style="font-size: 2rem; font-weight: 800; color: #CCFF00; line-height: 1;">--</div><div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 4px;">DAYS</div></div>
+          <div style="font-size: 1.8rem; font-weight: 300; color: rgba(255,255,255,0.15); line-height: 1;">:</div>
+          <div style="text-align: center;"><div id="cd-hours" style="font-size: 2rem; font-weight: 800; color: #CCFF00; line-height: 1;">--</div><div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 4px;">HOURS</div></div>
+          <div style="font-size: 1.8rem; font-weight: 300; color: rgba(255,255,255,0.15); line-height: 1;">:</div>
+          <div style="text-align: center;"><div id="cd-min" style="font-size: 2rem; font-weight: 800; color: #CCFF00; line-height: 1;">--</div><div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 4px;">MIN</div></div>
+          <div style="font-size: 1.8rem; font-weight: 300; color: rgba(255,255,255,0.15); line-height: 1;">:</div>
+          <div style="text-align: center;"><div id="cd-sec" style="font-size: 2rem; font-weight: 800; color: #CCFF00; line-height: 1;">--</div><div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 4px;">SEC</div></div>
+        </div>
+      </div>
+
+      <form class="waitlist-form reveal reveal-delay-3" id="hero-waitlist-form">
+        <input type="email" id="hero-email-input" placeholder="Enter your email" autocomplete="email" required>
+        <button type="submit" id="hero-submit-btn">Reserve Your Spot</button>
+      </form>
+
+      <div class="hero-community reveal reveal-delay-4">
+        <a href="https://discord.gg/repmax" class="hero-community-link" target="_blank" rel="noopener noreferrer">
+          <span class="hero-community-kicker">LIVE COMMUNITY</span>
+          <strong>Join the REPMAX Discord before everyone else gets there.</strong>
+          <span class="hero-community-meta">Beta drops first. Live status. Daily check-ins. Feature feedback that actually ships.</span>
+        </a>
+      </div>
+
+      <div class="hero-social-proof reveal reveal-delay-4">
+        <div class="avatar-stack">
+          <div class="avatar avatar-1">MJ</div>
+          <div class="avatar avatar-2">AK</div>
+          <div class="avatar avatar-3">DL</div>
+          <div class="avatar avatar-4">ET</div>
+          <div class="avatar avatar-more">+</div>
+        </div>
+        <span><strong class="waitlist-count" data-stat-key="waitlist" data-count="0" data-suffix="+">0+</strong> lifters on the waitlist</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== MARQUEE ===== -->
+  <div class="marquee-section">
+      <div class="marquee-track">
+        <div class="marquee-item"><span class="sep"></span> Progressive Overload</div>
+        <div class="marquee-item"><span class="sep"></span> AI Programming</div>
+        <div class="marquee-item"><span class="sep"></span> Discord Community</div>
+        <div class="marquee-item"><span class="sep"></span> ULTRA Intelligence</div>
+        <div class="marquee-item"><span class="sep"></span> Lightning Invites ⚡</div>
+        <div class="marquee-item"><span class="sep"></span> Live Chat</div>
+        <div class="marquee-item"><span class="sep"></span> Group Workouts</div>
+      <div class="marquee-item"><span class="sep"></span> Periodization</div>
+      <div class="marquee-item"><span class="sep"></span> Deload Weeks</div>
+      <div class="marquee-item"><span class="sep"></span> Pro Themes</div>
+      <div class="marquee-item"><span class="sep"></span> 3D Avatars</div>
+      <div class="marquee-item"><span class="sep"></span> Auto-Adjust</div>
+      <!-- Duplicate for seamless loop -->
+      <div class="marquee-item"><span class="sep"></span> Progressive Overload</div>
+      <div class="marquee-item"><span class="sep"></span> AI Programming</div>
+      <div class="marquee-item"><span class="sep"></span> Discord Community</div>
+      <div class="marquee-item"><span class="sep"></span> ULTRA Intelligence</div>
+      <div class="marquee-item"><span class="sep"></span> Lightning Invites ⚡</div>
+      <div class="marquee-item"><span class="sep"></span> Live Chat</div>
+      <div class="marquee-item"><span class="sep"></span> Group Workouts</div>
+      <div class="marquee-item"><span class="sep"></span> Periodization</div>
+      <div class="marquee-item"><span class="sep"></span> Deload Weeks</div>
+      <div class="marquee-item"><span class="sep"></span> Pro Themes</div>
+      <div class="marquee-item"><span class="sep"></span> 3D Avatars</div>
+      <div class="marquee-item"><span class="sep"></span> Auto-Adjust</div>
+    </div>
+  </div>
+
+  <!-- ===== FEATURES ===== -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">Features</p>
+        <h2 class="section-title">Not Another Generic<br>Fitness App</h2>
+        <p class="section-subtitle">
+          REPMAX programs like a real strength coach — because the AI was trained on actual programming principles, not random exercise databases.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Spotlight Card -->
+        <div class="feature-card spotlight reveal">
+          <div class="spotlight-content">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <h3>AI That Actually Programs</h3>
+            <p>Not random exercises thrown together. REPMAX understands progressive overload, periodization cycles, deload weeks, and exercise selection that makes biomechanical sense.</p>
+          </div>
+          <div class="spotlight-visual">
+            <div class="program-preview-day">Week 4 — Push Day</div>
+            <div class="program-preview-exercise">
+              <span class="name">Bench Press</span>
+              <span class="sets">4×6 @ 185 lbs</span>
+            </div>
+            <div class="program-preview-exercise">
+              <span class="name">Incline DB Press</span>
+              <span class="sets">3×10 @ 65 lbs</span>
+            </div>
+            <div class="program-preview-exercise">
+              <span class="name">Cable Flyes</span>
+              <span class="sets">3×12 @ 35 lbs</span>
+            </div>
+            <div class="program-preview-exercise">
+              <span class="name">Lateral Raises</span>
+              <span class="sets">4×15 @ 20 lbs</span>
+            </div>
+            <div class="program-preview-exercise">
+              <span class="name">Tricep Pushdowns</span>
+              <span class="sets">3×12 @ 50 lbs</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regular Feature Cards -->
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <h3>Adapts Every Week</h3>
+          <p>Hit all your reps? Weight goes up. Missed reps? It adjusts. Feeling beat up? Auto-deload. It learns from your actual performance.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <h3>Real Training Splits</h3>
+          <p>PPL, Upper/Lower, 5/3/1, Full Body, Bro Split, Arnold Split — pick your style and REPMAX builds the whole mesocycle.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg>
+          </div>
+          <h3>Track Everything</h3>
+          <p>Log sets, reps, RPE, and watch your PRs stack up over time. Every data point feeds back into smarter programming.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>Integrated Chat Hub & Teams</h3>
+          <p>Create groups, send Direct Messages, and drop ⚡ Lightning Invites right in the chat feed to plan sessions instantly.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-3">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <h3>Pro VIP Customization</h3>
+          <p>Unlock custom 3D Avatars and change the entire app's aesthetic globally to your style: Green, Pink, Blue, or Gold.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HOW IT WORKS ===== -->
+  <section class="section" id="how-it-works" style="background: var(--bg-secondary);">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">How it Works</p>
+        <h2 class="section-title">Three Steps.<br>Zero Bullshit.</h2>
+        <p class="section-subtitle">
+          From sign up to your first AI-built program in under 2 minutes.
+        </p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step reveal">
+          <div class="step-number">1</div>
+          <h3>Tell Us About You</h3>
+          <p>Experience level, available days, equipment, goals. Quick form — takes 60 seconds flat.</p>
+        </div>
+
+        <div class="step reveal reveal-delay-2">
+          <div class="step-number">2</div>
+          <h3>AI Builds Your Program</h3>
+          <p>Full periodized mesocycle with proper exercise selection, volume, and intensity — tailored to YOUR level.</p>
+        </div>
+
+        <div class="step reveal reveal-delay-4">
+          <div class="step-number">3</div>
+          <h3>Train, Log, Adapt</h3>
+          <p>Hit the gym. Log your sets. REPMAX adjusts your program week by week based on real performance data.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== STATS ===== -->
+  <section class="section stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-item reveal">
+          <div class="stat-number" data-stat-key="waitlist" data-count="0" data-suffix="+">0</div>
+          <div class="stat-label">On the Waitlist</div>
+        </div>
+        <div class="stat-item reveal reveal-delay-1">
+          <div class="stat-number" data-stat-key="trainingSplits" data-count="9" data-suffix="+">0</div>
+          <div class="stat-label">Training Splits</div>
+        </div>
+        <div class="stat-item reveal reveal-delay-2">
+          <div class="stat-number" data-stat-key="exercises" data-count="48" data-suffix="+">0</div>
+          <div class="stat-label">Exercises in Database</div>
+        </div>
+        <div class="stat-item reveal reveal-delay-3">
+          <div class="stat-number" data-stat-key="aiPersonalized" data-count="100" data-prefix="" data-suffix="%">0</div>
+          <div class="stat-label">AI Personalized</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== COMMUNITY ===== -->
+  <section class="section community-section" id="community">
+    <div class="community-bg">
+      <div class="community-orb community-orb-1"></div>
+      <div class="community-orb community-orb-2"></div>
+    </div>
+
+    <div class="container community-grid">
+      <div class="community-copy reveal">
+        <p class="section-label">Community</p>
+        <h2 class="section-title">Don’t Just Watch The Build.<br>Get Inside It.</h2>
+        <p class="section-subtitle">
+          The REPMAX Discord is where the most locked-in users are already hanging out. Drops land there first, feedback turns into shipped features, and the whole thing feels alive the second you join.
+        </p>
+
+        <div class="community-pills">
+          <span>Early beta access</span>
+          <span>Live build updates</span>
+          <span>AI coach feedback</span>
+          <span>Daily check-ins</span>
+        </div>
+
+        <div class="community-actions">
+          <a href="https://discord.gg/repmax" class="community-cta" target="_blank" rel="noopener noreferrer">Join The Discord</a>
+          <a href="#waitlist" class="community-secondary">Get App Access</a>
+        </div>
+
+        <p class="community-note">If you’re early, you get the best version of the product and the community.</p>
+      </div>
+
+      <div class="community-stack reveal reveal-delay-2">
+        <div class="community-panel community-panel-main">
+          <div class="community-panel-label">LIVE STATUS</div>
+          <div class="community-panel-title">Already moving.</div>
+          <div class="community-live-grid">
+            <div class="community-live-card">
+              <span>Build</span>
+              <strong>Shipping</strong>
+            </div>
+            <div class="community-live-card">
+              <span>Energy</span>
+              <strong>24/7</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="community-panel">
+          <div class="community-panel-label">WHY JOIN</div>
+          <ul class="community-list">
+            <li>See new drops before the crowd</li>
+            <li>Get direct access to the build</li>
+            <li>Meet people actually using REPMAX</li>
+            <li>Help shape what ships next</li>
+          </ul>
+        </div>
+
+        <div class="community-panel community-panel-strip">
+          <span>DISCORD.GG/REPMAX</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TRUSTPILOT REVIEWS ===== -->
+  <section class="section trustpilot-section" id="reviews">
+    <div class="container">
+      <div class="trustpilot-heading reveal">
+        <div class="trustpilot-copy">
+          <p class="section-label trustpilot-label">Trustpilot</p>
+          <h2 class="section-title">Real reviews.<br>No fake hype.</h2>
+          <p class="section-subtitle">
+            Live public Trustpilot feedback, refreshed automatically so the proof on this page stays real.
+          </p>
+        </div>
+
+        <div class="trustpilot-summary-card" id="trustpilot-summary-card">
+          <div class="trustpilot-summary-top">
+            <div class="trustpilot-brand">
+              <span class="trustpilot-brand-dot"></span>
+              Trustpilot
+            </div>
+            <span class="trustpilot-live-pill">Live feed</span>
+          </div>
+
+          <div class="trustpilot-score-row">
+            <div class="trustpilot-score-value" id="trustpilot-score-value">--</div>
+            <div class="trustpilot-score-copy">
+              <div class="trustpilot-score-label" id="trustpilot-score-label">Loading score</div>
+              <div class="trustpilot-review-count" id="trustpilot-review-count">Checking public reviews…</div>
+            </div>
+          </div>
+
+          <div class="trustpilot-stars" id="trustpilot-stars" aria-label="Trustpilot stars">
+            <span class="star is-filled">★</span>
+            <span class="star is-filled">★</span>
+            <span class="star is-filled">★</span>
+            <span class="star">★</span>
+            <span class="star">★</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="trustpilot-carousel reveal reveal-delay-1">
+        <div class="trustpilot-carousel-head">
+          <div class="trustpilot-carousel-copy">
+            <div class="trustpilot-carousel-kicker">Top public reviews</div>
+            <div class="trustpilot-carousel-subtitle">Swipe or use the arrows to move through the review wall.</div>
+          </div>
+
+          <div class="trustpilot-carousel-controls" id="trustpilot-carousel-controls">
+            <button type="button" class="trustpilot-arrow" id="trustpilot-prev" aria-label="Previous reviews">
+              <span>←</span>
+            </button>
+            <button type="button" class="trustpilot-arrow" id="trustpilot-next" aria-label="Next reviews">
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="trustpilot-carousel-viewport">
+          <div class="trustpilot-track" id="trustpilot-reviews-grid">
+            <article class="trustpilot-review-card trustpilot-review-card--placeholder">
+              <div class="trustpilot-review-top">
+                <div class="trustpilot-reviewer-shell">
+                  <div class="trustpilot-avatar-skeleton"></div>
+                  <div>
+                    <div class="trustpilot-line-skeleton short"></div>
+                    <div class="trustpilot-line-skeleton mini"></div>
+                  </div>
+                </div>
+                <div class="trustpilot-stars compact">
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star">★</span>
+                </div>
+              </div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton medium"></div>
+            </article>
+
+            <article class="trustpilot-review-card trustpilot-review-card--placeholder">
+              <div class="trustpilot-review-top">
+                <div class="trustpilot-reviewer-shell">
+                  <div class="trustpilot-avatar-skeleton"></div>
+                  <div>
+                    <div class="trustpilot-line-skeleton short"></div>
+                    <div class="trustpilot-line-skeleton mini"></div>
+                  </div>
+                </div>
+                <div class="trustpilot-stars compact">
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star">★</span>
+                </div>
+              </div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton medium"></div>
+            </article>
+
+            <article class="trustpilot-review-card trustpilot-review-card--placeholder">
+              <div class="trustpilot-review-top">
+                <div class="trustpilot-reviewer-shell">
+                  <div class="trustpilot-avatar-skeleton"></div>
+                  <div>
+                    <div class="trustpilot-line-skeleton short"></div>
+                    <div class="trustpilot-line-skeleton mini"></div>
+                  </div>
+                </div>
+                <div class="trustpilot-stars compact">
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star is-filled">★</span>
+                  <span class="star">★</span>
+                </div>
+              </div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton long"></div>
+              <div class="trustpilot-line-skeleton medium"></div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <div class="trustpilot-footer reveal reveal-delay-2">
+        <a
+          href="https://nl.trustpilot.com/review/rep-max.app"
+          class="trustpilot-btn"
+          id="trustpilot-cta"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          See all reviews on Trustpilot
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PRICING ===== -->
+  <section class="section" id="pricing">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">Pricing</p>
+        <h2 class="section-title">Start Free.<br>Move Into <span class="text-accent">PRO</span>. Unlock <span class="text-ultra">ULTRA</span>.</h2>
+        <p class="section-subtitle">
+          The green core stays strong. PRO sharpens the training system. ULTRA opens the purple intelligence layer for people who want the full REPMAX experience.
+        </p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Free Tier -->
+        <div class="pricing-card reveal">
+          <div class="pricing-tier">Free</div>
+          <div class="pricing-price">
+            <span class="currency">€</span>0
+            <span class="period">/week</span>
+          </div>
+          <p class="pricing-desc">Everything you need to get started and build real training habits.</p>
+
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              AI-generated starter program
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              3 training splits
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Basic workout logging
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Rest timer
+            </div>
+            <div class="pricing-feature disabled">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </span>
+              Weekly AI adaptation
+            </div>
+            <div class="pricing-feature disabled">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </span>
+              Advanced periodization
+            </div>
+          </div>
+
+          <a href="/app" class="pricing-btn pricing-btn-outline" id="pricing-free-btn" style="text-decoration:none;text-align:center;">Get Started Free</a>
+        </div>
+
+        <!-- PRO Tier -->
+        <div class="pricing-card featured reveal reveal-delay-2">
+          <div class="pricing-tier">PRO</div>
+          <div class="pricing-price">
+            <span class="currency">€</span>3
+            <span class="period">/week</span>
+          </div>
+          <p class="pricing-desc">The serious lifter's toolkit. Stronger adaptation, deeper programming, cleaner customization.</p>
+
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Everything in Free
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              All training splits unlocked
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Weekly AI adaptation
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Full periodization cycles
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Train with friends
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              PR tracking & analytics
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Premium themes & custom look
+            </div>
+          </div>
+
+          <a href="/app" class="pricing-btn pricing-btn-primary" id="pricing-pro-btn" style="text-decoration:none;text-align:center;">Go PRO</a>
+        </div>
+
+        <!-- ULTRA Tier -->
+        <div class="pricing-card ultra reveal reveal-delay-3">
+          <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:linear-gradient(135deg,rgba(255,42,133,0.22),rgba(176,38,255,0.18));border:1px solid rgba(255,42,133,0.35);font-size:0.64rem;font-weight:800;letter-spacing:0.12em;color:#ffb7d3;margin-bottom:10px;">★ 15 EXCLUSIVE FEATURES</div>
+          <div class="pricing-tier">ULTRA</div>
+          <div class="pricing-price">
+            <span class="currency">€</span>5
+            <span class="period">/week</span>
+          </div>
+          <p class="pricing-desc">The tier most lifters never see. Behavior-aware intelligence, shared PR walls, challenge rooms, a signature V6 interface, and 15 features built to make you train smarter — and look unmissable doing it.</p>
+
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Everything in PRO
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              ULTRA Lab cockpit — Plateau Doctor, Exercise ROI, Forecasts, Flex
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Communities — City, Gym &amp; Split crews with weekly kings
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Shared PR Wall + live crew reactions
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Challenge Rooms — stake-based duels, visible L&apos;s &amp; crowns
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Elite Streak Board — top 1% per country
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Training DNA Sigil + ULTRA Identity Ring
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              V6 signature skin — exclusive, can&apos;t be bought a la carte
+            </div>
+            <div class="pricing-feature">
+              <span class="check">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Priority AI + unlimited Coach, 3 model personalities
+            </div>
+          </div>
+
+          <a href="#ultra" class="pricing-btn pricing-btn-ultra" id="pricing-ultra-btn" style="text-decoration:none;text-align:center;">See the 15 features →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ULTRA EXPERIENCE — IMMERSIVE SCROLL ===== -->
+
+  <!-- ULTRA INTRO — ENTRY PORTAL -->
+  <section class="section ultra-entry" id="ultra">
+    <div class="ultra-entry-bg">
+      <div class="ultra-entry-orb ultra-entry-orb-1"></div>
+      <div class="ultra-entry-orb ultra-entry-orb-2"></div>
+      <div class="ultra-entry-grid"></div>
+    </div>
+    <div class="container ultra-entry-shell">
+      <p class="section-label ultra-label reveal">ULTRA</p>
+      <h2 class="section-title reveal reveal-delay-1" style="max-width:820px;margin:0 auto 20px;">
+        The intelligence layer<br>that reads <span class="text-ultra">your athlete signal</span>.
+      </h2>
+      <p class="section-subtitle ultra-subtitle reveal reveal-delay-2">
+        ULTRA isn't a badge. It's a deeper model of your training behavior — fatigue, adherence, output windows, import precision, and social timing — visualized in one command center that adapts to how you actually lift.
+      </p>
+      <div class="ultra-entry-stats reveal reveal-delay-3" data-ultra-animate-bars>
+        <div class="ultra-entry-stat">
+          <div class="ultra-entry-stat-top"><span>Readiness Index</span><strong data-ultra-counter="84">/100</strong></div>
+          <div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.84"></span></div>
+        </div>
+        <div class="ultra-entry-stat">
+          <div class="ultra-entry-stat-top"><span>Plan Adherence</span><strong data-ultra-counter="86">%</strong></div>
+          <div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.86"></span></div>
+        </div>
+        <div class="ultra-entry-stat">
+          <div class="ultra-entry-stat-top"><span>Import Confidence</span><strong data-ultra-counter="91">%</strong></div>
+          <div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.91"></span></div>
+        </div>
+        <div class="ultra-entry-stat">
+          <div class="ultra-entry-stat-top"><span>Partner Match</span><strong data-ultra-counter="93">/100</strong></div>
+          <div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.93"></span></div>
+        </div>
+      </div>
+      <div class="ultra-entry-cta reveal reveal-delay-4">
+        <a href="#waitlist" class="ultra-btn ultra-btn-primary">Reserve ULTRA Access</a>
+        <a href="/app" class="ultra-btn ultra-btn-secondary">Open The App</a>
+      </div>
+      <div class="ultra-scroll-hint reveal reveal-delay-4">
+        <span>Scroll to explore</span>
+        <div class="ultra-scroll-arrow"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ULTRA 15 — FEATURE MANIFESTO -->
+  <style>
+    .ultra-fifteen {
+      position: relative;
+      padding: 120px 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(176,38,255,0.08), transparent 55%), #060308;
+      overflow: hidden;
+    }
+    .ultra-fifteen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 10% 30%, rgba(255,42,133,0.12), transparent 30%),
+        radial-gradient(circle at 90% 70%, rgba(0,212,255,0.08), transparent 30%);
+      pointer-events: none;
+    }
+    .ultra-fifteen-head {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 64px;
+      position: relative;
+      z-index: 1;
+    }
+    .ultra-fifteen-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(255,42,133,0.2), rgba(176,38,255,0.18));
+      border: 1px solid rgba(255,42,133,0.35);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      color: #ffb7d3;
+      margin-bottom: 18px;
+    }
+    .ultra-fifteen-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      color: #fff;
+      margin-bottom: 18px;
+    }
+    .ultra-fifteen-title em {
+      font-style: normal;
+      background: linear-gradient(135deg, #ff2a85, #b026ff 60%, #ccff00);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .ultra-fifteen-sub {
+      color: rgba(255,255,255,0.6);
+      font-size: 1.05rem;
+      line-height: 1.55;
+    }
+    .ultra-fifteen-groups {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 44px;
+    }
+    .ultra-fifteen-group-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .ultra-fifteen-group-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ff2a85, #b026ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.03em;
+    }
+    .ultra-fifteen-group-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .ultra-fifteen-group-sub {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+    }
+    .ultra-fifteen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .ultra-fifteen-card {
+      position: relative;
+      padding: 22px;
+      border-radius: 22px;
+      background: linear-gradient(160deg, rgba(18,10,24,0.92), rgba(8,6,14,0.96));
+      border: 1px solid rgba(255,42,133,0.14);
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+      overflow: hidden;
+    }
+    .ultra-fifteen-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 100% 0%, rgba(255,42,133,0.08), transparent 50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .ultra-fifteen-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255,42,133,0.35);
+      box-shadow: 0 20px 60px rgba(176,38,255,0.18);
+    }
+    .ultra-fifteen-card:hover::before { opacity: 1; }
+    .ultra-fifteen-card-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      color: rgba(255,42,133,0.75);
+      margin-bottom: 6px;
+    }
+    .ultra-fifteen-card-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.12rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .ultra-fifteen-card-body {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: rgba(255,255,255,0.64);
+    }
+    .ultra-fifteen-card.pillar-flex { border-color: rgba(255,184,0,0.18); }
+    .ultra-fifteen-card.pillar-flex .ultra-fifteen-card-num { color: rgba(255,184,0,0.8); }
+    .ultra-fifteen-card.pillar-flex:hover { border-color: rgba(255,184,0,0.4); box-shadow: 0 20px 60px rgba(255,184,0,0.15); }
+    .ultra-fifteen-card.pillar-crew { border-color: rgba(0,212,255,0.16); }
+    .ultra-fifteen-card.pillar-crew .ultra-fifteen-card-num { color: rgba(0,212,255,0.75); }
+    .ultra-fifteen-card.pillar-crew:hover { border-color: rgba(0,212,255,0.38); box-shadow: 0 20px 60px rgba(0,212,255,0.15); }
+    @media (max-width: 640px) {
+      .ultra-fifteen { padding: 80px 0; }
+      .ultra-fifteen-group-num { font-size: 1.8rem; }
+      .ultra-fifteen-card { padding: 18px; }
+    }
+  </style>
+  <section class="ultra-fifteen" id="ultra-features">
+    <div class="container" style="position:relative;z-index:1;">
+      <div class="ultra-fifteen-head reveal">
+        <div class="ultra-fifteen-kicker">★ ULTRA · 15 EXCLUSIVE FEATURES</div>
+        <h2 class="ultra-fifteen-title">Fifteen things PRO users <em>will never see.</em></h2>
+        <p class="ultra-fifteen-sub">Five that actually help you train smarter. Five that make you look unmissable. Five that turn your friends into crews, rivals, and leaderboards. This is ULTRA.</p>
+      </div>
+
+      <div class="ultra-fifteen-groups">
+        <!-- PILLAR 1 — PERFORMANCE -->
+        <div class="reveal">
+          <div class="ultra-fifteen-group-head">
+            <div class="ultra-fifteen-group-num">01</div>
+            <div>
+              <div class="ultra-fifteen-group-title">Performance · Train smarter, not just harder</div>
+              <div class="ultra-fifteen-group-sub">Behavior-aware intelligence. No generic analytics.</div>
+            </div>
+          </div>
+          <div class="ultra-fifteen-grid">
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">01 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">Plateau Doctor</div>
+              <div class="ultra-fifteen-card-body">Detects your stalled lift the day it happens. Diagnoses the cause. Prescribes the exact deload, rep scheme, or swap. No more guessing why bench stopped moving.</div>
+            </div>
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">02 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">Exercise ROI Heatmap</div>
+              <div class="ultra-fifteen-card-body">Per-lift PRs ÷ sets logged. Finally see which exercises convert into real gain and which ones are quietly wasting your Wednesdays.</div>
+            </div>
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">03 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">14-Day PR Forecast</div>
+              <div class="ultra-fifteen-card-body">A rolling curve of PR probability across your next two weeks. Tells you "Tuesday is your strongest day this month" before the session starts.</div>
+            </div>
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">04 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">Live PR Probability</div>
+              <div class="ultra-fifteen-card-body">A bar on every working set: "72% chance this becomes a PR." Warmups stop being boring when the model is watching.</div>
+            </div>
+            <div class="ultra-fifteen-card">
+              <div class="ultra-fifteen-card-num">05 · PERFORMANCE</div>
+              <div class="ultra-fifteen-card-name">Auto-Deload Oracle</div>
+              <div class="ultra-fifteen-card-body">Predicts your optimal deload week ten days out. Auto-scales volume so your next mesocycle lands at peak readiness.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PILLAR 2 — FLEX -->
+        <div class="reveal">
+          <div class="ultra-fifteen-group-head">
+            <div class="ultra-fifteen-group-num" style="background:linear-gradient(135deg,#ffb800,#ff5e00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">02</div>
+            <div>
+              <div class="ultra-fifteen-group-title">Flex · Visibility built for the strong</div>
+              <div class="ultra-fifteen-group-sub">Status, rarity, and identity — visible across the app.</div>
+            </div>
+          </div>
+          <div class="ultra-fifteen-grid">
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">06 · FLEX</div>
+              <div class="ultra-fifteen-card-name">Signature Lift Card</div>
+              <div class="ultra-fifteen-card-body">A shareable, animated card showcasing your top lift. Tier coloring from Silver to Diamond to ULTRA based on real population percentile.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">07 · FLEX</div>
+              <div class="ultra-fifteen-card-name">Training DNA Sigil</div>
+              <div class="ultra-fifteen-card-body">A procedurally generated emblem unique to your exact lifting history. Evolves as you grow. Appears beside your username everywhere.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">08 · FLEX</div>
+              <div class="ultra-fifteen-card-name">Leaderboard Aura</div>
+              <div class="ultra-fifteen-card-body">ULTRA members get an animated name gradient, particle trail, and aurora glow on PR walls, chat, and crew boards. People notice.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">09 · FLEX</div>
+              <div class="ultra-fifteen-card-name">ULTRA Identity Ring</div>
+              <div class="ultra-fifteen-card-body">A gemstone ring around your avatar that tiers up with every month of active ULTRA. Visible on every screen. Can&apos;t be faked.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-flex">
+              <div class="ultra-fifteen-card-num">10 · FLEX</div>
+              <div class="ultra-fifteen-card-name">Progression Reel</div>
+              <div class="ultra-fifteen-card-body">Auto-stitches your monthly progress photos into a cinematic vertical video. Blur-safe. One tap to share as a clip.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PILLAR 3 — CREWS -->
+        <div class="reveal">
+          <div class="ultra-fifteen-group-head">
+            <div class="ultra-fifteen-group-num" style="background:linear-gradient(135deg,#00d4ff,#b026ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">03</div>
+            <div>
+              <div class="ultra-fifteen-group-title">Crews · Social that rewards consistency</div>
+              <div class="ultra-fifteen-group-sub">Not a generic feed. A leaderboard you actually care about.</div>
+            </div>
+          </div>
+          <div class="ultra-fifteen-grid">
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">11 · CREW</div>
+              <div class="ultra-fifteen-card-name">City Crew</div>
+              <div class="ultra-fifteen-card-body">Auto-joined when you tag your city. Weekly "King of [City]" crown rotates. Want to flex on your whole town? Lift harder this week.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">12 · CREW</div>
+              <div class="ultra-fifteen-card-name">Gym Crew</div>
+              <div class="ultra-fifteen-card-body">Tag your gym, get instant crew with everyone who lifts there. Private PR wall scoped to the building. Silent-flex: top lifter in the room.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">13 · CREW</div>
+              <div class="ultra-fifteen-card-name">Split Crews + Challenge Rooms</div>
+              <div class="ultra-fifteen-card-body">Auto-matched by PPL, Arnold, Upper/Lower. Weekly volume races. Stake-based duels where the loser wears an "L" badge for seven days.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">14 · CREW</div>
+              <div class="ultra-fifteen-card-name">Shared PR Wall + Reactions</div>
+              <div class="ultra-fifteen-card-body">Every PR you log lights up on the crew wall instantly. Live reactions. Your gym sees it before you&apos;ve even racked the bar.</div>
+            </div>
+            <div class="ultra-fifteen-card pillar-crew">
+              <div class="ultra-fifteen-card-num">15 · CREW</div>
+              <div class="ultra-fifteen-card-name">Elite Streak Board</div>
+              <div class="ultra-fifteen-card-body">Top 1% streaks per country. High risk, high flex. Breaking your streak paints a visible mark on your profile for a week.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:64px;position:relative;z-index:1;" class="reveal">
+        <a href="#waitlist" class="ultra-btn ultra-btn-primary" style="font-size:1.05rem;padding:0 32px;min-height:58px;">Reserve ULTRA · €5/week</a>
+        <div style="margin-top:14px;font-size:0.78rem;color:rgba(255,255,255,0.4);">Invite-only · Access approved manually · No Stripe, no fake urgency</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ULTRA SCENE 1 — READINESS -->
+  <section class="ultra-scene" data-ultra-scene="0">
+    <div class="ultra-scene-bg">
+      <div class="ultra-scene-orb" style="top:15%;left:-8%;width:380px;height:380px;"></div>
+    </div>
+    <div class="container ultra-scene-grid">
+      <div class="ultra-scene-copy" data-drift="left">
+        <div class="ultra-scene-badge">01 · Readiness Intelligence</div>
+        <h3>Read the body <em>before</em> it writes the session.</h3>
+        <p>ULTRA blends recovery timing, streak pressure, output windows, and recent load into one decision: push, maintain, or pull back. It reads patterns before performance drops.</p>
+        <ul class="ultra-scene-list">
+          <li>Flags fatigue before reps collapse</li>
+          <li>Weights your real training window</li>
+          <li>Turns scattered recovery data into one clean read</li>
+        </ul>
+      </div>
+      <div class="ultra-scene-panel" data-drift="right">
+        <div class="ultra-dash-card">
+          <div class="ultra-dash-label">READINESS INDEX</div>
+          <div class="ultra-dash-big">84<span>/100</span></div>
+          <p>High upper-body readiness. Recovery pressure elevated but inside productive range.</p>
+        </div>
+        <div class="ultra-dash-meters">
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Recovery Capacity</span><strong>84%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.84"></span></div></div>
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Training Window Fit</span><strong>91%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.91"></span></div></div>
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Fatigue Headroom</span><strong>62%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.62"></span></div></div>
+        </div>
+        <div class="ultra-dash-chips">
+          <div class="ultra-dash-chip"><span>Peak Window</span><strong>19:00–21:00</strong></div>
+          <div class="ultra-dash-chip"><span>Recovery Pressure</span><strong>Moderate</strong></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ULTRA SCENE 2 — ADHERENCE -->
+  <section class="ultra-scene" data-ultra-scene="1">
+    <div class="ultra-scene-bg">
+      <div class="ultra-scene-orb" style="bottom:10%;right:-10%;width:440px;height:440px;"></div>
+    </div>
+    <div class="container ultra-scene-grid ultra-scene-grid-reverse">
+      <div class="ultra-scene-panel" data-drift="left">
+        <div class="ultra-dash-card">
+          <div class="ultra-dash-label">PLAN ADHERENCE</div>
+          <div class="ultra-dash-big">86<span>%</span></div>
+          <p>Execution is strong. Upper sessions landing hard. Lower-body volume dipped slightly last week.</p>
+        </div>
+        <div class="ultra-dash-meters">
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Volume Momentum</span><strong>74%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.74"></span></div></div>
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Split Balance</span><strong>63%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.63"></span></div></div>
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Streak Durability</span><strong>88%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.88"></span></div></div>
+        </div>
+        <div class="ultra-dash-chips">
+          <div class="ultra-dash-chip"><span>Recent Shift</span><strong>+14%</strong></div>
+          <div class="ultra-dash-chip"><span>Missed Sessions</span><strong>1 in 10 days</strong></div>
+        </div>
+      </div>
+      <div class="ultra-scene-copy" data-drift="right">
+        <div class="ultra-scene-badge">02 · Adaptive Pattern Recognition</div>
+        <h3>Track behavior, not just completed sets.</h3>
+        <p>ULTRA keeps score on whether the plan is actually landing: adherence against your weekly split, momentum across muscle groups, and whether consistency justifies the next jump.</p>
+        <ul class="ultra-scene-list">
+          <li>Measures volume momentum over recent weeks</li>
+          <li>Tracks adherence against the actual plan target</li>
+          <li>Separates real streak strength from fake optimism</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ULTRA SCENE 3 — IMPORT STUDIO -->
+  <section class="ultra-scene" data-ultra-scene="2">
+    <div class="ultra-scene-bg">
+      <div class="ultra-scene-orb" style="top:30%;left:-12%;width:360px;height:360px;"></div>
+    </div>
+    <div class="container ultra-scene-grid">
+      <div class="ultra-scene-copy" data-drift="left">
+        <div class="ultra-scene-badge">03 · Import Studio</div>
+        <h3>Import routines like a system, not a screenshot dump.</h3>
+        <p>ULTRA Import Studio maps days, checks exercise meaning, spots ambiguous entries, and tells you where the imported structure is clean versus where it needs a human correction.</p>
+        <ul class="ultra-scene-list">
+          <li>Recognizes day naming and rest-day logic</li>
+          <li>Shows exercise-matching confidence</li>
+          <li>Keeps the imported routine structured before activation</li>
+        </ul>
+      </div>
+      <div class="ultra-scene-panel" data-drift="right">
+        <div class="ultra-dash-card">
+          <div class="ultra-dash-label">IMPORT CONFIDENCE</div>
+          <div class="ultra-dash-big">91<span>%</span></div>
+          <p>The structure parsed cleanly. Two exercise lines need a manual check before activation.</p>
+        </div>
+        <div class="ultra-dash-meters">
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Day Mapping</span><strong>100%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="1"></span></div></div>
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Exercise Match</span><strong>89%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.89"></span></div></div>
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Scheme Confidence</span><strong>76%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.76"></span></div></div>
+        </div>
+        <div class="ultra-dash-chips">
+          <div class="ultra-dash-chip"><span>Mapped Cleanly</span><strong>18 exercises</strong></div>
+          <div class="ultra-dash-chip"><span>Needs Review</span><strong>2 edits</strong></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ULTRA SCENE 4 — SOCIAL + FORECAST -->
+  <section class="ultra-scene" data-ultra-scene="3">
+    <div class="ultra-scene-bg">
+      <div class="ultra-scene-orb" style="bottom:15%;right:-8%;width:400px;height:400px;"></div>
+    </div>
+    <div class="container ultra-scene-grid ultra-scene-grid-reverse">
+      <div class="ultra-scene-panel" data-drift="left">
+        <div class="ultra-dash-card">
+          <div class="ultra-dash-label">PARTNER MATCH SCORE</div>
+          <div class="ultra-dash-big">93<span>/100</span></div>
+          <p>Two strong matches line up with the athlete's best window this week.</p>
+        </div>
+        <div class="ultra-dash-meters">
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Schedule Overlap</span><strong>88%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.88"></span></div></div>
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Intensity Fit</span><strong>82%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.82"></span></div></div>
+          <div class="ultra-dash-meter"><div class="ultra-dash-meter-head"><span>Next-Session PR Chance</span><strong>71%</strong></div><div class="ultra-entry-bar"><span class="ultra-entry-fill" data-fill="0.71"></span></div></div>
+        </div>
+        <div class="ultra-dash-chips">
+          <div class="ultra-dash-chip"><span>Best Match</span><strong>Thursday Night</strong></div>
+          <div class="ultra-dash-chip"><span>Forecast</span><strong>Push for a PR</strong></div>
+        </div>
+      </div>
+      <div class="ultra-scene-copy" data-drift="right">
+        <div class="ultra-scene-badge">04 · Social Edge + Forecasting</div>
+        <h3>Make the social layer actually useful.</h3>
+        <p>ULTRA surfaces who matches your energy, who needs a nudge, and when your next breakthrough is most likely. Social that helps adherence instead of just making noise.</p>
+        <ul class="ultra-scene-list">
+          <li>Surfaces compatible training partners</li>
+          <li>Prioritizes session timing and accountability fit</li>
+          <li>Forecasts the next PR-level session opportunity</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ULTRA FINAL CTA -->
+  <section class="ultra-scene ultra-final">
+    <div class="ultra-scene-bg">
+      <div class="ultra-scene-orb" style="top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;opacity:0.28;"></div>
+    </div>
+    <div class="container" style="position:relative;z-index:1;text-align:center;">
+      <p class="section-label ultra-label reveal">Ready?</p>
+      <h2 class="section-title reveal reveal-delay-1" style="max-width:700px;margin:0 auto 20px;">
+        Stop guessing.<br>Start reading <span class="text-ultra">the signal</span>.
+      </h2>
+      <p class="section-subtitle ultra-subtitle reveal reveal-delay-2" style="margin:0 auto 32px;">
+        ULTRA is for lifters who want more than a log. It's the intelligence layer that turns your training data into real decisions.
+      </p>
+      <div class="ultra-entry-cta reveal reveal-delay-3">
+        <a href="#waitlist" class="ultra-btn ultra-btn-primary" style="font-size:1.05rem;padding:0 32px;min-height:58px;">Reserve ULTRA Access</a>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== FINAL CTA ===== -->
+  <section class="section cta-section" id="waitlist">
+    <div class="cta-glow"></div>
+    <div class="container cta-content">
+      <p class="section-label reveal">Stop Guessing</p>
+      <h2 class="cta-title reveal reveal-delay-1">
+        Ready to Train<br><span class="text-accent">Smarter?</span>
+      </h2>
+      <p class="cta-subtitle reveal reveal-delay-2">
+        Join the waitlist. Be first to access AI programming that adapts to you — not the other way around.
+      </p>
+
+      <form class="waitlist-form reveal reveal-delay-3" id="cta-waitlist-form" style="max-width: 500px;">
+        <input type="email" id="cta-email-input" placeholder="Enter your email" autocomplete="email" required>
+        <button type="submit" id="cta-submit-btn">I'm In</button>
+      </form>
+
+      <p class="text-secondary reveal reveal-delay-4" style="font-size: 0.8rem; margin-top: 16px;">
+        Free to join. No spam. Unsubscribe anytime.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <div class="nav-logo">REPMAX<span class="dot"></span></div>
+          <p>AI-powered workout programming for lifters who are serious about getting stronger. Built by gym rats, for gym rats.</p>
+        </div>
+
+        <div class="footer-links-group">
+          <div class="footer-col">
+            <h4>Product</h4>
+            <a href="#features">Features</a>
+            <a href="#community">Community</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#waitlist">Join Waitlist</a>
+          </div>
+          <div class="footer-col">
+            <h4>Company</h4>
+            <a href="https://discord.gg/repmax" target="_blank" rel="noopener noreferrer">Discord</a>
+            <a href="/about">About</a>
+            <a href="/blog">Blog</a>
+            <a href="/careers">Careers</a>
+            <a href="/contact">Contact</a>
+          </div>
+          <div class="footer-col">
+            <h4>Legal</h4>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/cookies">Cookie Policy</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>&copy; 2026 REPMAX. All rights reserved.</span>
+      </div>
+    </div>
+  </footer>
+
+  <a href="https://discord.gg/repmax" class="discord-float-cta" target="_blank" rel="noopener noreferrer">
+    <span class="discord-float-kicker">LIVE DISCORD</span>
+    <strong>JOIN THE CREW</strong>
+  </a>
+
+  <script src="script.js"></script>
+  <script>
+    // May 7th, 2026 Countdown
+    (function() {
+      const target = new Date('2026-05-07T00:00:00Z').getTime();
+      function update() {
+        const now = Date.now();
+        const diff = Math.max(0, target - now);
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        const el = (id) => document.getElementById(id);
+        if (el('cd-days')) el('cd-days').textContent = String(d).padStart(2, '0');
+        if (el('cd-hours')) el('cd-hours').textContent = String(h).padStart(2, '0');
+        if (el('cd-min')) el('cd-min').textContent = String(m).padStart(2, '0');
+        if (el('cd-sec')) el('cd-sec').textContent = String(s).padStart(2, '0');
+        if (diff <= 0 && el('countdown-section')) {
+          el('countdown-section').innerHTML = '<div style="font-size:1.4rem;font-weight:800;color:#CCFF00;">🎉 REPMAX IS LIVE!</div>';
+        }
+      }
+      update();
+      setInterval(update, 1000);
+    })();
+  </script>
+</body>
+</html>

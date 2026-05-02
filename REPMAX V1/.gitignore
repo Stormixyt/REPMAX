@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+app/dist/
+.vercel/
+
+# Environment
+.env
+.env.local
+.env.production
+.env.development
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+*.tgz
+.eslintcache
+
+# Supabase secrets & deploy guide (contain API keys — never commit)
+supabase/DEPLOY_FUNCTIONS.md
+supabase/.env
+.supabase/
+
+# Supabase CLI binary (downloaded manually, not part of source)
+supabase.exe
+supabase-cli/
+supabase-cli.tar.gz
+
+# Windows artifacts
+nul
+
+# Internal launch docs (never commit)
+.internal/

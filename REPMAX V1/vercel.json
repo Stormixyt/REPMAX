@@ -1,0 +1,60 @@
+{
+  "buildCommand": "cd app && npm install && npm run build",
+  "outputDirectory": "app/dist",
+  "rewrites": [
+    { "source": "/", "destination": "/info.html" },
+    { "source": "/info", "destination": "/info.html" },
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/blog", "destination": "/blog.html" },
+    { "source": "/careers", "destination": "/careers.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/cookies", "destination": "/cookies.html" },
+    { "source": "/guides/progressive-overload", "destination": "/guides/progressive-overload.html" },
+    { "source": "/guides/ppl-workout-split", "destination": "/guides/ppl-workout-split.html" },
+    { "source": "/guides/best-ai-workout-apps", "destination": "/guides/best-ai-workout-apps.html" },
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/auth", "destination": "/app.html" },
+    { "source": "/onboarding", "destination": "/app.html" },
+    { "source": "/social", "destination": "/app.html" },
+    { "source": "/nutrition", "destination": "/app.html" },
+    { "source": "/profile", "destination": "/app.html" },
+    { "source": "/settings", "destination": "/app.html" },
+    { "source": "/subscribe", "destination": "/app.html" },
+    { "source": "/notifications", "destination": "/app.html" },
+    { "source": "/coach", "destination": "/app.html" },
+    { "source": "/progress", "destination": "/app.html" },
+    { "source": "/workout/:path*", "destination": "/app.html" },
+    { "source": "/chat/:path*", "destination": "/app.html" },
+    { "source": "/app/:path*", "destination": "/app.html" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/guides/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, s-maxage=604800" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
+      "source": "/(.*\\.(?:css|js|png|jpg|svg|webp|woff2))",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ]
+}

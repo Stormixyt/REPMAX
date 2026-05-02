@@ -1,0 +1,17 @@
+name: Engagement Pushes
+
+on:
+  schedule:
+    - cron: '0 7,10,13,16,19 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-engagement-pushes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scheduled REPMAX reminder batch
+        run: |
+          curl --fail-with-body --request POST \
+            --url "https://hqwnyzmipumhhqmvdzus.supabase.co/functions/v1/send-push" \
+            --header "Content-Type: application/json" \
+            --data '{"engagement":{"source":"github-actions","batch":"daily-reminders"}}'

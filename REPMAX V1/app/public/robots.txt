@@ -1,0 +1,27 @@
+# REPMAX — AI-Powered Training Platform
+# https://www.rep-max.app
+
+User-agent: *
+Allow: /
+Allow: /guides/
+Allow: /sitemap.xml
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /social
+Disallow: /nutrition
+Disallow: /profile
+Disallow: /settings
+Disallow: /workout/
+Disallow: /chat/
+Disallow: /coach
+Disallow: /notifications
+Disallow: /subscribe
+
+# Allow AI crawlers for GEO (Generative Engine Optimization)
+User-agent: GPTBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://www.rep-max.app/sitemap.xml

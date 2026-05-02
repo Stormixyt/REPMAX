@@ -1,0 +1,75 @@
+ALTER TABLE IF EXISTS messages ENABLE ROW LEVEL SECURITY;
+
+-- Fix Message Updates (for Gym Invites)
+DROP POLICY IF EXISTS "Users can update messages in their chats (for invites)" ON messages;
+CREATE POLICY "Users can update messages in their chats (for invites)"
+  ON messages FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM chat_members 
+      WHERE chat_members.chat_id = messages.chat_id 
+      AND chat_members.user_id = auth.uid()
+    )
+  );
+
+-- Fix Message Deletions
+DROP POLICY IF EXISTS "Users can delete their own messages" ON messages;
+CREATE POLICY "Users can delete their own messages"
+  ON messages FOR DELETE
+  USING (auth.uid() = sender_id);
+
+-- Storage bucket for avatars and custom images
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload their own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own avatars" ON storage.objects;
+
+CREATE POLICY "Avatar images are publicly accessible"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'avatars');
+
+CREATE POLICY "Users can upload their own avatars"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can update their own avatars"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can delete their own avatars"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- We also need to add 'image_url' and 'push_subscription' to profiles
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_config jsonb;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_seed text;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS language text;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_subscription jsonb;
+
+-- Database Webhook for Push Notifications
+CREATE OR REPLACE FUNCTION notify_send_push()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM net.http_post(
+    'https://hqwnyzmipumhhqmvdzus.supabase.co/functions/v1/send-push',
+    jsonb_build_object('record', row_to_json(NEW)),
+    null,
+    jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI',
+      'apikey', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd255em1pcHVtaGhxbXZkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzkxMjAsImV4cCI6MjA5MDQ1NTEyMH0.s6XMRJUli5vzyeGs8yBv5nQ7MGXhFJSLZDn_NdrFGKI'
+    )
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_send_push ON messages;
+CREATE TRIGGER trigger_send_push
+AFTER INSERT ON messages
+FOR EACH ROW EXECUTE FUNCTION notify_send_push();

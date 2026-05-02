@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v \"return\\\\|^//\")",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(node .claude/skills/impeccable/scripts/cleanup-deprecated.mjs)",
+      "Bash(curl -s -L \"https://mescubook.com/\" -o /tmp/mescubook.html)",
+      "Bash(curl -s -L \"https://mescubook.com/css/main.css\" -o /tmp/mescubook-main.css)",
+      "Bash(curl -s -L \"https://mescubook.com/css/variables.css\" -o /tmp/mescubook-variables.css)",
+      "Bash(curl -s -L \"https://mescubook.com/css/base.css\" -o /tmp/mescubook-base.css)",
+      "Bash(curl -s -L \"https://mescubook.com/css/animations.css\" -o /tmp/mescubook-animations.css)",
+      "Bash(curl -s -L \"https://mescubook.com/css/nav.css\" -o /tmp/mescubook-nav.css)",
+      "Bash(curl -s -L \"https://mescubook.com/css/home.css\" -o /tmp/mescubook-home.css)",
+      "Bash(npm create *)",
+      "Bash(npx vite *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5174)",
+      "Bash(npx cap *)",
+      "Bash(where gh *)",
+      "Bash(find \"/c/Users/Stormix/Downloads/GET RICH/app/src\" -type f \\\\\\( -name \"*.jsx\" -o -name \"*.js\" -o -name \"*.css\" \\\\\\) -exec wc -l {} +)",
+      "Bash(npx create-expo-app@latest rn-app --template blank)",
+      "Bash(cp \"c:/Users/Stormix/Downloads/GET RICH/app/public/icon-512.png\" \"c:/Users/Stormix/Downloads/GET RICH/rn-app/assets/icon.png\")",
+      "Bash(cp \"c:/Users/Stormix/Downloads/GET RICH/app/public/icon-512.png\" \"c:/Users/Stormix/Downloads/GET RICH/rn-app/assets/splash-icon.png\")",
+      "Bash(cp \"c:/Users/Stormix/Downloads/GET RICH/app/public/icon-512.png\" \"c:/Users/Stormix/Downloads/GET RICH/rn-app/assets/adaptive-icon.png\")",
+      "Bash(npx expo *)",
+      "Bash(find \"c:/Users/Stormix/Downloads/GET RICH/rn-app/src/screens\" -name \"*.js\" -exec wc -l {} \\\\;)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(rm -f .git/index)",
+      "Bash(git reset *)",
+      "Bash(git push *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('expo:', p.dependencies.expo\\); console.log\\('react-native:', p.dependencies['react-native']\\); console.log\\('react:', p.dependencies.react\\)\")",
+      "Bash(npx expo-doctor *)"
+    ]
+  }
+}

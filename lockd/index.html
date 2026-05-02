@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lockd. — Lock TF In.</title>
+  <meta name="description" content="The accountability app your excuses can't survive. Snap a pic. Prove yourself. Your squad is watching." />
+  <meta name="theme-color" content="#070707" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:         #070707;
+      --bg-2:       #0d0d0d;
+      --bg-card:    #111111;
+      --bg-elevated:#1a1a1a;
+      --text:       #ffffff;
+      --text-2:     #a0a0a0;
+      --text-3:     #606060;
+      --text-4:     #383838;
+      --accent:     #ffffff;
+      --accent-dim: #c0c0c0;
+      --accent-glow: rgba(255, 255, 255, 0.08);
+      --border:     rgba(255,255,255,0.06);
+      --border-h:   rgba(255,255,255,0.12);
+      --ease:       cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring:cubic-bezier(0.34, 1.56, 0.64, 1);
+      --font-display: 'Space Grotesk', system-ui, sans-serif;
+      --font-body:    'Inter', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 48px); }
+    a { color: inherit; text-decoration: none; }
+
+    .section-label {
+      font-family: var(--font-display);
+      font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.14em; color: var(--text-3);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4.5vw, 3.2rem);
+      font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+    }
+    .section-subtitle {
+      color: var(--text-2); font-size: 0.95rem;
+      max-width: 520px; margin-top: 16px; line-height: 1.7;
+    }
+    .text-dim { color: var(--text-3); }
+
+    /* ═══ NAV ═══ */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 clamp(20px, 5vw, 48px);
+      height: 64px;
+      display: flex; align-items: center;
+      background: rgba(7,7,7,0.7);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto; width: 100%;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .nav-logo {
+      font-family: var(--font-display); font-weight: 700; font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+    .nav-logo .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text); margin-left: 1px; vertical-align: middle; position: relative; top: -2px; }
+    .nav-links { display: flex; align-items: center; gap: 28px; }
+    .nav-links a {
+      font-size: 0.82rem; font-weight: 500; color: var(--text-2);
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      padding: 8px 20px !important;
+      background: var(--text) !important;
+      color: var(--bg) !important;
+      border-radius: 8px;
+      font-weight: 600 !important;
+      transition: opacity .2s, transform .2s !important;
+    }
+    .nav-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    @media (max-width: 768px) {
+      .nav-links a:not(.nav-cta) { display: none; }
+    }
+
+    /* ═══ BTN ═══ */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 32px; font-size: 0.88rem; font-weight: 600;
+      border: none; cursor: pointer; border-radius: 12px;
+      font-family: var(--font-body);
+      transition: all 0.3s var(--ease);
+    }
+    .btn-primary { background: var(--text); color: var(--bg); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--accent-glow); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { border-color: var(--border-h); transform: translateY(-2px); }
+    .btn-ghost { background: transparent; color: var(--text-2); padding: 14px 20px; }
+    .btn-ghost:hover { color: var(--text); }
+
+    /* ═══ HERO ═══ */
+    .hero {
+      min-height: 100vh; min-height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 120px 0 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute; inset: 0; pointer-events: none;
+    }
+    .hero-gradient-1 {
+      position: absolute;
+      top: -20%; right: -10%;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%);
+      filter: blur(80px);
+      animation: float 8s ease-in-out infinite alternate;
+    }
+    .hero-gradient-2 {
+      position: absolute;
+      bottom: -10%; left: -5%;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 70%);
+      filter: blur(80px);
+      animation: float 8s ease-in-out 2s infinite alternate-reverse;
+    }
+    .hero-grid-bg {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, black 0%, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, black 0%, transparent 70%);
+    }
+    @keyframes float {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(30px, -20px) scale(1.1); }
+    }
+
+    .hero-content { position: relative; z-index: 2; max-width: 720px; }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 6px 16px 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.75rem; font-weight: 500; color: var(--text-2);
+      margin-bottom: 32px;
+    }
+    .hero-badge .pulse {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--text);
+      box-shadow: 0 0 12px rgba(255,255,255,0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(3.5rem, 9vw, 7rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 0.95;
+      margin-bottom: 24px;
+    }
+    .hero-title .line { display: block; }
+    .hero-title .highlight {
+      background: linear-gradient(135deg, var(--text) 0%, var(--text-2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-title .small {
+      font-size: 0.45em;
+      letter-spacing: 0.02em;
+      color: var(--text-3);
+      display: block;
+      margin-top: 8px;
+      -webkit-text-fill-color: var(--text-3);
+    }
+
+    .hero-subtitle {
+      font-size: clamp(0.95rem, 1.8vw, 1.1rem);
+      color: var(--text-2);
+      max-width: 480px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .waitlist-form {
+      display: flex; gap: 8px;
+      max-width: 420px; margin: 0 auto;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .waitlist-form input {
+      flex: 1; min-width: 200px;
+      padding: 14px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .waitlist-form input::placeholder { color: var(--text-4); }
+    .waitlist-form input:focus {
+      border-color: var(--border-h);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .waitlist-form button {
+      padding: 14px 28px;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      border-radius: 12px;
+      font-family: var(--font-body);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .waitlist-form button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px var(--accent-glow);
+    }
+
+    .hero-social-proof {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      margin-top: 24px;
+      font-size: 0.82rem; color: var(--text-2);
+    }
+    .avatar-stack { display: flex; }
+    .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.55rem; font-weight: 700;
+      border: 2px solid var(--bg);
+      margin-left: -6px;
+    }
+    .avatar:first-child { margin-left: 0; }
+    .avatar-1 { background: #3b82f6; color: #fff; }
+    .avatar-2 { background: #8b5cf6; color: #fff; }
+    .avatar-3 { background: #ec4899; color: #fff; }
+    .avatar-4 { background: #f59e0b; color: #fff; }
+    .avatar-more { background: var(--bg-elevated); color: var(--text-2); }
+
+    /* hero stagger */
+    .hero .reveal { opacity: 0; transform: translateY(24px); }
+    .hero .reveal.v { opacity: 1; transform: translateY(0); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+    .reveal-delay-1 { transition-delay: 0.1s !important; }
+    .reveal-delay-2 { transition-delay: 0.2s !important; }
+    .reveal-delay-3 { transition-delay: 0.3s !important; }
+    .reveal-delay-4 { transition-delay: 0.4s !important; }
+
+    /* ═══ MARQUEE ═══ */
+    .marquee-section {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .marquee-track {
+      display: flex; gap: 0; width: max-content;
+      animation: marquee 25s linear infinite;
+    }
+    .marquee-item {
+      display: flex; align-items: center; gap: 0;
+      font-family: var(--font-display);
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      white-space: nowrap; color: var(--text-3);
+      padding: 0 12px;
+    }
+    .marquee-item .sep {
+      display: inline-block; width: 4px; height: 4px;
+      border-radius: 50%; background: var(--text-4);
+      margin-right: 12px; flex-shrink: 0;
+    }
+    @keyframes marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+    /* ═══ SECTIONS ═══ */
+    .section { padding: clamp(80px, 10vw, 140px) 0; }
+    hr.sep { border: none; border-top: 1px solid var(--border); }
+
+    .features-header { margin-bottom: clamp(40px, 6vw, 64px); }
+
+    /* ═══ FEATURE CARDS ═══ */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: clamp(24px, 3vw, 36px);
+      transition: border-color 0.4s var(--ease), transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card:hover {
+      border-color: var(--border-h);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+    }
+    .feature-card::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    .feature-card:hover::after { opacity: 1; }
+
+    .feature-card.spotlight {
+      grid-column: span 2;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .feature-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: var(--accent-glow);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+    .feature-icon svg {
+      width: 18px; height: 18px;
+      stroke: var(--text);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .feature-card h3 {
+      font-family: var(--font-display);
+      font-weight: 600; font-size: 1.05rem;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+    .feature-card p {
+      color: var(--text-2); font-size: 0.86rem; line-height: 1.65;
+    }
+
+    /* spotlight visual: phone notification mockup */
+    .phone-mockup {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      max-width: 280px;
+    }
+    .phone-notif {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+    }
+    .phone-notif:last-child { margin-bottom: 0; }
+    .phone-notif-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 4px;
+    }
+    .phone-notif-app {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 0.72rem; letter-spacing: -0.01em;
+    }
+    .phone-notif-time { font-size: 0.62rem; color: var(--text-3); }
+    .phone-notif-body { font-size: 0.78rem; color: var(--text-2); line-height: 1.4; }
+    .phone-notif-body strong { color: var(--text); font-weight: 600; }
+
+    @media (max-width: 900px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .feature-card.spotlight { grid-column: span 1; grid-template-columns: 1fr; }
+    }
+
+    /* ═══ STATS ═══ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .stat-item {
+      background: var(--bg);
+      padding: clamp(24px, 3vw, 40px);
+      text-align: center;
+    }
+    .stat-number {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-label {
+      font-size: 0.75rem; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    @media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+
+    /* ═══ STEPS ═══ */
+    .steps-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1px; background: var(--border);
+      border: 1px solid var(--border); border-radius: 16px;
+      overflow: hidden;
+    }
+    .step { background: var(--bg-2); padding: clamp(28px,3.5vw,44px); }
+    .step-number {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 2.5rem; color: var(--text-4);
+      margin-bottom: 16px; line-height: 1;
+    }
+    .step h3 {
+      font-family: var(--font-display); font-weight: 600;
+      font-size: 1rem; margin-bottom: 8px; letter-spacing: -.01em;
+    }
+    .step p { color: var(--text-2); font-size: .86rem; line-height: 1.65; max-width: 26ch; }
+    @media (max-width: 768px) { .steps-grid { grid-template-columns: 1fr; } }
+
+    /* ═══ PRICING ═══ */
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(2,1fr);
+      gap: 12px;
+    }
+    .pricing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: clamp(28px,3.5vw,44px);
+      display: flex; flex-direction: column;
+      position: relative;
+      transition: border-color .3s, transform .3s;
+    }
+    .pricing-card:hover { border-color: var(--border-h); transform: translateY(-2px); }
+    .pricing-card.featured { background: var(--bg-elevated); border-color: var(--border-h); }
+    .pricing-card.featured::before {
+      content: 'MOST PICK THIS';
+      position: absolute; top: -1px; left: 32px;
+      padding: 5px 14px; background: var(--text); color: var(--bg);
+      font-size: .58rem; font-weight: 700; letter-spacing: .1em;
+      border-radius: 0 0 8px 8px;
+    }
+    .pricing-tier {
+      font-family: var(--font-display);
+      font-size: .72rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .12em; color: var(--text-3); margin-bottom: 12px;
+    }
+    .pricing-price {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 2.8rem; letter-spacing: -.04em; line-height: 1;
+      margin-bottom: 4px;
+    }
+    .pricing-price .currency { font-size: 1.4rem; vertical-align: top; margin-right: 2px; }
+    .pricing-price .period { font-size: .82rem; font-weight: 400; color: var(--text-3); letter-spacing: 0; }
+    .pricing-desc { color: var(--text-2); font-size: .86rem; margin-bottom: 24px; line-height: 1.5; }
+    .pricing-features { flex: 1; margin-bottom: 24px; }
+    .pricing-feature {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; font-size: .86rem; color: var(--text-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .pricing-feature .check {
+      width: 18px; height: 18px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pricing-feature .check svg {
+      width: 14px; height: 14px; stroke: var(--text-3);
+      stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .featured .pricing-feature .check svg { stroke: var(--text); }
+    .pricing-feature.disabled { color: var(--text-4); }
+    .pricing-feature.disabled .check svg { stroke: var(--text-4); }
+
+    .pricing-btn {
+      width: 100%; padding: 14px;
+      border-radius: 12px; border: none;
+      font-family: var(--font-body); font-size: .88rem; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+      text-align: center;
+    }
+    .pricing-btn-primary { background: var(--text); color: var(--bg); }
+    .pricing-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--accent-glow); }
+    .pricing-btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .pricing-btn-outline:hover { border-color: var(--border-h); transform: translateY(-2px); }
+    @media (max-width: 700px) { .pricing-grid { grid-template-columns: 1fr; } }
+
+    /* ═══ CTA ═══ */
+    .cta-section {
+      text-align: center; position: relative; overflow: hidden;
+      background: var(--bg-2);
+    }
+    .cta-glow {
+      position: absolute;
+      bottom: -20%; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse, rgba(255,255,255,0.04) 0%, transparent 60%);
+      filter: blur(100px); pointer-events: none;
+    }
+    .cta-content { position: relative; z-index: 1; }
+    .cta-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 700; letter-spacing: -0.03em; line-height: 1.05;
+      margin-bottom: 16px;
+    }
+    .cta-subtitle {
+      color: var(--text-2); font-size: clamp(.92rem, 1.4vw, 1.05rem);
+      max-width: 480px; margin: 0 auto 40px; line-height: 1.7;
+    }
+
+    /* ═══ FOOTER ═══ */
+    .footer {
+      padding: 48px 0 28px;
+      border-top: 1px solid var(--border);
+    }
+    .footer-inner {
+      display: flex; justify-content: space-between; gap: 40px;
+      flex-wrap: wrap;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .footer-brand { max-width: 280px; }
+    .footer-brand .nav-logo { margin-bottom: 12px; }
+    .footer-brand p { font-size: 0.82rem; color: var(--text-3); line-height: 1.6; }
+    .footer-links-group { display: flex; gap: 48px; }
+    .footer-col { display: flex; flex-direction: column; gap: 8px; }
+    .footer-col h4 { font-family: var(--font-display); font-size: 0.78rem; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+    .footer-col a { font-size: 0.78rem; color: var(--text-3); transition: color .2s; }
+    .footer-col a:hover { color: var(--text-2); }
+    .footer-bottom {
+      padding-top: 20px;
+      font-size: 0.72rem; color: var(--text-4);
+    }
+    @media (max-width: 600px) {
+      .footer-inner { flex-direction: column; }
+      .footer-links-group { flex-wrap: wrap; gap: 32px; }
+    }
+
+    /* ═══ REVEAL ═══ */
+    .reveal { opacity:0; transform:translateY(24px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+    .reveal.v { opacity:1; transform:translateY(0); }
+
+    /* ═══ FORM STATES ═══ */
+    .waitlist-form[data-state="success"] input { opacity: .5; pointer-events: none; }
+    .waitlist-form[data-state="success"] button { opacity: .5; pointer-events: none; }
+    .form-msg {
+      margin-top: 12px; font-size: .82rem; font-weight: 500;
+      animation: fadein .4s var(--ease) forwards;
+    }
+    .form-msg--ok { color: #30a46c; }
+    .form-msg--err { color: #e5484d; }
+    @keyframes fadein { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ═══ ACCESSIBILITY ═══ */
+    .skip-link {
+      position: absolute; top: -100%; left: 16px;
+      padding: 12px 24px; background: var(--text); color: var(--bg);
+      font-weight: 700; font-size: .85rem; border-radius: 8px;
+      z-index: 200; transition: top .2s;
+    }
+    .skip-link:focus { top: 12px; }
+    :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+    input:focus-visible { outline-offset: 0; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+
+    /* ═══ REDUCED MOTION ═══ */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .reveal { opacity: 1; transform: none; }
+      .marquee-track { animation: none; }
+    }
+
+    /* ═══ TOUCH ═══ */
+    @media (pointer: coarse) {
+      .btn, .pricing-btn, .waitlist-form button, .nav-cta { min-height: 44px; min-width: 44px; }
+      .nav-links a { padding: 8px 4px; min-height: 44px; display: inline-flex; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#waitlist" class="skip-link">Skip to waitlist</a>
+
+  <!-- ═══ NAV ═══ -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">lockd<span class="dot"></span></a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#waitlist" class="nav-cta">Get Early Access</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="hero section" id="hero">
+    <div class="hero-bg">
+      <div class="hero-gradient-1"></div>
+      <div class="hero-gradient-2"></div>
+      <div class="hero-grid-bg"></div>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-badge reveal">
+        <span class="pulse"></span>
+        Early Access — Now Open
+      </div>
+
+      <h1 class="hero-title reveal reveal-delay-1">
+        <span class="line">Lock</span>
+        <span class="line"><span class="highlight">TF In.</span></span>
+        <span class="small">snap a pic. prove yourself. no more bullshit.</span>
+      </h1>
+
+      <p class="hero-subtitle reveal reveal-delay-2">
+        stop saying "i'll start monday." this app doesn't let you lie to yourself.
+        set your daily non-negotiables, prove them with photo proof, and let your squad
+        hold you accountable when your willpower won't.
+      </p>
+
+      <form class="waitlist-form reveal reveal-delay-3" id="hero-waitlist-form">
+        <label for="hero-email" class="sr-only">Email address</label>
+        <input id="hero-email" type="email" placeholder="your@email.com" autocomplete="email" required inputmode="email" />
+        <button type="submit">Join Waitlist</button>
+      </form>
+
+      <div class="hero-social-proof reveal reveal-delay-4">
+        <div class="avatar-stack">
+          <div class="avatar avatar-1">MJ</div>
+          <div class="avatar avatar-2">AK</div>
+          <div class="avatar avatar-3">DL</div>
+          <div class="avatar avatar-4">ET</div>
+          <div class="avatar avatar-more">+</div>
+        </div>
+        <span><strong>1,247+</strong> people already locked in</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ MARQUEE ═══ -->
+  <div class="marquee-section">
+    <div class="marquee-track">
+      <div class="marquee-item"><span class="sep"></span> NO DAYS OFF</div>
+      <div class="marquee-item"><span class="sep"></span> PROVE IT OR STFU</div>
+      <div class="marquee-item"><span class="sep"></span> YOUR SQUAD IS WATCHING</div>
+      <div class="marquee-item"><span class="sep"></span> LOCK IN</div>
+      <div class="marquee-item"><span class="sep"></span> DAY 1 AGAIN?</div>
+      <div class="marquee-item"><span class="sep"></span> STOP TALKING</div>
+      <div class="marquee-item"><span class="sep"></span> EARN YOUR STREAK</div>
+      <div class="marquee-item"><span class="sep"></span> PHOTO PROOF REQUIRED</div>
+      <div class="marquee-item"><span class="sep"></span> NO EXCUSES</div>
+      <div class="marquee-item"><span class="sep"></span> DO THE DAMN THING</div>
+      <!-- duplicate for seamless loop -->
+      <div class="marquee-item"><span class="sep"></span> NO DAYS OFF</div>
+      <div class="marquee-item"><span class="sep"></span> PROVE IT OR STFU</div>
+      <div class="marquee-item"><span class="sep"></span> YOUR SQUAD IS WATCHING</div>
+      <div class="marquee-item"><span class="sep"></span> LOCK IN</div>
+      <div class="marquee-item"><span class="sep"></span> DAY 1 AGAIN?</div>
+      <div class="marquee-item"><span class="sep"></span> STOP TALKING</div>
+      <div class="marquee-item"><span class="sep"></span> EARN YOUR STREAK</div>
+      <div class="marquee-item"><span class="sep"></span> PHOTO PROOF REQUIRED</div>
+      <div class="marquee-item"><span class="sep"></span> NO EXCUSES</div>
+      <div class="marquee-item"><span class="sep"></span> DO THE DAMN THING</div>
+    </div>
+  </div>
+
+  <!-- ═══ FEATURES ═══ -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">Features</p>
+        <h2 class="section-title">Not Another<br>Motivation App.</h2>
+        <p class="section-subtitle">
+          motivation is trash. it comes and goes. lockd is built on proof, pressure, and public shame. you either did the thing or you didn't. no in between.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Spotlight: Photo Proof -->
+        <div class="feature-card spotlight reveal">
+          <div class="spotlight-content">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <h3>Snap a Pic or It Didn't Happen</h3>
+            <p>every task needs photo or video proof. timestamped. location-tagged. your squad sees everything. no proof posted? it didn't fucking happen.</p>
+          </div>
+          <div class="phone-mockup">
+            <div class="phone-notif">
+              <div class="phone-notif-header">
+                <span class="phone-notif-app">lockd<span class="dot" style="width:4px;height:4px;top:-1px"></span></span>
+                <span class="phone-notif-time">just now</span>
+              </div>
+              <p class="phone-notif-body"><strong>proof accepted.</strong> 5am gym session verified. streak: 47 days. keep going.</p>
+            </div>
+            <div class="phone-notif">
+              <div class="phone-notif-header">
+                <span class="phone-notif-app">lockd<span class="dot" style="width:4px;height:4px;top:-1px"></span></span>
+                <span class="phone-notif-time">2h ago</span>
+              </div>
+              <p class="phone-notif-body"><strong>jake missed cold shower.</strong> streak reset to 0. your war room saw that 👀</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daily Non-Negotiables -->
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h3>Daily Non-Negotiables</h3>
+          <p>pick 3-5 things you do every single day. gym. cold shower. reading. whatever. miss one and your streak dies. no grace period. no excuses.</p>
+        </div>
+
+        <!-- Streak -->
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3>The Streak</h3>
+          <p>consecutive days you showed up. miss once = back to zero. your all-time best stays on your profile forever. haunting you.</p>
+        </div>
+
+        <!-- War Rooms -->
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>War Rooms</h3>
+          <p>squads of 4-8. everyone sees everyone's proof feed. miss a day and they all know. social pressure hits different when it's your actual friends.</p>
+        </div>
+
+        <!-- Hard Mode -->
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Hard Mode Pledges</h3>
+          <p>public commitment with stakes. fail and you carry a badge of shame on your profile until you complete it. your squad will never let you forget.</p>
+        </div>
+
+        <!-- Gym Sync -->
+        <div class="feature-card reveal reveal-delay-3">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <h3>Gym Sync</h3>
+          <p>auto-pulls sessions from Apple Health and Google Fit. your lifts count as proof. no selfie required (but you can still flex).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ HOW IT WORKS ═══ -->
+  <section class="section" id="how-it-works" style="background: var(--bg-2);">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">How It Works</p>
+        <h2 class="section-title">Three Steps.<br>Zero Bullshit.</h2>
+        <p class="section-subtitle">
+          from signup to your first proof submission in under 2 minutes. if you can't do that, this app isn't for you.
+        </p>
+      </div>
+
+      <div class="steps-grid reveal">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Set Your Rules</h3>
+          <p>pick the things you refuse to skip. ever. these are your non-negotiables.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Prove It Daily</h3>
+          <p>do the thing. snap a pic. post it. every damn day.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Join a War Room</h3>
+          <p>find your squad. watch each other. hold each other accountable. don't be the one who breaks.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ STATS ═══ -->
+  <section class="section">
+    <div class="container">
+      <div class="stats-grid reveal">
+        <div class="stat-item">
+          <div class="stat-number" data-count="1247" data-suffix="+">0</div>
+          <div class="stat-label">On the Waitlist</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" data-count="47" data-suffix=" days">0</div>
+          <div class="stat-label">Avg Top Streak</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" data-count="92" data-suffix="%">0</div>
+          <div class="stat-label">Proof Rate</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" data-count="0">0</div>
+          <div class="stat-label">Excuses Accepted</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PRICING ═══ -->
+  <section class="section" id="pricing">
+    <div class="container">
+      <div class="features-header reveal">
+        <p class="section-label">Pricing</p>
+        <h2 class="section-title">Start Free.<br>Go Pro When You're<br>Actually Serious.</h2>
+        <p class="section-subtitle">
+          free plan works fine if you're just getting started. pro is for people who want the full arsenal.
+        </p>
+      </div>
+
+      <div class="pricing-grid">
+        <div class="pricing-card reveal">
+          <div class="pricing-tier">Free</div>
+          <div class="pricing-price">
+            <span class="currency">$</span>0
+            <span class="period">/forever</span>
+          </div>
+          <p class="pricing-desc">everything you need to stop being a flake.</p>
+
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              3 daily non-negotiables
+            </div>
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              Basic streak tracking
+            </div>
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              Photo proof
+            </div>
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              Personal stats
+            </div>
+            <div class="pricing-feature disabled">
+              <span class="check"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+              War Rooms
+            </div>
+            <div class="pricing-feature disabled">
+              <span class="check"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+              Hard Mode Pledges
+            </div>
+          </div>
+
+          <button class="pricing-btn pricing-btn-outline" onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})">Get Started Free</button>
+        </div>
+
+        <div class="pricing-card featured reveal reveal-delay-2">
+          <div class="pricing-tier">Pro</div>
+          <div class="pricing-price">
+            <span class="currency">$</span>4.99
+            <span class="period">/mo</span>
+          </div>
+          <p class="pricing-desc">for people who actually mean it this time.</p>
+
+          <div class="pricing-features">
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              Everything in Free
+            </div>
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              Unlimited non-negotiables
+            </div>
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              War Rooms (up to 8 people)
+            </div>
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              Hard Mode Pledges
+            </div>
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              Video proof
+            </div>
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              Gym sync
+            </div>
+            <div class="pricing-feature">
+              <span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+              Weekly war reports
+            </div>
+          </div>
+
+          <button class="pricing-btn pricing-btn-primary" onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})">Join Waitlist</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FINAL CTA ═══ -->
+  <section class="section cta-section" id="waitlist">
+    <div class="cta-glow"></div>
+    <div class="container cta-content">
+      <p class="section-label reveal">Stop Scrolling</p>
+      <h2 class="cta-title reveal reveal-delay-1">
+        Ready to Actually<br>Do Something?
+      </h2>
+      <p class="cta-subtitle reveal reveal-delay-2">
+        join the waitlist. be first when we drop. or don't — keep lying to yourself. your call.
+      </p>
+
+      <form class="waitlist-form reveal reveal-delay-3" id="cta-waitlist-form" style="max-width: 420px; margin: 0 auto;">
+        <label for="cta-email" class="sr-only">Email address</label>
+        <input id="cta-email" type="email" placeholder="your@email.com" autocomplete="email" required inputmode="email" />
+        <button type="submit">I'm In</button>
+      </form>
+      <div id="form-messages" aria-live="polite"></div>
+
+      <p class="reveal reveal-delay-4" style="font-size: 0.78rem; color: var(--text-4); margin-top: 16px;">
+        no spam. just a ping when we launch.
+      </p>
+    </div>
+  </section>
+
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <div class="nav-logo">lockd<span class="dot"></span></div>
+          <p>the accountability app your excuses can't survive. built for people who are done talking about it.</p>
+        </div>
+        <div class="footer-links-group">
+          <div class="footer-col">
+            <h4>Product</h4>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#waitlist">Join Waitlist</a>
+          </div>
+          <div class="footer-col">
+            <h4>Legal</h4>
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 lockd. all rights reserved.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ═══ REVEAL ON SCROLL ═══
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('v');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.08 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // ═══ COUNTER ANIMATION ═══
+    function animateCounters() {
+      document.querySelectorAll('.stat-number[data-count]').forEach(el => {
+        const target = parseInt(el.dataset.count);
+        const suffix = el.dataset.suffix || '';
+        const duration = 1800;
+        const start = performance.now();
+
+        function update(now) {
+          const elapsed = now - start;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.round(eased * target);
+          el.textContent = current.toLocaleString() + suffix;
+          if (progress < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+      });
+    }
+
+    const statsObs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          animateCounters();
+          statsObs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.3 });
+    const statsGrid = document.querySelector('.stats-grid');
+    if (statsGrid) statsObs.observe(statsGrid);
+
+    // ═══ WAITLIST FORMS ═══
+    let submitted = {};
+    document.querySelectorAll('.waitlist-form').forEach(form => {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const id = this.id;
+        if (submitted[id]) return;
+
+        const input = this.querySelector('input');
+        const btn = this.querySelector('button');
+        const email = input.value.trim();
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          const msgEl = this.parentElement.querySelector('[aria-live]') || document.getElementById('form-messages');
+          if (msgEl) msgEl.innerHTML = '<p class="form-msg form-msg--err">enter a real email.</p>';
+          input.focus();
+          return;
+        }
+
+        submitted[id] = true;
+        this.dataset.state = 'success';
+        btn.textContent = "you're in ✓";
+        input.disabled = true;
+        btn.disabled = true;
+        const msgEl = this.parentElement.querySelector('[aria-live]') || document.getElementById('form-messages');
+        if (msgEl) msgEl.innerHTML = '<p class="form-msg form-msg--ok">locked in. we\'ll hit you up when we launch.</p>';
+        console.log('Waitlist:', email);
+      });
+    });
+
+    // ═══ NAV SCROLL ═══
+    let lastScroll = 0;
+    const nav = document.querySelector('.nav');
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY;
+      if (y > 100) {
+        nav.style.background = 'rgba(7,7,7,0.9)';
+      } else {
+        nav.style.background = 'rgba(7,7,7,0.7)';
+      }
+      lastScroll = y;
+    }, { passive: true });
+  </script>
+</body>
+</html>

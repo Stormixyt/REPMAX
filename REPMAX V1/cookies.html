@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="REPMAX Cookie Policy — How we use cookies and similar technologies.">
+  <meta name="theme-color" content="#CCFF00">
+  <title>Cookie Policy — REPMAX</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .legal-page { max-width: 720px; margin: 0 auto; padding: 120px 24px 80px; color: var(--text-secondary); }
+    .legal-page h1 { font-family: var(--font-display, 'Inter', sans-serif); font-size: 2rem; color: var(--text-primary, #fff); margin-bottom: 8px; }
+    .legal-page .legal-updated { font-size: 0.8rem; color: var(--text-tertiary, #666); margin-bottom: 40px; }
+    .legal-page h2 { font-size: 1.2rem; color: var(--text-primary, #fff); margin: 32px 0 12px; }
+    .legal-page p, .legal-page li { font-size: 0.9rem; line-height: 1.7; margin-bottom: 12px; }
+    .legal-page ul { padding-left: 20px; margin-bottom: 16px; }
+    .legal-page table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 0.85rem; }
+    .legal-page th, .legal-page td { text-align: left; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.1); }
+    .legal-page th { background: rgba(255,255,255,0.05); color: var(--text-primary, #fff); font-weight: 600; }
+    .legal-page a { color: var(--accent, #D4FF00); text-decoration: none; }
+    .legal-page a:hover { text-decoration: underline; }
+    .legal-back { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary, #999); font-size: 0.85rem; text-decoration: none; margin-bottom: 24px; }
+    .legal-back:hover { color: var(--text-primary, #fff); }
+  </style>
+</head>
+<body>
+  <div class="legal-page">
+    <a href="index.html" class="legal-back">&larr; Back to REPMAX</a>
+    <h1>Cookie Policy</h1>
+    <p class="legal-updated">Last updated: March 30, 2026</p>
+
+    <p>This Cookie Policy explains how REPMAX ("we", "us", "our") uses cookies and similar technologies when you visit our website and use our web application (the "Service").</p>
+
+    <h2>1. What Are Cookies?</h2>
+    <p>Cookies are small text files that are placed on your device when you visit a website. They are widely used to make websites work efficiently, provide analytics, and remember your preferences. Similar technologies include localStorage, sessionStorage, and service workers.</p>
+
+    <h2>2. Cookies We Use</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Cookie/Storage</th>
+          <th>Purpose</th>
+          <th>Type</th>
+          <th>Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>sb-*-auth-token</td>
+          <td>Authentication — keeps you logged in to your REPMAX account</td>
+          <td>Essential</td>
+          <td>Session / 1 year</td>
+        </tr>
+        <tr>
+          <td>sb-*-auth-token-code-verifier</td>
+          <td>PKCE authentication flow security</td>
+          <td>Essential</td>
+          <td>Session</td>
+        </tr>
+        <tr>
+          <td>_ga, _ga_*</td>
+          <td>Firebase/Google Analytics — anonymized usage statistics</td>
+          <td>Analytics</td>
+          <td>2 years</td>
+        </tr>
+        <tr>
+          <td>Firebase Cloud Messaging Token</td>
+          <td>Push notification delivery (stored in localStorage)</td>
+          <td>Functional</td>
+          <td>Until revoked</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. Categories of Cookies</h2>
+    <p><strong>Essential Cookies:</strong> These are necessary for the Service to function. They enable core features like authentication, security, and session management. Without these, you cannot use REPMAX. These cookies cannot be disabled.</p>
+    <p><strong>Analytics Cookies:</strong> These help us understand how users interact with the Service by collecting anonymized information. We use Firebase Analytics to track page views, feature usage, and general interaction patterns. This data is aggregated and does not identify individual users.</p>
+    <p><strong>Functional Cookies:</strong> These enhance your experience by remembering your preferences, such as notification settings and display options. They also enable push notifications via Firebase Cloud Messaging.</p>
+
+    <h2>4. Local Storage</h2>
+    <p>In addition to cookies, REPMAX uses browser localStorage to store:</p>
+    <ul>
+      <li><strong>Authentication tokens:</strong> Supabase auth tokens for maintaining your login session</li>
+      <li><strong>FCM tokens:</strong> Firebase Cloud Messaging tokens for push notification delivery</li>
+      <li><strong>App preferences:</strong> UI settings and cached data for faster loading</li>
+    </ul>
+
+    <h2>5. Service Workers</h2>
+    <p>REPMAX uses service workers for:</p>
+    <ul>
+      <li><strong>Offline support:</strong> Caching essential assets so the app works without an internet connection</li>
+      <li><strong>Push notifications:</strong> Receiving and displaying notifications when the app is not in the foreground</li>
+      <li><strong>Background sync:</strong> Queuing actions taken offline for later submission</li>
+    </ul>
+
+    <h2>6. Third-Party Cookies</h2>
+    <p>Some cookies are set by third-party services we use:</p>
+    <ul>
+      <li><strong>Google/Firebase:</strong> Analytics and Cloud Messaging cookies for usage tracking and push notifications</li>
+      <li><strong>Supabase:</strong> Authentication cookies for secure login management</li>
+    </ul>
+    <p>We do not use any advertising or tracking cookies from ad networks.</p>
+
+    <h2>7. Managing Cookies</h2>
+    <p>You can manage cookies through your browser settings:</p>
+    <ul>
+      <li><strong>Chrome:</strong> Settings &gt; Privacy and Security &gt; Cookies</li>
+      <li><strong>Firefox:</strong> Settings &gt; Privacy &gt; Cookies</li>
+      <li><strong>Safari:</strong> Preferences &gt; Privacy &gt; Manage Website Data</li>
+      <li><strong>Edge:</strong> Settings &gt; Privacy &gt; Cookies</li>
+    </ul>
+    <p>Please note that disabling essential cookies will prevent you from using REPMAX, as authentication requires cookie/localStorage functionality.</p>
+
+    <h2>8. Changes to This Policy</h2>
+    <p>We may update this Cookie Policy from time to time. Changes will be posted on this page with an updated "Last updated" date.</p>
+
+    <h2>9. Contact Us</h2>
+    <p>If you have questions about our use of cookies, please contact us at:</p>
+    <p><strong>Email:</strong> privacy@repmax.app</p>
+  </div>
+</body>
+</html>

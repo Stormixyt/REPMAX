@@ -1,0 +1,12 @@
+[eval]:1
+const{Client,GatewayIntentBits,ChannelType}=require('discord.js');const c=new Client({intents:[GatewayIntentBits.Guilds]});c.once('ready',async()=>{const g=c.guilds.cache.get('1490284889151377559');const chs=g.channels.cache.filter(c=>c.type===ChannelType.GuildText);chs.forEach(ch=>{const evPerm=ch.permissionsFor(g.id);const canView=evPerm?.has('ViewChannel');const canSend=evPerm?.has('SendMessages');console.log(${canView?'V':'-'}  () cat:)});process.exit(0)});c.login('MTQ5MDQyODQxNzkwNzM1OTc4NA.Gx6W1A.H1s5Jm6OIWbIOVgNpQZ0Oeswc-uGiyKA2-esh4')
+                                                                                                                                                                                                                                                                                                                                                                                                                                ^
+Expected ',', got '{'
+
+SyntaxError: missing ) after argument list
+    at makeContextifyScript (node:internal/vm:185:14)
+    at compileScript (node:internal/process/execution:383:10)
+    at evalTypeScript (node:internal/process/execution:256:22)
+    at node:internal/main/eval_string:74:3
+
+Node.js v22.21.0

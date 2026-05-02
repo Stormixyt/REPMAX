@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "REPMAX",
+    "slug": "repmax",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "scheme": "repmax",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#070707"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.repmax.native",
+      "backgroundColor": "#070707",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "REPMAX needs camera access to scan food photos and barcodes",
+        "NSPhotoLibraryUsageDescription": "REPMAX needs photo library access to select food photos",
+        "NSLocationWhenInUseUsageDescription": "REPMAX needs your location to track outdoor runs and find nearby gyms",
+        "NSMicrophoneUsageDescription": "REPMAX needs microphone access for voice and video calls",
+        "UIBackgroundModes": [
+          "location"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#070707"
+      },
+      "package": "com.repmaxapp.mobile",
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "REPMAX needs camera access to scan food photos and barcodes"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "REPMAX needs your location to track outdoor runs and find nearby gyms"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ccff00"
+        }
+      ],
+      "expo-image-picker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "252fb8ca-7096-4479-aa06-16cbc0996265"
+      }
+    }
+  }
+}

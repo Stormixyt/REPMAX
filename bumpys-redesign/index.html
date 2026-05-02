@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bumpy's Chicken | Fast-casual redesign concept</title>
+  <meta
+    name="description"
+    content="Redesign concept voor Bumpy's Chicken: een craveable, mobielgerichte fast-casual homepage met duidelijke bestelroute, pickup-info en menu-ervaring."
+  >
+  <meta name="theme-color" content="#123e86">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="site-shell">
+    <div class="status-bar">
+      <div class="container status-bar__inner">
+        <p>
+          <strong>Vandaag gesloten.</strong>
+          Vooruitbestellen voor dinsdag vanaf 17:00 blijft mogelijk.
+        </p>
+        <a href="#menu">Plan afhalen</a>
+      </div>
+    </div>
+
+    <header class="site-header" id="top">
+      <div class="container nav-shell">
+        <a class="brand" href="#top" aria-label="Bumpy's Chicken home">
+          <img
+            class="brand__logo"
+            src="https://www.bumpyschicken.nl/www.bumpyschicken.nl/img/logo.png"
+            alt="Bumpy's Chicken logo"
+          >
+          <span class="brand__text">
+            <span class="brand__eyebrow">Amsterdam-Noord pickup spot</span>
+            <span class="brand__name">Bumpy's Chicken</span>
+          </span>
+        </a>
+
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span class="sr-only">Menu openen</span>
+        </button>
+
+        <nav class="site-nav" id="site-nav" aria-label="Hoofdnavigatie">
+          <a href="#bestsellers">Bestsellers</a>
+          <a href="#menu">Menu</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#pickup">Afhalen</a>
+          <a href="#faq">FAQ</a>
+          <a class="button button-primary nav-cta" href="#menu">Bestel direct</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero section">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="section-kicker reveal">Sticky, saucy, crispy comfort met social-first energie</p>
+            <div class="hero-status reveal">
+              <span class="status-pill status-pill--closed">Gesloten voor vandaag</span>
+              <span class="status-pill">Vooruitbestellen voor dinsdag 17:00 - 01:00</span>
+            </div>
+
+            <h1 class="hero-title reveal">
+              Sticky wings, loaded trays en sliders die online direct harder binnenkomen.
+            </h1>
+            <p class="hero-intro reveal">
+              Deze versie schuift veel dichter naar de echte Bumpy's-vibe die je in social content ziet:
+              glanzende sauzen, trays vol comfort food, zwaardere cravings en een duidelijkere route naar pickup.
+            </p>
+
+            <div class="hero-actions reveal">
+              <a class="button button-primary" href="#menu">Bestel direct</a>
+              <a class="button button-secondary" href="#pickup">Bekijk pickup info</a>
+            </div>
+
+            <ul class="hero-trust reveal">
+              <li>300+ klantbeoordelingen</li>
+              <li>Afhalen in Amsterdam-Noord</li>
+              <li>Duidelijke servicekosten en pickup-flow</li>
+            </ul>
+          </div>
+
+          <div class="hero-visual reveal">
+            <article class="hero-card hero-card--main">
+              <img
+                src="https://images.unsplash.com/photo-1605209738334-d3c60425bcf3?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600"
+                alt="Nashville-style hot chicken op een tray"
+              >
+              <div class="hero-card__label">
+                <span>Social-first hero</span>
+                <strong>Laat de sticky glaze, trays en sauzen het verkoopwerk doen</strong>
+              </div>
+            </article>
+
+            <article class="hero-card hero-card--stack hero-card--secondary">
+              <img
+                src="https://images.unsplash.com/photo-1575932444877-5106bee2a599?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1200"
+                alt="Korean fried chicken op tafel"
+              >
+            </article>
+
+            <article class="hero-note hero-note--cart hero-note--social">
+              <p class="hero-note__eyebrow">Social proof look</p>
+              <strong>Bumpy's Chicken</strong>
+              <span class="hero-note__stars" aria-label="vijf sterren">★★★★★</span>
+              <small>Het eten moet er online uitzien alsof iemand het direct wil posten.</small>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="proof-strip">
+        <div class="container proof-strip__grid">
+          <article class="proof-card reveal">
+            <span class="proof-card__value">Menu eerst, chaos later</span>
+            <p>Geen droog platformgevoel, maar een homepage die direct naar de bestelde favorieten stuurt.</p>
+          </article>
+          <article class="proof-card reveal">
+            <span class="proof-card__value">Open/gesloten in een oogopslag</span>
+            <p>De belangrijkste operationele vraag wordt opgelost voordat iemand afhaakt.</p>
+          </article>
+          <article class="proof-card reveal">
+            <span class="proof-card__value">Sitedish-ready concept</span>
+            <p>Ontworpen om de bestaande checkout en pickup-flow slimmer te laten aanvoelen.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section bestsellers" id="bestsellers">
+        <div class="container">
+          <div class="section-heading reveal">
+            <p class="section-kicker">Snelste weg naar de eerste klik</p>
+            <h2>Begin met wat Bumpy's het best verkoopt.</h2>
+            <p>
+              In plaats van direct een lange menuwand te tonen, laat deze versie eerst de gerechten zien
+              die cravings en conversie het snelst aanzetten.
+            </p>
+          </div>
+
+          <div class="bestseller-grid">
+            <article class="dish-card dish-card--feature reveal">
+              <div class="dish-card__media">
+                <img
+                  src="https://images.unsplash.com/photo-1605209738334-d3c60425bcf3?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1200"
+                  alt="Sticky spicy fried chicken op een tray"
+                >
+                <span class="dish-badge">Populair</span>
+              </div>
+              <div class="dish-card__content">
+                <div class="dish-card__meta">
+                  <span>Sticky chicken trays</span>
+                  <span>Sweet / spicy / hot</span>
+                </div>
+                <h3>Signature Wings Tray</h3>
+                <p>Meer zoals je referenties: glanzende sticky chicken hoog in beeld, niet verstopt tussen droge kaartblokken.</p>
+                <div class="dish-card__footer">
+                  <span class="price">EUR 10,00</span>
+                  <button class="button button-primary add-to-cart" type="button" data-name="Signature Wings Tray" data-price="10.00">
+                    Voeg toe
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="dish-card reveal">
+              <div class="dish-card__media">
+                <img
+                  src="https://images.unsplash.com/photo-1579065497397-2824d41272ce?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1200"
+                  alt="Loaded friet met saus in close-up"
+                >
+                <span class="dish-badge dish-badge--warm">Loaded favorite</span>
+              </div>
+              <div class="dish-card__content">
+                <div class="dish-card__meta">
+                  <span>Loaded specials</span>
+                  <span>Comfort food</span>
+                </div>
+                <h3>Loaded Fries</h3>
+                <p>Cheesy, messy en visueel veel zwaarder. De loaded-lane hoort te voelen als social-content, niet als utility-tekst.</p>
+                <div class="dish-card__footer">
+                  <span class="price">EUR 11,00</span>
+                  <button class="button button-primary add-to-cart" type="button" data-name="Loaded Fries" data-price="11.00">
+                    Voeg toe
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="dish-card reveal">
+              <div class="dish-card__media">
+                <img
+                  src="https://images.unsplash.com/photo-1568226189367-fe1122beb1dd?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1200"
+                  alt="Burger en friet op een tray"
+                >
+                <span class="dish-badge dish-badge--dark">Dip it</span>
+              </div>
+              <div class="dish-card__content">
+                <div class="dish-card__meta">
+                  <span>Burgers &amp; trays</span>
+                  <span>Fast pickup</span>
+                </div>
+                <h3>Slider Combo Tray</h3>
+                <p>Meer tray-presentatie, meer fries, meer sauce cups. Zo voelt het direct dichter bij wat mensen online willen bestellen.</p>
+                <div class="dish-card__footer">
+                  <span class="price">EUR 10,00</span>
+                  <button class="button button-primary add-to-cart" type="button" data-name="Slider Combo Tray" data-price="10.00">
+                    Voeg toe
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section menu-experience" id="menu">
+        <div class="container menu-layout">
+          <div class="menu-main">
+            <div class="section-heading reveal">
+              <p class="section-kicker">Menu experience</p>
+              <h2>Sneller scannen. Sneller beslissen. Minder templategevoel.</h2>
+              <p>
+                Deze menulaag laat zien hoe Bumpy's de bestaande bestelstructuur kan behouden,
+                maar de browse-ervaring veel rijker en conversion-first kan maken.
+              </p>
+            </div>
+
+            <div class="category-chips reveal" role="tablist" aria-label="Menucategorieen">
+              <button class="chip is-active" type="button" data-filter="all">Alles</button>
+              <button class="chip" type="button" data-filter="popular">Populair</button>
+              <button class="chip" type="button" data-filter="burgers">Burgers &amp; sliders</button>
+              <button class="chip" type="button" data-filter="loaded">Loaded</button>
+              <button class="chip" type="button" data-filter="tenders">Tenders &amp; wings</button>
+              <button class="chip" type="button" data-filter="sides">Sides &amp; sauzen</button>
+              <button class="chip" type="button" data-filter="drinks">Drinks</button>
+            </div>
+
+            <div class="menu-grid">
+              <article class="menu-card reveal" data-category="popular burgers">
+                <div class="menu-card__top">
+                  <span class="menu-card__tag">Best verkocht</span>
+                  <span class="menu-card__price">EUR 10,00</span>
+                </div>
+                <h3>Tender Burger</h3>
+                <p>Twee krokante tenders, zachte bun en saus naar keuze. Maar in deze redesign krijgt de kaart ook meer sauce-energy en tray context.</p>
+                <div class="menu-card__bottom">
+                  <span>Sweet, spicy of BBQ</span>
+                  <button class="button button-small add-to-cart" type="button" data-name="Tender Burger" data-price="10.00">
+                    Voeg toe
+                  </button>
+                </div>
+              </article>
+
+              <article class="menu-card reveal" data-category="popular burgers">
+                <div class="menu-card__top">
+                  <span class="menu-card__tag">Group order</span>
+                  <span class="menu-card__price">EUR 17,00</span>
+                </div>
+                <h3>Sliders 4 stuks</h3>
+                <p>Mini broodjes met tender en sauskeuze. Ideaal om hoog in de grid te plaatsen voor snelle groepsbeslissingen.</p>
+                <div class="menu-card__bottom">
+                  <span>Deelbaar</span>
+                  <button class="button button-small add-to-cart" type="button" data-name="Sliders 4 stuks" data-price="17.00">
+                    Voeg toe
+                  </button>
+                </div>
+              </article>
+
+              <article class="menu-card reveal" data-category="loaded popular">
+                <div class="menu-card__top">
+                  <span class="menu-card__tag">Comfort pick</span>
+                  <span class="menu-card__price">EUR 11,00</span>
+                </div>
+                <h3>Loaded Mac &amp; Cheese</h3>
+                <p>Mac &amp; cheese, tenderstukjes en saus. Gaat visueel meer richting social-food met fellere sauzen en vettere texture cues.</p>
+                <div class="menu-card__bottom">
+                  <span>Cheesy, warm, sharable</span>
+                  <button class="button button-small add-to-cart" type="button" data-name="Loaded Mac &amp; Cheese" data-price="11.00">
+                    Voeg toe
+                  </button>
+                </div>
+              </article>
+
+              <article class="menu-card reveal" data-category="tenders popular">
+                <div class="menu-card__top">
+                  <span class="menu-card__tag">Crunch fix</span>
+                  <span class="menu-card__price">EUR 10,00</span>
+                </div>
+                <h3>Tenders 9 stuks</h3>
+                <p>Een klassieker voor repeat customers. Sneller te vinden, duidelijker te bestellen.</p>
+                <div class="menu-card__bottom">
+                  <span>Voor echte crispy lovers</span>
+                  <button class="button button-small add-to-cart" type="button" data-name="Tenders 9 stuks" data-price="10.00">
+                    Voeg toe
+                  </button>
+                </div>
+              </article>
+
+              <article class="menu-card reveal" data-category="tenders">
+                <div class="menu-card__top">
+                  <span class="menu-card__tag">Sauce pair</span>
+                  <span class="menu-card__price">EUR 7,00</span>
+                </div>
+                <h3>Hotwings 6 stuks</h3>
+                <p>Sold-out states kunnen hier later vervangen worden door "tijdelijk niet beschikbaar" met een alternatief.</p>
+                <div class="menu-card__bottom">
+                  <span>Combineer met dip cup</span>
+                  <button class="button button-small add-to-cart" type="button" data-name="Hotwings 6 stuks" data-price="7.00">
+                    Voeg toe
+                  </button>
+                </div>
+              </article>
+
+              <article class="menu-card reveal" data-category="sides popular">
+                <div class="menu-card__top">
+                  <span class="menu-card__tag">Must add-on</span>
+                  <span class="menu-card__price">EUR 4,00</span>
+                </div>
+                <h3>Bumpy's Fries</h3>
+                <p>Niet verstopt onderaan de pagina, maar slim gepositioneerd als standaard side upsell.</p>
+                <div class="menu-card__bottom">
+                  <span>Salted golden fries</span>
+                  <button class="button button-small add-to-cart" type="button" data-name="Bumpy's Fries" data-price="4.00">
+                    Voeg toe
+                  </button>
+                </div>
+              </article>
+
+              <article class="menu-card reveal" data-category="sides">
+                <div class="menu-card__top">
+                  <span class="menu-card__tag">Signature dip</span>
+                  <span class="menu-card__price">EUR 4,50</span>
+                </div>
+                <h3>Dip Cup 360 ml</h3>
+                <p>Signature sauces horen als merkdrager behandeld te worden, niet alleen als utiliteitsregel.</p>
+                <div class="menu-card__bottom">
+                  <span>Perfect voor delen</span>
+                  <button class="button button-small add-to-cart" type="button" data-name="Dip Cup 360 ml" data-price="4.50">
+                    Voeg toe
+                  </button>
+                </div>
+              </article>
+
+              <article class="menu-card reveal" data-category="drinks">
+                <div class="menu-card__top">
+                  <span class="menu-card__tag">Cold add-on</span>
+                  <span class="menu-card__price">EUR 2,50</span>
+                </div>
+                <h3>Dr Pepper</h3>
+                <p>Drinkitems blijven beschikbaar, maar nemen minder visuele ruimte over dan op de live homepage.</p>
+                <div class="menu-card__bottom">
+                  <span>Koele extra</span>
+                  <button class="button button-small add-to-cart" type="button" data-name="Dr Pepper" data-price="2.50">
+                    Voeg toe
+                  </button>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <aside class="cart-panel reveal" aria-label="Bestellingsoverzicht">
+            <div class="cart-panel__sticky">
+              <p class="cart-panel__eyebrow">Sticky cart summary</p>
+              <h2>Jouw bestelling</h2>
+              <p class="cart-panel__intro">
+                In de redesign blijft de bestel-engine gelijk, maar voelt de samenvatting duidelijker, rustiger en mobielvriendelijker.
+              </p>
+
+              <ul class="cart-list" id="cart-list">
+                <li class="cart-list__empty">Nog niets toegevoegd. Start met een bestseller of filter direct op categorie.</li>
+              </ul>
+
+              <dl class="cart-totals">
+                <div>
+                  <dt>Subtotaal</dt>
+                  <dd id="subtotal">EUR 0,00</dd>
+                </div>
+                <div>
+                  <dt>Servicekosten</dt>
+                  <dd id="fee">EUR 0,25</dd>
+                </div>
+                <div class="cart-totals__grand">
+                  <dt>Totaal</dt>
+                  <dd id="total">EUR 0,25</dd>
+                </div>
+              </dl>
+
+              <div class="cart-panel__actions">
+                <a class="button button-primary" href="https://www.bumpyschicken.nl/bestellen" target="_blank" rel="noreferrer">
+                  Open live checkout
+                </a>
+                <button class="button button-ghost" id="clear-cart" type="button">Leeg overzicht</button>
+              </div>
+
+              <div class="cart-panel__info">
+                <p><strong>Afhalen:</strong> Draaierweg 20D, Amsterdam</p>
+                <p><strong>Flow:</strong> kies, plan afhaaltijd, betaal veilig, haal op.</p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section value-section">
+        <div class="container value-grid">
+          <div class="value-copy reveal">
+            <p class="section-kicker">Waarom deze richting sterker werkt</p>
+            <h2>Meer cravings boven de vouw. Minder ruis in de route naar checkout.</h2>
+            <p>
+              De live site probeert tegelijk homepage, menukaart en cart-layout te zijn. Deze versie splitst die rollen
+              slimmer op en trekt visueel veel dichter naar de echte food-content die je net stuurde: witte trays, glaze,
+              messy loaded fries en social-content die direct trek opwekt.
+            </p>
+            <ul class="value-list">
+              <li>Dominante bestel-CTA in header en mobiel sticky bar</li>
+              <li>Operational status direct zichtbaar, niet verstopt in een grijze tussenlaag</li>
+              <li>Meer merkgevoel door echte food imagery en sterkere copy</li>
+              <li>Drogere utility-content verplaatst naar pickup en FAQ</li>
+            </ul>
+          </div>
+
+          <div class="value-visual reveal">
+            <article class="stack-card stack-card--large">
+              <img
+                src="https://images.unsplash.com/photo-1575932444877-5106bee2a599?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1200"
+                alt="Korean fried chicken op een tafel"
+              >
+            </article>
+            <article class="stack-card stack-card--small">
+              <img
+                src="https://images.unsplash.com/photo-1579065497397-2824d41272ce?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1200"
+                alt="Loaded friet met saus in close-up"
+              >
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section social-proof-section">
+        <div class="container">
+          <div class="section-heading reveal">
+            <p class="section-kicker">Social content direction</p>
+            <h2>De homepage moet eruitzien alsof hij al viraal kan gaan.</h2>
+            <p>
+              Je referentiebeelden laten precies zien wat nu nog ontbreekt: zwart label-overlays, dikke sauzen,
+              close-up trays en het gevoel dat je midden in een reel of story zit.
+            </p>
+          </div>
+
+          <div class="social-grid">
+            <article class="social-card social-card--vertical reveal">
+              <img
+                src="https://images.unsplash.com/photo-1579065497397-2824d41272ce?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1000"
+                alt="Loaded friet met saus close-up"
+              >
+              <div class="social-overlay">
+                <strong>Bumpy's Chicken</strong>
+                <span>★★★★★</span>
+              </div>
+              <p class="social-caption">Sticky, cheesy, loaded en direct herkenbaar als social proof.</p>
+            </article>
+
+            <article class="social-card reveal">
+              <img
+                src="https://images.unsplash.com/photo-1605209738334-d3c60425bcf3?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1200"
+                alt="Sticky fried chicken tray"
+              >
+              <p class="social-caption">Meer rood, meer glaze, meer food lust in plaats van generieke fast-food stock energy.</p>
+            </article>
+
+            <article class="social-card reveal">
+              <img
+                src="https://images.unsplash.com/photo-1568226189367-fe1122beb1dd?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1200"
+                alt="Burger en friet op tray"
+              >
+              <p class="social-caption">Tray-presentatie maakt combo's en sides vanzelf aantrekkelijker.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section process-section">
+        <div class="container">
+          <div class="section-heading reveal">
+            <p class="section-kicker">How ordering works</p>
+            <h2>De eerste bestelling moet net zo makkelijk voelen als de tweede.</h2>
+          </div>
+
+          <div class="process-grid">
+            <article class="process-card reveal">
+              <span class="process-card__number">01</span>
+              <h3>Kies je favorieten</h3>
+              <p>Start met bestsellers of filter direct op burgers, loaded, tenders, sides of drinks.</p>
+            </article>
+            <article class="process-card reveal">
+              <span class="process-card__number">02</span>
+              <h3>Plan je pickup</h3>
+              <p>Zie meteen wanneer je kunt afhalen en voorkom verwarring rond gesloten of beperkte openingstijden.</p>
+            </article>
+            <article class="process-card reveal">
+              <span class="process-card__number">03</span>
+              <h3>Rond veilig af</h3>
+              <p>Laat Sitedish de betaling afhandelen, maar geef de bezoeker al eerder vertrouwen en overzicht.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section reviews-section" id="reviews">
+        <div class="container">
+          <div class="section-heading reveal">
+            <p class="section-kicker">Reviews met context</p>
+            <h2>Niet alleen sterren tonen, maar ook vertrouwen terugwinnen.</h2>
+            <p>
+              De live reviews laten zien dat smaak sterk is, maar dat operationele duidelijkheid nog te veel twijfel geeft.
+              Deze section zet positieve social proof en praktische betrouwbaarheid naast elkaar.
+            </p>
+          </div>
+
+          <div class="reviews-grid">
+            <article class="review-card review-card--highlight reveal">
+              <p class="review-card__score">4.9/5 gevoel in plaats van alleen "5 sterren"</p>
+              <h3>Proef de hype, maar fix de duidelijkheid.</h3>
+              <p>
+                In de redesign worden sterke food-signalen gecombineerd met heldere open/closed communicatie,
+                zodat reviews niet hoeven te compenseren voor onzekerheid.
+              </p>
+            </article>
+
+            <article class="review-card reveal">
+              <p class="review-card__quote">
+                "Alles was top, maar saus wel echt scherppp."
+              </p>
+              <span class="review-card__meta">Jessie James - maart 2026</span>
+            </article>
+
+            <article class="review-card reveal">
+              <p class="review-card__quote">
+                "Ondanks drukte eten was op tijd en lekker."
+              </p>
+              <span class="review-card__meta">Hoes - maart 2026</span>
+            </article>
+
+            <article class="review-card reveal">
+              <p class="review-card__quote review-card__quote--warning">
+                "Ik kwam het afhalen en de plek was dicht..."
+              </p>
+              <span class="review-card__meta">Voorbeeld van waarom statuscommunicatie bovenaan moet staan</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section pickup-section" id="pickup">
+        <div class="container pickup-grid">
+          <div class="pickup-card pickup-card--info reveal">
+            <p class="section-kicker">Afhalen zonder gedoe</p>
+            <h2>Alle praktische info op een plek waar je hem verwacht.</h2>
+            <ul class="pickup-facts">
+              <li><strong>Adres:</strong> Draaierweg 20D, 1032KS Amsterdam</li>
+              <li><strong>Pickup model:</strong> online bestellen, afhaaltijd kiezen, ophalen op locatie</li>
+              <li><strong>Support:</strong> contactblok hoort duidelijk bereikbaar en actueel te zijn</li>
+              <li><strong>Servicekosten:</strong> vooraf zichtbaar, niet pas als verrassing in checkout</li>
+            </ul>
+            <div class="pickup-actions">
+              <a class="button button-primary" href="https://maps.google.com/?daddr=Draaierweg+20D+Amsterdam" target="_blank" rel="noreferrer">
+                Route openen
+              </a>
+              <a class="button button-secondary" href="tel:0203086506">Bel locatie</a>
+            </div>
+          </div>
+
+          <div class="pickup-card pickup-card--hours reveal">
+            <p class="section-kicker">Consistente openingstijden</p>
+            <h3>Voorbeeld van hoe het overzichtelijk hoort te voelen</h3>
+            <ul class="hours-list">
+              <li><span>Maandag</span><strong>17:00 - 01:00</strong></li>
+              <li><span>Dinsdag</span><strong>17:00 - 01:00</strong></li>
+              <li><span>Woensdag</span><strong>Gesloten</strong></li>
+              <li><span>Donderdag</span><strong>Gesloten</strong></li>
+              <li><span>Vrijdag</span><strong>Gesloten</strong></li>
+              <li><span>Zaterdag</span><strong>Gesloten</strong></li>
+              <li><span>Zondag</span><strong>Gesloten</strong></li>
+            </ul>
+            <p class="pickup-card__note">
+              Geen botsende uren tussen homepage, informatiepagina, contactpagina en structured data.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section faq-section" id="faq">
+        <div class="container faq-layout">
+          <div class="faq-copy reveal">
+            <p class="section-kicker">FAQ</p>
+            <h2>Utility-content hoort vragen weg te nemen, niet extra twijfel te maken.</h2>
+            <p>
+              Deze compacte FAQ vangt precies de twijfels op die nu verspreid of onduidelijk op de live site terugkomen:
+              afhalen, bereikbaarheid, kosten, allergenen en wijzigingen.
+            </p>
+          </div>
+
+          <div class="faq-list">
+            <article class="faq-item reveal">
+              <button class="faq-trigger" type="button" aria-expanded="false">
+                <span>Kan ik vooruitbestellen als jullie gesloten zijn?</span>
+                <span class="faq-icon" aria-hidden="true">+</span>
+              </button>
+              <div class="faq-answer">
+                <p>Ja. De homepage en menu-flow moeten direct laten zien wanneer vooruitbestellen mogelijk is en voor welk tijdslot.</p>
+              </div>
+            </article>
+
+            <article class="faq-item reveal">
+              <button class="faq-trigger" type="button" aria-expanded="false">
+                <span>Waar zie ik servicekosten en afhaalinformatie?</span>
+                <span class="faq-icon" aria-hidden="true">+</span>
+              </button>
+              <div class="faq-answer">
+                <p>Vroeg in het proces: in de sticky cart, pickup-sectie en checkout samenvatting. Niet pas als verrassing op het laatste scherm.</p>
+              </div>
+            </article>
+
+            <article class="faq-item reveal">
+              <button class="faq-trigger" type="button" aria-expanded="false">
+                <span>Hoe communiceren jullie tijdelijke sluitingen of verbouwingen?</span>
+                <span class="faq-icon" aria-hidden="true">+</span>
+              </button>
+              <div class="faq-answer">
+                <p>Met een live statusbar bovenaan de site, een updateblok op de homepage en consistente tekst op contact-, info- en bestelpagina's.</p>
+              </div>
+            </article>
+
+            <article class="faq-item reveal">
+              <button class="faq-trigger" type="button" aria-expanded="false">
+                <span>Kunnen allergenen en halal-info duidelijker?</span>
+                <span class="faq-icon" aria-hidden="true">+</span>
+              </button>
+              <div class="faq-answer">
+                <p>Ja. Belangrijke productbadges en een korte verwijzing bovenaan werken beter dan alleen een losse informatiesectie die weinig mensen zien.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta-band">
+        <div class="container cta-band__inner reveal">
+          <div>
+            <p class="section-kicker">Fast-casual redesign vision</p>
+            <h2>Maak van Bumpy's een merk waar de site net zo hard verkoopt als het eten.</h2>
+          </div>
+          <div class="cta-band__actions">
+            <a class="button button-primary" href="#menu">Bestel direct</a>
+            <a class="button button-secondary" href="https://www.bumpyschicken.nl/bestellen" target="_blank" rel="noreferrer">
+              Vergelijk met live flow
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <p class="section-kicker">Bumpy's Chicken</p>
+          <h2>Een front-end die meer voelt als merk en minder als white-label portal.</h2>
+          <p class="footer-copy">
+            Deze concept-homepage laat zien hoe cravings, statusduidelijkheid en menu-conversie samen kunnen werken
+            zonder het bestaande orderplatform te vervangen.
+          </p>
+        </div>
+
+        <div class="footer-column">
+          <h3>Bestellen</h3>
+          <a href="#bestsellers">Bestsellers</a>
+          <a href="#menu">Menu experience</a>
+          <a href="https://www.bumpyschicken.nl/bestellen" target="_blank" rel="noreferrer">Live checkout</a>
+        </div>
+
+        <div class="footer-column">
+          <h3>Praktisch</h3>
+          <a href="#pickup">Afhalen</a>
+          <a href="#faq">FAQ</a>
+          <a href="tel:0203086506">0203086506</a>
+        </div>
+
+        <div class="footer-column">
+          <h3>Locatie</h3>
+          <p>Draaierweg 20D<br>1032KS Amsterdam</p>
+          <p>Mon/Tue 17:00 - 01:00</p>
+        </div>
+      </div>
+      <div class="container footer-bottom">
+        <p>&copy; <span id="current-year"></span> Bumpy's Chicken redesign concept.</p>
+        <p>Gebouwd als front-end prototype rond een Sitedish-compatibele orderflow.</p>
+      </div>
+    </footer>
+
+    <button class="mobile-cart-bar" id="mobile-cart-bar" type="button">
+      <span class="mobile-cart-bar__label">0 items in je bestelling</span>
+      <span class="mobile-cart-bar__total">EUR 0,25</span>
+    </button>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
