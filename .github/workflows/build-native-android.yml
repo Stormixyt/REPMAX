@@ -42,12 +42,18 @@ jobs:
 
       - name: Build debug APK
         working-directory: android-native
-        run: ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tail -300
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Verify APK exists
+        run: |
+          echo "=== Looking for APK ==="
+          find android-native/app/build/outputs -name "*.apk" -type f 2>/dev/null || echo "No APK found!"
+          ls -la android-native/app/build/outputs/apk/debug/ || echo "Debug dir not found"
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: REPMAX-Native-Android
-          path: android-native/app/build/outputs/apk/debug/*.apk
+          path: android-native/app/build/outputs/apk/debug/
           retention-days: 90
