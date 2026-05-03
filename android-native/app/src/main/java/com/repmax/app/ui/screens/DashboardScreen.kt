@@ -6,7 +6,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,16 +15,14 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.repmax.app.data.*
 import com.repmax.app.ui.theme.*
-import java.time.LocalDate
-import java.time.format.TextStyle as JavaTextStyle
-import java.util.*
 
 @Composable
 fun DashboardScreen(
@@ -33,43 +30,57 @@ fun DashboardScreen(
     program: Program?,
     workoutHistory: List<Workout>,
     personalRecords: List<PersonalRecord>,
-    onStartWorkout: (ProgramDay) -> Unit,
+    onStartWorkout: (ProgramDay?) -> Unit,
     onViewPlan: () -> Unit,
     onNavigate: (String) -> Unit,
 ) {
-    val scrollState = rememberScrollState()
-    val firstName = profile?.display_name?.split(" ")?.firstOrNull() ?: "Athlete"
+    val displayName = profile?.display_name ?: profile?.username ?: "Athlete"
+    val firstName = displayName.split(" ").firstOrNull() ?: displayName
+    val greeting = "YO ${firstName.uppercase()} 🤙"
     val streak = profile?.current_streak ?: 0
-    val avatarInitials = firstName.take(2).uppercase()
+    val trainingDays = profile?.training_days ?: emptyList()
 
-    // Compute today's workout
-    val todayWorkout = remember(program) {
-        val trainingDays = profile?.training_days ?: emptyList()
-        val today = LocalDate.now()
-        val dayAbbrevs = mapOf(
-            java.time.DayOfWeek.MONDAY to "Mon", java.time.DayOfWeek.TUESDAY to "Tue",
-            java.time.DayOfWeek.WEDNESDAY to "Wed", java.time.DayOfWeek.THURSDAY to "Thu",
-            java.time.DayOfWeek.FRIDAY to "Fri", java.time.DayOfWeek.SATURDAY to "Sat",
-            java.time.DayOfWeek.SUNDAY to "Sun"
-        )
-        val shortDay = dayAbbrevs[today.dayOfWeek] ?: ""
-        val dayIndex = trainingDays.indexOf(shortDay)
-        if (dayIndex >= 0) {
-            val currentWeek = program?.program_data?.weeks?.getOrNull((program.current_week ?: 1) - 1)
-            currentWeek?.days?.getOrNull(dayIndex)
-        } else null
-    }
+    // Get current week data
+    val currentWeek = program?.program_data?.weeks?.getOrNull((program.current_week ?: 1) - 1)
+    val allDays = currentWeek?.days ?: emptyList()
+
+    // Find today's workout
+    val dayOfWeek = java.time.LocalDate.now().dayOfWeek
+    val dayAbbrevMap = mapOf(
+        java.time.DayOfWeek.MONDAY to "Mon", java.time.DayOfWeek.TUESDAY to "Tue",
+        java.time.DayOfWeek.WEDNESDAY to "Wed", java.time.DayOfWeek.THURSDAY to "Thu",
+        java.time.DayOfWeek.FRIDAY to "Fri", java.time.DayOfWeek.SATURDAY to "Sat",
+        java.time.DayOfWeek.SUNDAY to "Sun"
+    )
+    val todayAbbrev = dayAbbrevMap[dayOfWeek] ?: ""
+    val todayDayIndex = trainingDays.indexOf(todayAbbrev)
+    val todayDay = if (todayDayIndex >= 0) allDays.getOrNull(todayDayIndex) else allDays.firstOrNull()
+    val todayDayName = todayDay?.day_name ?: "PUSH DAY"
+    val targetMuscles = todayDay?.target_muscles?.joinToString(" · ") ?: "Chest · Shoulders · Triceps"
 
     // Weekly stats
-    val weeklyWorkouts = workoutHistory.size.coerceAtMost(99)
-    val weeklyVolume = workoutHistory.sumOf { it.total_volume ?: 0.0 }.toLong()
-    val weeklyPRs = personalRecords.size.coerceAtMost(99)
+    val weekAgo = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000
+    val weekWorkouts = workoutHistory.filter { w ->
+        w.completed_at?.let { try { java.time.Instant.parse(it).toEpochMilli() > weekAgo } catch (_: Exception) { false } } ?: false
+    }
+    val weekVolume = weekWorkouts.sumOf { it.total_volume ?: 0.0 }.toLong()
+    val weekPRs = personalRecords.count { pr ->
+        pr.achieved_at?.let { try { java.time.Instant.parse(it).toEpochMilli() > weekAgo } catch (_: Exception) { false } } ?: false
+    }
+
+    val motivations = listOf(
+        "DISCIPLINE TODAY.\nDOMINANCE TOMORROW.",
+        "NO EXCUSES. JUST EXECUTION.",
+        "YOUR ONLY LIMIT IS YOU.",
+        "LIGHT WEIGHT, BABY!",
+    )
+    val motivation = remember { motivations.random() }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Black)
-            .verticalScroll(scrollState)
+            .verticalScroll(rememberScrollState())
             .systemBarsPadding()
     ) {
         // ═══ TOP BAR ═══
@@ -85,59 +96,62 @@ fun DashboardScreen(
                     color = NeonLime,
                     fontStyle = FontStyle.Italic,
                     fontWeight = FontWeight.Black,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                 ),
             )
-
             Spacer(Modifier.weight(1f))
 
             // Streak badge
             if (streak > 0) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Box(
                     modifier = Modifier
-                        .background(NeonLimeGlow, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                        .background(NeonLimeGlow, RoundedCornerShape(12.dp))
+                        .border(1.dp, NeonLime.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
-                    Text("🔥", fontSize = 12.sp)
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "$streak",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            color = NeonLime,
-                            fontWeight = FontWeight.ExtraBold,
-                        ),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🔥", fontSize = 12.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "$streak",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = NeonLime,
+                                fontWeight = FontWeight.ExtraBold,
+                            ),
+                        )
+                    }
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(8.dp))
             }
 
-            // Avatar circle
+            // Avatar
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
                     .background(Card)
-                    .border(1.dp, BorderAccent, CircleShape),
+                    .border(2.dp, NeonLime, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = avatarInitials,
-                    style = MaterialTheme.typography.titleSmall.copy(
+                    firstName.take(2).uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(
                         color = NeonLime,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp,
                     ),
                 )
             }
         }
 
-        // ═══ GREETING ═══
+        Spacer(Modifier.height(8.dp))
+
+        // ═══ GREETING + HERO ═══
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             Text(
-                text = "YO $firstName 👋",
+                text = greeting,
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = NeonLime,
+                    color = TextTertiary,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                 ),
@@ -145,140 +159,156 @@ fun DashboardScreen(
             Spacer(Modifier.height(4.dp))
             Text(
                 text = "READY TO\nGET AFTER IT?",
-                style = MaterialTheme.typography.displaySmall.copy(
+                style = MaterialTheme.typography.displayMedium.copy(
                     fontWeight = FontWeight.Black,
-                    fontSize = 28.sp,
-                    lineHeight = 32.sp,
+                    fontSize = 30.sp,
+                    lineHeight = 34.sp,
                 ),
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 text = "Your AI has your back.\nLet's hit a new PR.",
                 style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
             )
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
 
         // ═══ AI COACH CARD ═══
-        Row(
+        Box(
             modifier = Modifier
-                .padding(horizontal = 20.dp)
                 .fillMaxWidth()
-                .background(Card, RoundedCornerShape(8.dp))
-                .border(1.dp, Border, RoundedCornerShape(8.dp))
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(horizontal = 20.dp)
+                .background(Card, RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                .padding(16.dp),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "AI COACH",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = NeonLime,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.5.sp,
-                    ),
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Your plan is optimized\nfor your goals.",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(NeonLimeGlow, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Default.Psychology,
-                    contentDescription = "AI",
-                    tint = NeonLime,
-                    modifier = Modifier.size(28.dp),
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "AI COACH",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = NeonLime,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.5.sp,
+                        ),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Your plan is optimized\nfor your goals.",
+                        style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                    )
+                }
+
+                Spacer(Modifier.width(12.dp))
+
+                // Wireframe head icon (drawn with Compose Canvas)
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .drawBehind {
+                            val cx = size.width / 2
+                            val cy = size.height / 2
+                            val r = size.minDimension / 2.2f
+                            val limeColor = Color(0xFFD4FF00)
+                            val strokeStyle = Stroke(width = 1.5f)
+
+                            // Head oval
+                            drawOval(color = limeColor, style = strokeStyle)
+                            // Cross lines for wireframe effect
+                            drawLine(limeColor, Offset(cx, 0f), Offset(cx, size.height), strokeWidth = 0.8f)
+                            drawLine(limeColor, Offset(0f, cy), Offset(size.width, cy), strokeWidth = 0.8f)
+                            // Eye lines
+                            drawLine(limeColor, Offset(cx - r * 0.35f, cy - r * 0.15f), Offset(cx - r * 0.1f, cy - r * 0.15f), strokeWidth = 1.5f)
+                            drawLine(limeColor, Offset(cx + r * 0.1f, cy - r * 0.15f), Offset(cx + r * 0.35f, cy - r * 0.15f), strokeWidth = 1.5f)
+                            // Jaw line
+                            val jawPath = Path().apply {
+                                moveTo(cx - r * 0.5f, cy + r * 0.1f)
+                                quadraticBezierTo(cx, cy + r * 0.8f, cx + r * 0.5f, cy + r * 0.1f)
+                            }
+                            drawPath(jawPath, limeColor, style = Stroke(width = 1.2f))
+                            // Grid lines
+                            for (i in 1..3) {
+                                val y = cy - r + (r * 2 * i / 4)
+                                drawLine(limeColor.copy(alpha = 0.3f), Offset(cx - r * 0.8f, y), Offset(cx + r * 0.8f, y), strokeWidth = 0.5f)
+                            }
+                        },
                 )
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(6.dp))
 
         // VIEW PLAN button
-        OutlinedButton(
-            onClick = onViewPlan,
-            modifier = Modifier.padding(horizontal = 20.dp),
-            shape = RoundedCornerShape(6.dp),
-            border = BorderStroke(1.dp, Border),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.CenterStart,
         ) {
-            Text(
-                text = "VIEW PLAN",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = TextPrimary,
-                ),
-            )
+            OutlinedButton(
+                onClick = onViewPlan,
+                shape = RoundedCornerShape(6.dp),
+                border = BorderStroke(1.dp, Border),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    "VIEW PLAN",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.sp,
+                    ),
+                )
+            }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
         // ═══ WEEK OVERVIEW ═══
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             Text(
-                text = "WEEK OVERVIEW",
+                "WEEK OVERVIEW",
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.5.sp,
-                    color = TextSecondary,
+                    color = TextTertiary,
                 ),
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // Day circles (M T W T F S S)
-            val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
-            val todayIndex = LocalDate.now().dayOfWeek.value - 1 // 0=Mon
-            val trainingDayIndices = (profile?.training_days ?: emptyList()).map {
-                listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun").indexOf(it)
-            }.filter { it >= 0 }
+            val weekDays = listOf("M", "T", "W", "T", "F", "S", "S")
+            val weekFull = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+            val todayIdx = dayOfWeek.value - 1
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                dayLabels.forEachIndexed { index, label ->
-                    val isToday = index == todayIndex
-                    val isTrainingDay = index in trainingDayIndices
-                    val isPast = index < todayIndex
-
+                weekDays.forEachIndexed { i, label ->
+                    val isToday = i == todayIdx
+                    val isTrainingDay = weekFull[i] in trainingDays
                     Box(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
                             .background(
-                                when {
-                                    isToday -> NeonLime
-                                    isPast && isTrainingDay -> NeonLimeGlow
-                                    else -> Color.Transparent
-                                }
+                                if (isToday) NeonLime
+                                else if (isTrainingDay) Card
+                                else Color.Transparent
                             )
                             .then(
-                                if (!isToday) Modifier.border(1.dp, if (isTrainingDay) BorderAccent else Border, CircleShape)
+                                if (!isToday && isTrainingDay)
+                                    Modifier.border(1.dp, Border, CircleShape)
                                 else Modifier
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = label,
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = when {
-                                    isToday -> TextOnAccent
-                                    isPast && isTrainingDay -> NeonLime
-                                    else -> TextTertiary
-                                },
+                            label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = if (isToday) FontWeight.Black else FontWeight.Medium,
+                                color = if (isToday) TextOnAccent else if (isTrainingDay) TextPrimary else TextTertiary,
                             ),
                         )
                     }
@@ -286,162 +316,138 @@ fun DashboardScreen(
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // ═══ TODAY'S WORKOUT (Push Day card) ═══
-        if (todayWorkout != null) {
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth()
-                    .background(Card, RoundedCornerShape(8.dp))
-                    .border(1.dp, BorderAccent, RoundedCornerShape(8.dp))
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        // ═══ TODAY'S WORKOUT CARD ═══
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .background(Card, RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                .padding(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "PUSH DAY",
+                        todayDayName.uppercase(),
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.Black,
+                            fontSize = 17.sp,
                         ),
                     )
                     Text(
-                        text = todayWorkout.target_muscles?.joinToString(" • ") ?: "Chest • Shoulders • Triceps",
+                        targetMuscles,
                         style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary),
                     )
                 }
                 Button(
-                    onClick = { onStartWorkout(todayWorkout) },
+                    onClick = { onStartWorkout(todayDay) },
                     shape = RoundedCornerShape(6.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = NeonLime,
-                        contentColor = TextOnAccent,
-                    ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonLime, contentColor = TextOnAccent),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 ) {
                     Text(
-                        text = "START WORKOUT",
-                        style = MaterialTheme.typography.labelMedium.copy(
+                        "START WORKOUT",
+                        style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = 0.5.sp,
-                            color = TextOnAccent,
+                            fontSize = 10.sp,
                         ),
                     )
                     Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Default.ArrowForward, null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.ArrowForward, null, modifier = Modifier.size(14.dp))
                 }
             }
         }
 
         Spacer(Modifier.height(20.dp))
 
-        // ═══ PROGRESS ROW ═══
+        // ═══ PROGRESS THIS WEEK ═══
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "PROGRESS",
+                    "PROGRESS",
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.5.sp,
-                        color = TextSecondary,
+                        color = TextTertiary,
                     ),
                 )
                 Text(
-                    text = "This Week",
+                    "This Week",
                     style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary),
                 )
             }
-
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                StatBox("WORKOUTS", "$weeklyWorkouts", Modifier.weight(1f))
-                StatBox("VOLUME", "${weeklyVolume / 1000}K KG", Modifier.weight(1f))
-                StatBox("CALORIES", "${(weeklyVolume * 0.23).toLong()}", Modifier.weight(1f))
-                StatBox("PRs", "$weeklyPRs", Modifier.weight(1f))
+                StatBox("WORKOUTS", "${weekWorkouts.size}")
+                StatBox("VOLUME", "${weekVolume / 1000},${"%03d".format(weekVolume % 1000)} KG")
+                StatBox("CALORIES", "${(weekVolume * 0.23).toLong()}")
+                StatBox("PRs", "$weekPRs")
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
 
         // ═══ MOTIVATIONAL FOOTER ═══
-        Row(
+        Box(
             modifier = Modifier
-                .padding(horizontal = 20.dp)
                 .fillMaxWidth()
-                .background(Card, RoundedCornerShape(8.dp))
-                .border(1.dp, Border, RoundedCornerShape(8.dp))
+                .padding(horizontal = 20.dp)
+                .background(Card, RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "DISCIPLINE TODAY",
+                    motivation,
                     style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
                     ),
+                    modifier = Modifier.weight(1f),
                 )
-                Text(
-                    text = "DOMINANCE TOMORROW.",
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.sp,
-                    ),
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(NeonLimeGlow, RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
+                Spacer(Modifier.width(12.dp))
                 Icon(
-                    Icons.Default.Bolt,
+                    Icons.Default.FlashOn,
                     contentDescription = null,
                     tint = NeonLime,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(28.dp),
                 )
             }
         }
 
-        Spacer(Modifier.height(100.dp)) // Bottom nav padding
+        Spacer(Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun StatBox(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .background(Card, RoundedCornerShape(6.dp))
-            .border(1.dp, Border, RoundedCornerShape(6.dp))
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp,
-                color = TextTertiary,
-                fontSize = 9.sp,
-            ),
-        )
-        Spacer(Modifier.height(4.dp))
+private fun StatBox(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Black,
-                color = NeonLime,
                 fontSize = 16.sp,
+                color = TextPrimary,
+            ),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = TextTertiary,
+                fontWeight = FontWeight.Medium,
+                fontSize = 9.sp,
+                letterSpacing = 1.sp,
             ),
         )
     }

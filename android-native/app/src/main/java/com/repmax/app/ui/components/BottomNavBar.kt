@@ -27,7 +27,7 @@ val bottomNavItems = listOf(
     NavItem("home", "HOME", Icons.Outlined.Home, Icons.Filled.Home),
     NavItem("workouts", "WORKOUTS", Icons.Outlined.FitnessCenter, Icons.Filled.FitnessCenter),
     NavItem("progress", "PROGRESS", Icons.Outlined.BarChart, Icons.Filled.BarChart),
-    NavItem("coach", "AI COACH", Icons.Outlined.Psychology, Icons.Filled.Psychology),
+    NavItem("ai", "AI COACH", Icons.Outlined.Psychology, Icons.Filled.Psychology),
     NavItem("profile", "PROFILE", Icons.Outlined.Person, Icons.Filled.Person),
 )
 

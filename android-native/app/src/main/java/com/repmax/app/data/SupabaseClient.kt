@@ -254,4 +254,56 @@ class SupabaseClient(private val context: Context) {
             Result.failure(e)
         }
     }
+
+    suspend fun completeWorkout(workoutId: String, totalVolume: Double): Result<Boolean> {
+        return try {
+            val http = authClient()
+            val body = buildJsonObject {
+                put("completed_at", java.time.Instant.now().toString())
+                put("total_volume", totalVolume)
+            }.toString()
+
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/workouts?id=eq.$workoutId")
+                .patch(body.toRequestBody(jsonMediaType))
+                .header("apikey", anonKey)
+                .header("Content-Type", "application/json")
+                .build()
+            val response = http.newCall(request).execute()
+            Result.success(response.isSuccessful)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun saveWorkoutSet(
+        workoutId: String,
+        exerciseName: String,
+        setNumber: Int,
+        weight: Double,
+        reps: Int,
+    ): Result<Boolean> {
+        return try {
+            val http = authClient()
+            val body = buildJsonObject {
+                put("workout_id", workoutId)
+                put("exercise_name", exerciseName)
+                put("set_number", setNumber)
+                put("actual_weight", weight)
+                put("actual_reps", reps)
+                put("completed", true)
+            }.toString()
+
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/workout_sets")
+                .post(body.toRequestBody(jsonMediaType))
+                .header("apikey", anonKey)
+                .header("Prefer", "return=minimal")
+                .build()
+            val response = http.newCall(request).execute()
+            Result.success(response.isSuccessful)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

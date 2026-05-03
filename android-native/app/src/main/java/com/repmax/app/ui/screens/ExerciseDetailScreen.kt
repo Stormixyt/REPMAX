@@ -11,6 +11,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -30,7 +33,7 @@ data class SetEntry(
 fun ExerciseDetailScreen(
     exercise: ProgramExercise?,
     onBack: () -> Unit,
-    onComplete: (List<SetEntry>) -> Unit,
+    onComplete: (List<Pair<Double, Int>>) -> Unit,
 ) {
     val exerciseName = exercise?.name ?: "BARBELL BENCH PRESS"
     val targetSets = exercise?.setsInt ?: 4
@@ -102,22 +105,40 @@ fun ExerciseDetailScreen(
                         style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary),
                     )
                 }
-                // Anatomy placeholder
+                // Anatomy wireframe
                 Box(
                     modifier = Modifier
-                        .size(60.dp)
+                        .size(70.dp, 90.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Card)
-                        .border(1.dp, Border, RoundedCornerShape(8.dp)),
+                        .border(1.dp, Border, RoundedCornerShape(8.dp))
+                        .drawBehind {
+                            val cx = size.width / 2
+                            val limeColor = androidx.compose.ui.graphics.Color(0xFFD4FF00)
+                            val strokeW = 1.5f
+                            val headR = size.width * 0.08f
+                            val headY = size.height * 0.12f
+                            // Head
+                            drawCircle(limeColor, headR, center = Offset(cx, headY), style = Stroke(strokeW))
+                            // Neck
+                            drawLine(limeColor, Offset(cx, headY + headR), Offset(cx, size.height * 0.2f), strokeW)
+                            // Shoulders
+                            drawLine(limeColor, Offset(size.width * 0.2f, size.height * 0.22f), Offset(size.width * 0.8f, size.height * 0.22f), strokeW)
+                            // Torso
+                            drawLine(limeColor, Offset(cx, size.height * 0.2f), Offset(cx, size.height * 0.52f), strokeW)
+                            // Arms
+                            drawLine(limeColor, Offset(size.width * 0.2f, size.height * 0.22f), Offset(size.width * 0.12f, size.height * 0.45f), strokeW)
+                            drawLine(limeColor, Offset(size.width * 0.8f, size.height * 0.22f), Offset(size.width * 0.88f, size.height * 0.45f), strokeW)
+                            // Hips
+                            drawLine(limeColor, Offset(size.width * 0.3f, size.height * 0.52f), Offset(size.width * 0.7f, size.height * 0.52f), strokeW)
+                            // Legs
+                            drawLine(limeColor, Offset(size.width * 0.35f, size.height * 0.52f), Offset(size.width * 0.3f, size.height * 0.82f), strokeW)
+                            drawLine(limeColor, Offset(size.width * 0.65f, size.height * 0.52f), Offset(size.width * 0.7f, size.height * 0.82f), strokeW)
+                            // Highlight target muscles (chest area)
+                            drawCircle(limeColor.copy(alpha = 0.3f), size.width * 0.12f, Offset(cx, size.height * 0.3f))
+                        },
                     contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Default.Accessibility,
-                        null,
-                        tint = NeonLime,
-                        modifier = Modifier.size(36.dp),
-                    )
-                }
+                ) { /* Canvas-only */ }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -343,7 +364,12 @@ fun ExerciseDetailScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
             Button(
-                onClick = { onComplete(sets) },
+                onClick = {
+                    val completedSets = sets.map { s ->
+                        Pair(s.weight.toDoubleOrNull() ?: 0.0, s.reps.toIntOrNull() ?: 0)
+                    }
+                    onComplete(completedSets)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
