@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- Neon Lime "R" centered in the safe zone (24dp inset from each side) -->
-    <path
-        android:fillColor="#D4FF00"
-        android:pathData="M38,32 L38,76 L44,76 L44,58 L52,58 L60,76 L67,76 L58.5,57.5
-        C63.5,55.5 66,51 66,46 C66,38.5 60.5,32 52,32 Z
-        M44,37.5 L52,37.5 C57.5,37.5 60,40.5 60,45.5 C60,50.5 57.5,53 52,53 L44,53 Z" />
-</vector>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_app_logo"
+    android:insetTop="20%"
+    android:insetBottom="20%"
+    android:insetLeft="20%"
+    android:insetRight="20%" />
