@@ -80,11 +80,11 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Splash screen
-    implementation("androidx.core:core-splashscreen:1.2.0-alpha02")
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     // DataStore for session persistence
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
-    // Google Fonts
-    implementation("androidx.compose.ui:ui-text-google-fonts:1.7.6")
+    // Google Fonts (version managed by Compose BOM)
+    implementation("androidx.compose.ui:ui-text-google-fonts")
 }

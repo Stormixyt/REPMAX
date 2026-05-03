@@ -1,6 +1,7 @@
 package com.repmax.app.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -172,7 +173,7 @@ fun WelcomeScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(6.dp),
-                    border = ButtonDefaults.outlinedButtonBorder(true),
+                    border = BorderStroke(1.dp, Border),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = TextPrimary,
                     ),
