@@ -1,15 +1,20 @@
 package com.repmax.app.ui.components
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,7 +46,7 @@ fun RepMaxBottomBar(
             .fillMaxWidth()
             .background(Black)
             .border(width = 1.dp, color = Border)
-            .padding(vertical = 8.dp)
+            .padding(vertical = 6.dp)
             .navigationBarsPadding(),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
@@ -50,23 +55,43 @@ fun RepMaxBottomBar(
             val isActive = currentRoute == item.route
             val icon = if (isActive) item.activeIcon else item.icon
 
+            // Tap animation
+            val scale by animateFloatAsState(
+                targetValue = if (isActive) 1.1f else 1f,
+                animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
+                label = "navScale_${item.route}",
+            )
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .weight(1f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onNavigate(item.route) }
                     .padding(vertical = 4.dp),
             ) {
-                IconButton(
-                    onClick = { onNavigate(item.route) },
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = item.label,
-                        tint = if (isActive) NeonLime else TextTertiary,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+                // Active indicator dot
+                Box(
+                    modifier = Modifier
+                        .width(if (isActive) 16.dp else 0.dp)
+                        .height(3.dp)
+                        .background(
+                            if (isActive) NeonLime else androidx.compose.ui.graphics.Color.Transparent,
+                            RoundedCornerShape(1.5.dp),
+                        ),
+                )
+                Spacer(Modifier.height(4.dp))
+
+                Icon(
+                    imageVector = icon,
+                    contentDescription = item.label,
+                    tint = if (isActive) NeonLime else TextTertiary,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .scale(scale),
+                )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = item.label,

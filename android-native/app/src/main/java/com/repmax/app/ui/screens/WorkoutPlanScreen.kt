@@ -1,5 +1,7 @@
 package com.repmax.app.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.repmax.app.data.*
 import com.repmax.app.ui.theme.*
+import kotlinx.coroutines.delay
 
 @Composable
 fun WorkoutPlanScreen(
@@ -30,7 +33,28 @@ fun WorkoutPlanScreen(
     val exercises = day?.exercises ?: emptyList()
     val totalSets = exercises.sumOf { it.setsInt }
     val estimatedMinutes = totalSets * 3 + exercises.size * 2
-    val estimatedVolume = exercises.sumOf { it.setsInt * it.repsDisplay.filter { c -> c.isDigit() }.take(2).toIntOrNull().let { r -> r ?: 8 } * (it.weightDouble.takeIf { w -> w > 0 } ?: 60.0) }.toLong()
+    val estimatedVolume = exercises.sumOf {
+        it.setsInt * (it.repsDisplay.filter { c -> c.isDigit() }.take(2).toIntOrNull() ?: 8) *
+                (it.weightDouble.takeIf { w -> w > 0 } ?: 60.0)
+    }.toLong()
+
+    // Staggered animations
+    var showHeader by remember { mutableStateOf(false) }
+    var showStats by remember { mutableStateOf(false) }
+    val showExercise = remember { mutableStateListOf<Boolean>() }
+    var showCta by remember { mutableStateOf(false) }
+
+    LaunchedEffect(exercises) {
+        showExercise.clear()
+        exercises.forEach { _ -> showExercise.add(false) }
+        delay(100); showHeader = true
+        delay(150); showStats = true
+        exercises.indices.forEach { i ->
+            delay(80)
+            if (i < showExercise.size) showExercise[i] = true
+        }
+        delay(100); showCta = true
+    }
 
     Column(
         modifier = Modifier
@@ -40,9 +64,7 @@ fun WorkoutPlanScreen(
     ) {
         // ═══ TOP BAR ═══
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -50,17 +72,12 @@ fun WorkoutPlanScreen(
             }
             Spacer(Modifier.weight(1f))
             Text(
-                text = dayName.uppercase(),
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.Black,
-                ),
+                dayName.uppercase(),
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
             )
             Spacer(Modifier.weight(1f))
             TextButton(onClick = { }) {
-                Text(
-                    text = "Edit",
-                    style = MaterialTheme.typography.titleSmall.copy(color = NeonLime),
-                )
+                Text("Edit", style = MaterialTheme.typography.titleSmall.copy(color = NeonLime))
             }
         }
 
@@ -72,60 +89,68 @@ fun WorkoutPlanScreen(
                 .padding(horizontal = 20.dp)
         ) {
             // ═══ WORKOUT PLAN HEADER ═══
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "WORKOUT PLAN",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        fontSize = 24.sp,
-                    ),
-                )
-                Spacer(Modifier.width(12.dp))
-                Box(
-                    modifier = Modifier
-                        .background(NeonLimeGlow, RoundedCornerShape(4.dp))
-                        .border(1.dp, NeonLime, RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                ) {
-                    Text(
-                        text = "AI OPTIMIZED",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = NeonLime,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 1.sp,
-                            fontSize = 9.sp,
-                        ),
-                    )
+            AnimatedVisibility(visible = showHeader, enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 20 }) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "WORKOUT PLAN",
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Black, fontSize = 24.sp,
+                            ),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(NeonLimeGlow, RoundedCornerShape(4.dp))
+                                .border(1.dp, NeonLime, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                "AI OPTIMIZED",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = NeonLime, fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.sp, fontSize = 9.sp,
+                                ),
+                            )
+                        }
+                    }
                 }
             }
 
             Spacer(Modifier.height(12.dp))
 
-            // Stats row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                PlanStat("Estimated Time", "${estimatedMinutes} MIN")
-                PlanStat("Volume", "${estimatedVolume / 1000},${"${estimatedVolume % 1000}".padStart(3, '0')} KG")
-                PlanStat("Exercises", "${exercises.size}")
+            // ═══ STATS ROW ═══
+            AnimatedVisibility(visible = showStats, enter = fadeIn(tween(400)) + slideInVertically(tween(400)) { 20 }) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                ) {
+                    PlanStat("Estimated Time", "${estimatedMinutes} MIN")
+                    PlanStat("Volume", "${estimatedVolume / 1000},${"%03d".format(estimatedVolume % 1000)} KG")
+                    PlanStat("Exercises", "${exercises.size}")
+                }
             }
 
             Spacer(Modifier.height(20.dp))
 
-            // ═══ EXERCISE LIST ═══
+            // ═══ EXERCISE LIST — staggered fade-in ═══
             exercises.forEachIndexed { index, exercise ->
-                ExerciseRow(
-                    index = index + 1,
-                    exercise = exercise,
-                    isCompleted = false,
-                    onClick = { onExerciseClick(exercise, index) },
-                )
+                AnimatedVisibility(
+                    visible = showExercise.getOrElse(index) { false },
+                    enter = fadeIn(tween(400)) + slideInHorizontally(tween(400)) { 30 },
+                ) {
+                    ExerciseRow(
+                        index = index + 1,
+                        exercise = exercise,
+                        isCompleted = false,
+                        onClick = { onExerciseClick(exercise, index) },
+                    )
+                }
                 if (index < exercises.lastIndex) {
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(3.dp))
                 }
             }
 
@@ -133,34 +158,29 @@ fun WorkoutPlanScreen(
         }
 
         // ═══ BOTTOM CTA ═══
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Black)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-        ) {
-            Button(
-                onClick = onStartWorkout,
+        AnimatedVisibility(visible = showCta, enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 60 }) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp),
-                shape = RoundedCornerShape(6.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = NeonLime,
-                    contentColor = TextOnAccent,
-                ),
+                    .background(Black)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
             ) {
-                Text(
-                    text = "START WORKOUT",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        fontSize = 15.sp,
-                        letterSpacing = 1.sp,
-                        color = TextOnAccent,
-                    ),
-                )
-                Spacer(Modifier.width(8.dp))
-                Icon(Icons.Default.ArrowForward, null, modifier = Modifier.size(18.dp))
+                Button(
+                    onClick = onStartWorkout,
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonLime, contentColor = TextOnAccent),
+                ) {
+                    Text(
+                        "START WORKOUT",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Black, fontSize = 15.sp,
+                            letterSpacing = 1.sp, color = TextOnAccent,
+                        ),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Default.ArrowForward, null, modifier = Modifier.size(18.dp))
+                }
             }
         }
     }
@@ -170,19 +190,13 @@ fun WorkoutPlanScreen(
 private fun PlanStat(label: String, value: String) {
     Column {
         Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                color = TextTertiary,
-                fontWeight = FontWeight.Medium,
-                fontSize = 10.sp,
-            ),
+            label,
+            style = MaterialTheme.typography.labelSmall.copy(color = TextTertiary, fontWeight = FontWeight.Medium, fontSize = 10.sp),
         )
         Text(
-            text = value,
+            value,
             style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Black,
-                color = NeonLime,
-                fontSize = 15.sp,
+                fontWeight = FontWeight.Black, color = NeonLime, fontSize = 15.sp,
             ),
         )
     }
@@ -199,26 +213,25 @@ private fun ExerciseRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .background(Card, RoundedCornerShape(8.dp))
-            .border(1.dp, if (isCompleted) BorderAccent else Border, RoundedCornerShape(8.dp))
+            .background(Card, RoundedCornerShape(10.dp))
+            .border(1.dp, if (isCompleted) BorderAccent else Border, RoundedCornerShape(10.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Numbered circle
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(34.dp)
                 .clip(CircleShape)
                 .background(if (isCompleted) NeonLime else NeonLimeGlow)
-                .border(1.dp, NeonLime, CircleShape),
+                .border(1.5.dp, NeonLime, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "$index",
+                "$index",
                 style = MaterialTheme.typography.titleSmall.copy(
                     color = if (isCompleted) TextOnAccent else NeonLime,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 13.sp,
+                    fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
                 ),
             )
         }
@@ -228,31 +241,22 @@ private fun ExerciseRow(
         // Exercise info
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = exercise.name.uppercase(),
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 14.sp,
-                ),
+                exercise.name.uppercase(),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold, fontSize = 14.sp),
             )
             Text(
-                text = "${exercise.setsInt} SETS · ${exercise.repsDisplay} REPS",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = TextTertiary,
-                    fontWeight = FontWeight.Medium,
-                ),
+                "${exercise.setsInt} SETS · ${exercise.repsDisplay} REPS",
+                style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary, fontWeight = FontWeight.Medium),
             )
             if (exercise.weightDouble > 0) {
                 Text(
-                    text = "Last: ${exercise.weightDouble.toInt()}KG × ${exercise.repsDisplay.filter { it.isDigit() }.take(2)}",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextTertiary,
-                        fontSize = 10.sp,
-                    ),
+                    "Last: ${exercise.weightDouble.toInt()}KG × ${exercise.repsDisplay.filter { it.isDigit() }.take(2)}",
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary, fontSize = 10.sp),
                 )
             }
         }
 
-        // Checkmark
+        // Checkmark circle
         Box(
             modifier = Modifier
                 .size(28.dp)

@@ -1,5 +1,7 @@
 package com.repmax.app.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,16 +13,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.repmax.app.R
 import com.repmax.app.data.*
 import com.repmax.app.ui.theme.*
+import kotlinx.coroutines.delay
 
 data class SetEntry(
     val setNumber: Int,
@@ -49,6 +52,19 @@ fun ExerciseDetailScreen(
         )
     }
 
+    // Animations
+    var showInfo by remember { mutableStateOf(false) }
+    var showRec by remember { mutableStateOf(false) }
+    var showSets by remember { mutableStateOf(false) }
+    var showBtn by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100); showInfo = true
+        delay(200); showRec = true
+        delay(300); showSets = true
+        delay(400); showBtn = true
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -57,9 +73,7 @@ fun ExerciseDetailScreen(
     ) {
         // ═══ TOP BAR ═══
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -67,11 +81,8 @@ fun ExerciseDetailScreen(
             }
             Spacer(Modifier.weight(1f))
             Text(
-                text = exerciseName.uppercase(),
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.Black,
-                    fontSize = 14.sp,
-                ),
+                exerciseName.uppercase(),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black, fontSize = 14.sp),
                 maxLines = 1,
             )
             Spacer(Modifier.weight(1f))
@@ -87,268 +98,221 @@ fun ExerciseDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
         ) {
-            // ═══ EXERCISE INFO ═══
             Spacer(Modifier.height(8.dp))
 
-            // Muscle target info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column {
-                    Text(
-                        text = "Target: Chest",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
-                    )
-                    Text(
-                        text = "Compound · Horizontal Push",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary),
+            // ═══ EXERCISE INFO + BODY ANATOMY IMAGE ═══
+            AnimatedVisibility(visible = showInfo, enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 20 }) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        Text(
+                            "Target: Chest",
+                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                        )
+                        Text(
+                            "Compound · Horizontal Push",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary),
+                        )
+                    }
+                    // Real body anatomy image
+                    Image(
+                        painter = painterResource(R.drawable.body_anatomy),
+                        contentDescription = "Target muscles",
+                        modifier = Modifier
+                            .size(70.dp, 90.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Card)
+                            .border(1.dp, Border, RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop,
                     )
                 }
-                // Anatomy wireframe
-                Box(
-                    modifier = Modifier
-                        .size(70.dp, 90.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Card)
-                        .border(1.dp, Border, RoundedCornerShape(8.dp))
-                        .drawBehind {
-                            val cx = size.width / 2
-                            val limeColor = androidx.compose.ui.graphics.Color(0xFFD4FF00)
-                            val strokeW = 1.5f
-                            val headR = size.width * 0.08f
-                            val headY = size.height * 0.12f
-                            // Head
-                            drawCircle(limeColor, headR, center = Offset(cx, headY), style = Stroke(strokeW))
-                            // Neck
-                            drawLine(limeColor, Offset(cx, headY + headR), Offset(cx, size.height * 0.2f), strokeW)
-                            // Shoulders
-                            drawLine(limeColor, Offset(size.width * 0.2f, size.height * 0.22f), Offset(size.width * 0.8f, size.height * 0.22f), strokeW)
-                            // Torso
-                            drawLine(limeColor, Offset(cx, size.height * 0.2f), Offset(cx, size.height * 0.52f), strokeW)
-                            // Arms
-                            drawLine(limeColor, Offset(size.width * 0.2f, size.height * 0.22f), Offset(size.width * 0.12f, size.height * 0.45f), strokeW)
-                            drawLine(limeColor, Offset(size.width * 0.8f, size.height * 0.22f), Offset(size.width * 0.88f, size.height * 0.45f), strokeW)
-                            // Hips
-                            drawLine(limeColor, Offset(size.width * 0.3f, size.height * 0.52f), Offset(size.width * 0.7f, size.height * 0.52f), strokeW)
-                            // Legs
-                            drawLine(limeColor, Offset(size.width * 0.35f, size.height * 0.52f), Offset(size.width * 0.3f, size.height * 0.82f), strokeW)
-                            drawLine(limeColor, Offset(size.width * 0.65f, size.height * 0.52f), Offset(size.width * 0.7f, size.height * 0.82f), strokeW)
-                            // Highlight target muscles (chest area)
-                            drawCircle(limeColor.copy(alpha = 0.3f), size.width * 0.12f, Offset(cx, size.height * 0.3f))
-                        },
-                    contentAlignment = Alignment.Center,
-                ) { /* Canvas-only */ }
             }
 
             Spacer(Modifier.height(20.dp))
 
             // ═══ AI RECOMMENDATION ═══
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Card, RoundedCornerShape(8.dp))
-                    .border(1.dp, BorderAccent, RoundedCornerShape(8.dp))
-                    .padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+            AnimatedVisibility(visible = showRec, enter = fadeIn(tween(600)) + slideInHorizontally(tween(600)) { -40 }) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Card, RoundedCornerShape(10.dp))
+                        .border(1.dp, BorderAccent, RoundedCornerShape(10.dp))
+                        .padding(16.dp)
                 ) {
-                    Text(
-                        text = "AI RECOMMENDATION",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = TextSecondary,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 1.sp,
-                            fontSize = 10.sp,
-                        ),
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier
-                            .background(NeonLimeGlow, RoundedCornerShape(4.dp))
-                            .border(1.dp, NeonLime, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "OPTIMAL",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = NeonLime,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 8.sp,
-                                letterSpacing = 1.sp,
+                            "AI RECOMMENDATION",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = TextSecondary, fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 1.sp, fontSize = 10.sp,
                             ),
                         )
+                        Spacer(Modifier.weight(1f))
+                        Box(
+                            modifier = Modifier
+                                .background(NeonLimeGlow, RoundedCornerShape(4.dp))
+                                .border(1.dp, NeonLime, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                "OPTIMAL",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = NeonLime, fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 8.sp, letterSpacing = 1.sp,
+                                ),
+                            )
+                        }
                     }
-                }
 
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    text = "Based on your recovery, performance and\nprogress, we recommend:",
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary),
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                // Big recommendation
-                Text(
-                    text = "${targetWeight.toInt()}KG × $repsInt REPS",
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontWeight = FontWeight.Black,
-                        fontSize = 28.sp,
-                    ),
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "$targetSets SETS",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary, fontWeight = FontWeight.Bold),
+                        "Based on your recovery, performance and\nprogress, we recommend:",
+                        style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary),
                     )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Big recommendation
                     Text(
-                        text = "RPE 8",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary, fontWeight = FontWeight.Bold),
+                        "${targetWeight.toInt()}KG × $repsInt REPS",
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black, fontSize = 28.sp),
                     )
-                    Text(
-                        text = "2-3 MIN REST",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary, fontWeight = FontWeight.Bold),
-                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text("$targetSets SETS", style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary, fontWeight = FontWeight.Bold))
+                        Text("RPE 8", style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary, fontWeight = FontWeight.Bold))
+                        Text("2-3 MIN REST", style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary, fontWeight = FontWeight.Bold))
+                    }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
             // ═══ AUTO-FILL ═══
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        sets = sets.map { it.copy(weight = "${targetWeight.toInt()}", reps = "$repsInt") }
-                    },
-                    shape = RoundedCornerShape(4.dp),
-                    border = BorderStroke(1.dp, NeonLime),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonLime),
+            AnimatedVisibility(visible = showSets, enter = fadeIn(tween(400))) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    Text(
-                        text = "AUTO-FILL",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = NeonLime,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 1.sp,
-                        ),
-                    )
+                    OutlinedButton(
+                        onClick = {
+                            sets = sets.map { it.copy(weight = "${targetWeight.toInt()}", reps = "$repsInt") }
+                        },
+                        shape = RoundedCornerShape(4.dp),
+                        border = BorderStroke(1.dp, NeonLime),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonLime),
+                    ) {
+                        Text(
+                            "AUTO-FILL",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = NeonLime, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp,
+                            ),
+                        )
+                    }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
             // ═══ LOG SETS ═══
-            Text(
-                text = "LOG SETS",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.5.sp,
-                    color = TextSecondary,
-                ),
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            val inputColors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = NeonLime,
-                unfocusedBorderColor = Border,
-                cursorColor = NeonLime,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                focusedContainerColor = Card,
-                unfocusedContainerColor = Card,
-            )
-
-            sets.forEachIndexed { index, set ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    // Set label
+            AnimatedVisibility(visible = showSets, enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 30 }) {
+                Column {
                     Text(
-                        text = "SET ${set.setNumber}",
+                        "LOG SETS",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = TextTertiary,
-                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp, color = TextSecondary,
                         ),
-                        modifier = Modifier.width(44.dp),
                     )
 
-                    // Weight input
-                    OutlinedTextField(
-                        value = sets[index].weight,
-                        onValueChange = { newVal ->
-                            sets = sets.toMutableList().also { list ->
-                                list[index] = list[index].copy(weight = newVal.filter { it.isDigit() || it == '.' })
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(4.dp),
-                        colors = inputColors,
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.titleSmall.copy(
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        suffix = { Text("KG", style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary)) },
+                    Spacer(Modifier.height(12.dp))
+
+                    val inputColors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonLime,
+                        unfocusedBorderColor = Border,
+                        cursorColor = NeonLime,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedContainerColor = Card,
+                        unfocusedContainerColor = Card,
                     )
 
-                    Text("×", color = TextTertiary, fontWeight = FontWeight.Bold)
+                    sets.forEachIndexed { index, set ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                "SET ${set.setNumber}",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold, color = TextTertiary, fontSize = 11.sp,
+                                ),
+                                modifier = Modifier.width(44.dp),
+                            )
 
-                    // Reps input
-                    OutlinedTextField(
-                        value = sets[index].reps,
-                        onValueChange = { newVal ->
-                            sets = sets.toMutableList().also { list ->
-                                list[index] = list[index].copy(reps = newVal.filter { it.isDigit() })
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(4.dp),
-                        colors = inputColors,
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.titleSmall.copy(
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    )
+                            OutlinedTextField(
+                                value = sets[index].weight,
+                                onValueChange = { newVal ->
+                                    sets = sets.toMutableList().also { list ->
+                                        list[index] = list[index].copy(weight = newVal.filter { it.isDigit() || it == '.' })
+                                    }
+                                },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(6.dp),
+                                colors = inputColors,
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.titleSmall.copy(
+                                    textAlign = TextAlign.Center, fontWeight = FontWeight.Bold,
+                                ),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                suffix = { Text("KG", style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary)) },
+                            )
 
-                    // Checkmark
-                    IconButton(
-                        onClick = {
-                            sets = sets.toMutableList().also { list ->
-                                list[index] = list[index].copy(completed = !list[index].completed)
+                            Text("×", color = TextTertiary, fontWeight = FontWeight.Bold)
+
+                            OutlinedTextField(
+                                value = sets[index].reps,
+                                onValueChange = { newVal ->
+                                    sets = sets.toMutableList().also { list ->
+                                        list[index] = list[index].copy(reps = newVal.filter { it.isDigit() })
+                                    }
+                                },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(6.dp),
+                                colors = inputColors,
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.titleSmall.copy(
+                                    textAlign = TextAlign.Center, fontWeight = FontWeight.Bold,
+                                ),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            )
+
+                            IconButton(
+                                onClick = {
+                                    sets = sets.toMutableList().also { list ->
+                                        list[index] = list[index].copy(completed = !list[index].completed)
+                                    }
+                                },
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Icon(
+                                    if (sets[index].completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                    null,
+                                    tint = if (sets[index].completed) NeonLime else TextTertiary,
+                                    modifier = Modifier.size(24.dp),
+                                )
                             }
-                        },
-                        modifier = Modifier.size(36.dp),
-                    ) {
-                        Icon(
-                            if (sets[index].completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                            null,
-                            tint = if (sets[index].completed) NeonLime else TextTertiary,
-                            modifier = Modifier.size(24.dp),
-                        )
+                        }
                     }
                 }
             }
@@ -357,53 +321,43 @@ fun ExerciseDetailScreen(
         }
 
         // ═══ BOTTOM BUTTONS ═══
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Black)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-        ) {
-            Button(
-                onClick = {
-                    val completedSets = sets.map { s ->
-                        Pair(s.weight.toDoubleOrNull() ?: 0.0, s.reps.toIntOrNull() ?: 0)
-                    }
-                    onComplete(completedSets)
-                },
+        AnimatedVisibility(visible = showBtn, enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 60 }) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp),
-                shape = RoundedCornerShape(6.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = NeonLime,
-                    contentColor = TextOnAccent,
-                ),
+                    .background(Black)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
-                Text(
-                    text = "COMPLETE EXERCISE",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        fontSize = 15.sp,
-                        letterSpacing = 1.sp,
-                        color = TextOnAccent,
-                    ),
-                )
-            }
+                Button(
+                    onClick = {
+                        val completedSets = sets.map { s ->
+                            Pair(s.weight.toDoubleOrNull() ?: 0.0, s.reps.toIntOrNull() ?: 0)
+                        }
+                        onComplete(completedSets)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonLime, contentColor = TextOnAccent),
+                ) {
+                    Text(
+                        "COMPLETE EXERCISE",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Black, fontSize = 15.sp,
+                            letterSpacing = 1.sp, color = TextOnAccent,
+                        ),
+                    )
+                }
 
-            Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
-            TextButton(
-                onClick = { },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = "ADD NOTE",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                    ),
-                )
+                TextButton(onClick = { }, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "ADD NOTE",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = TextSecondary, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
+                        ),
+                    )
+                }
             }
         }
     }
