@@ -2,6 +2,7 @@ package com.repmax.app.data
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 data class Profile(
@@ -51,15 +52,20 @@ data class ProgramDay(
 @Serializable
 data class ProgramExercise(
     val name: String = "",
-    val sets: kotlinx.serialization.json.JsonPrimitive? = null,
-    val reps: kotlinx.serialization.json.JsonPrimitive? = null,
-    val weight: kotlinx.serialization.json.JsonPrimitive? = null,
+    val sets: JsonPrimitive? = null,
+    val reps: JsonPrimitive? = null,
+    val weight: JsonPrimitive? = null,
     val rest: String? = null,
     val notes: String? = null,
 ) {
-    val setsInt: Int get() = sets?.content?.toIntOrNull() ?: 4
-    val repsDisplay: String get() = reps?.content ?: "8"
-    val weightDouble: Double get() = weight?.content?.toDoubleOrNull() ?: 0.0
+    val setsInt: Int
+        get() = try { sets?.content?.toIntOrNull() ?: 4 } catch (_: Exception) { 4 }
+
+    val repsDisplay: String
+        get() = try { reps?.content ?: "8" } catch (_: Exception) { "8" }
+
+    val weightDouble: Double
+        get() = try { weight?.content?.toDoubleOrNull() ?: 0.0 } catch (_: Exception) { 0.0 }
 }
 
 @Serializable
@@ -108,31 +114,10 @@ data class AuthResponse(
 data class AuthUser(
     val id: String = "",
     val email: String? = null,
-    @SerialName("user_metadata")
-    val userMetadata: Map<String, kotlinx.serialization.json.JsonPrimitive>? = null,
-)
-
-@Serializable
-data class AuthSessionWrapper(
-    val session: AuthSession? = null,
-)
-
-@Serializable
-data class AuthSession(
-    val access_token: String = "",
-    val refresh_token: String = "",
-    val user: AuthUser? = null,
 )
 
 @Serializable
 data class SignInRequest(
     val email: String,
     val password: String,
-)
-
-@Serializable
-data class SignUpRequest(
-    val email: String,
-    val password: String,
-    val data: Map<String, String>? = null,
 )
