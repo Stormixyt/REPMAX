@@ -44,16 +44,22 @@ jobs:
         working-directory: android-native
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Verify APK exists
+      - name: Collect APK
+        if: always()
         run: |
-          echo "=== Looking for APK ==="
-          find android-native/app/build/outputs -name "*.apk" -type f 2>/dev/null || echo "No APK found!"
-          ls -la android-native/app/build/outputs/apk/debug/ || echo "Debug dir not found"
+          echo "=== Searching for APK files ==="
+          find android-native -name "*.apk" -type f 2>/dev/null
+          echo "=== Creating output directory ==="
+          mkdir -p apk-output
+          find android-native -name "*.apk" -type f -exec cp {} apk-output/ \;
+          echo "=== APK output contents ==="
+          ls -la apk-output/
 
       - name: Upload APK
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: REPMAX-Native-Android
-          path: android-native/app/build/outputs/apk/debug/
+          path: apk-output/
+          if-no-files-found: warn
           retention-days: 90
