@@ -306,4 +306,208 @@ class SupabaseClient(private val context: Context) {
             Result.failure(e)
         }
     }
+
+    // ─── Notifications ─────────────────────────────────────────────────────────
+
+    suspend fun getNotifications(limit: Int = 50): Result<List<Notification>> {
+        val userId = getUserId() ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val http = authClient()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/notifications?user_id=eq.$userId&order=created_at.desc&limit=$limit&select=*")
+                .header("apikey", anonKey)
+                .header("Accept", "application/json")
+                .build()
+            val response = http.newCall(request).execute()
+            val body = response.body?.string() ?: "[]"
+            Result.success(json.decodeFromString<List<Notification>>(body))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markNotificationRead(notifId: String): Result<Boolean> {
+        return try {
+            val http = authClient()
+            val body = buildJsonObject { put("read", true) }.toString()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/notifications?id=eq.$notifId")
+                .patch(body.toRequestBody(jsonMediaType))
+                .header("apikey", anonKey)
+                .build()
+            val response = http.newCall(request).execute()
+            Result.success(response.isSuccessful)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markAllNotificationsRead(): Result<Boolean> {
+        val userId = getUserId() ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val http = authClient()
+            val body = buildJsonObject { put("read", true) }.toString()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/notifications?user_id=eq.$userId&read=eq.false")
+                .patch(body.toRequestBody(jsonMediaType))
+                .header("apikey", anonKey)
+                .build()
+            val response = http.newCall(request).execute()
+            Result.success(response.isSuccessful)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ─── Nutrition ──────────────────────────────────────────────────────────────
+
+    suspend fun getNutritionProfile(): Result<NutritionProfile?> {
+        val userId = getUserId() ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val http = authClient()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/nutrition_profiles?user_id=eq.$userId&select=*")
+                .header("apikey", anonKey)
+                .header("Accept", "application/json")
+                .build()
+            val response = http.newCall(request).execute()
+            val body = response.body?.string() ?: "[]"
+            val profiles = json.decodeFromString<List<NutritionProfile>>(body)
+            Result.success(profiles.firstOrNull())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getFoodLogs(date: String): Result<List<FoodLog>> {
+        val userId = getUserId() ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val http = authClient()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/food_logs?user_id=eq.$userId&logged_at=eq.$date&order=created_at.asc&select=*")
+                .header("apikey", anonKey)
+                .header("Accept", "application/json")
+                .build()
+            val response = http.newCall(request).execute()
+            val body = response.body?.string() ?: "[]"
+            Result.success(json.decodeFromString<List<FoodLog>>(body))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addFoodLog(food: FoodLog): Result<Boolean> {
+        return try {
+            val http = authClient()
+            val body = buildJsonObject {
+                put("user_id", food.user_id)
+                put("food_name", food.food_name)
+                put("brand", food.brand ?: "")
+                put("serving_size", food.serving_size ?: "")
+                put("calories", food.calories)
+                put("protein", food.protein)
+                put("carbs", food.carbs)
+                put("fat", food.fat)
+                put("fiber", food.fiber)
+                put("sugar", food.sugar)
+                put("meal_type", food.meal_type ?: "snack")
+                put("source", food.source ?: "manual")
+                put("logged_at", food.logged_at ?: java.time.LocalDate.now().toString())
+            }.toString()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/food_logs")
+                .post(body.toRequestBody(jsonMediaType))
+                .header("apikey", anonKey)
+                .header("Prefer", "return=minimal")
+                .build()
+            val response = http.newCall(request).execute()
+            Result.success(response.isSuccessful)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteFoodLog(id: String): Result<Boolean> {
+        return try {
+            val http = authClient()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/food_logs?id=eq.$id")
+                .delete()
+                .header("apikey", anonKey)
+                .build()
+            val response = http.newCall(request).execute()
+            Result.success(response.isSuccessful)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getWaterLog(date: String): Result<WaterLog?> {
+        val userId = getUserId() ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val http = authClient()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/water_logs?user_id=eq.$userId&logged_at=eq.$date&select=*")
+                .header("apikey", anonKey)
+                .header("Accept", "application/json")
+                .build()
+            val response = http.newCall(request).execute()
+            val body = response.body?.string() ?: "[]"
+            val logs = json.decodeFromString<List<WaterLog>>(body)
+            Result.success(logs.firstOrNull())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun upsertWaterLog(date: String, glasses: Int): Result<Boolean> {
+        val userId = getUserId() ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val http = authClient()
+            val body = buildJsonObject {
+                put("user_id", userId)
+                put("logged_at", date)
+                put("glasses", glasses)
+            }.toString()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/water_logs?on_conflict=user_id,logged_at")
+                .post(body.toRequestBody(jsonMediaType))
+                .header("apikey", anonKey)
+                .header("Prefer", "resolution=merge-duplicates")
+                .build()
+            val response = http.newCall(request).execute()
+            Result.success(response.isSuccessful)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ─── Profile Updates ────────────────────────────────────────────────────────
+
+    suspend fun updateProfile(updates: Map<String, Any>): Result<Boolean> {
+        val userId = getUserId() ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val http = authClient()
+            val body = buildJsonObject {
+                updates.forEach { (key, value) ->
+                    when (value) {
+                        is String -> put(key, value)
+                        is Int -> put(key, value)
+                        is Boolean -> put(key, value)
+                        is Double -> put(key, value)
+                    }
+                }
+            }.toString()
+            val request = Request.Builder()
+                .url("$baseUrl/rest/v1/profiles?id=eq.$userId")
+                .patch(body.toRequestBody(jsonMediaType))
+                .header("apikey", anonKey)
+                .build()
+            val response = http.newCall(request).execute()
+            Result.success(response.isSuccessful)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+

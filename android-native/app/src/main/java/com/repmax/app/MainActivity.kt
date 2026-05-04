@@ -39,6 +39,10 @@ sealed class Screen {
     object Welcome : Screen()
     object Login : Screen()
     object Main : Screen()
+    object Settings : Screen()
+    object Notifications : Screen()
+    object Recovery : Screen()
+    object Nutrition : Screen()
     data class WorkoutPlan(val day: ProgramDay? = null, val weekNumber: Int = 1) : Screen()
     data class ExerciseDetail(
         val exercise: ProgramExercise? = null,
@@ -72,6 +76,7 @@ fun RepMaxApp() {
     var personalRecords by remember { mutableStateOf<List<PersonalRecord>>(emptyList()) }
     var activeWorkoutId by remember { mutableStateOf<String?>(null) }
     var completedExercises by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var waterToday by remember { mutableStateOf(0) }
 
     // Check session on launch
     LaunchedEffect(Unit) {
@@ -85,6 +90,10 @@ fun RepMaxApp() {
                     program = prog
                     workoutHistory = wh
                     personalRecords = pr
+                }
+                // Load water for today
+                supabase.getWaterLog(java.time.LocalDate.now().toString()).onSuccess {
+                    withContext(Dispatchers.Main) { waterToday = it?.glasses ?: 0 }
                 }
             }
             authLoading = false
@@ -208,7 +217,15 @@ fun RepMaxApp() {
                                 onViewPlan = {
                                     currentScreen = Screen.WorkoutPlan(getTodayDay(), program?.current_week ?: 1)
                                 },
-                                onNavigate = { route -> currentTab = route },
+                                onNavigate = { route ->
+                                    when (route) {
+                                        "settings" -> currentScreen = Screen.Settings
+                                        "notifications" -> currentScreen = Screen.Notifications
+                                        "recovery" -> currentScreen = Screen.Recovery
+                                        "nutrition" -> currentScreen = Screen.Nutrition
+                                        else -> currentTab = route
+                                    }
+                                },
                             )
 
                             "workouts" -> {
@@ -293,6 +310,63 @@ fun RepMaxApp() {
                         onNavigate = { route -> currentTab = route },
                     )
                 }
+            }
+
+            is Screen.Settings -> {
+                SettingsScreen(
+                    profile = profile,
+                    onBack = { currentScreen = Screen.Main; currentTab = "home" },
+                    onToggleUnit = {
+                        val newUnit = if ((profile?.unit_preference ?: "kg") == "kg") "lbs" else "kg"
+                        scope.launch(Dispatchers.IO) {
+                            supabase.updateProfile(mapOf("unit_preference" to newUnit))
+                            loadDashboardData(supabase) { p, prog, wh, pr ->
+                                profile = p; program = prog; workoutHistory = wh; personalRecords = pr
+                            }
+                        }
+                    },
+                    onLogout = {
+                        scope.launch(Dispatchers.IO) {
+                            supabase.signOut()
+                            withContext(Dispatchers.Main) {
+                                isLoggedIn = false; currentScreen = Screen.Welcome
+                                profile = null; program = null; workoutHistory = emptyList(); personalRecords = emptyList(); currentTab = "home"
+                            }
+                        }
+                    },
+                    onEditName = { name ->
+                        scope.launch(Dispatchers.IO) {
+                            supabase.updateProfile(mapOf("display_name" to name))
+                            loadDashboardData(supabase) { p, prog, wh, pr ->
+                                profile = p; program = prog; workoutHistory = wh; personalRecords = pr
+                            }
+                        }
+                    },
+                )
+            }
+
+            is Screen.Notifications -> {
+                NotificationsScreen(
+                    supabase = supabase,
+                    onBack = { currentScreen = Screen.Main; currentTab = "home" },
+                )
+            }
+
+            is Screen.Recovery -> {
+                RecoveryScreen(
+                    workoutHistory = workoutHistory,
+                    profile = profile,
+                    waterToday = waterToday,
+                    onBack = { currentScreen = Screen.Main; currentTab = "home" },
+                )
+            }
+
+            is Screen.Nutrition -> {
+                NutritionScreen(
+                    supabase = supabase,
+                    profile = profile,
+                    onBack = { currentScreen = Screen.Main; currentTab = "home" },
+                )
             }
 
             is Screen.WorkoutPlan -> {

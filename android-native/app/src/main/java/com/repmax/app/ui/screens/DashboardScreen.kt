@@ -380,26 +380,54 @@ fun DashboardScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        // ═══ MOTIVATIONAL FOOTER ═══
-        AnimatedVisibility(visible = show5, enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { 40 }) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .background(Card, RoundedCornerShape(12.dp))
-                    .border(1.dp, Border, RoundedCornerShape(12.dp))
-                    .padding(16.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        motivation,
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Black, fontSize = 13.sp, lineHeight = 18.sp,
-                        ),
+        // ═══ QUICK ACTIONS ═══
+        AnimatedVisibility(visible = show5, enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { 30 }) {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                Text(
+                    "QUICK ACTIONS",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp, color = TextTertiary,
+                    ),
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    QuickActionCard(
                         modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Eco,
+                        label = "NUTRITION",
+                        color = Color(0xFF22C55E),
+                        onClick = { onNavigate("nutrition") },
                     )
-                    Spacer(Modifier.width(12.dp))
-                    Icon(Icons.Default.FlashOn, null, tint = NeonLime, modifier = Modifier.size(28.dp))
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Favorite,
+                        label = "RECOVERY",
+                        color = Color(0xFFA78BFA),
+                        onClick = { onNavigate("recovery") },
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Notifications,
+                        label = "ALERTS",
+                        color = Color(0xFF38BDF8),
+                        onClick = { onNavigate("notifications") },
+                    )
+                    QuickActionCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Settings,
+                        label = "SETTINGS",
+                        color = TextTertiary,
+                        onClick = { onNavigate("settings") },
+                    )
                 }
             }
         }
@@ -438,4 +466,42 @@ private fun formatVolume(volume: Long): String {
         val remainder = (volume % 1000) / 100
         if (remainder > 0) "${k},${(volume % 1000).toString().padStart(3, '0')}" else "${k},000"
     } else "$volume"
+}
+
+@Composable
+private fun QuickActionCard(
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .background(Card, RoundedCornerShape(14.dp))
+            .border(1.dp, Border, RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+            .padding(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(color.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
+            ) {
+                Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.sp,
+                    color = TextPrimary,
+                    fontSize = 10.sp,
+                ),
+            )
+        }
+    }
 }

@@ -124,3 +124,58 @@ data class SignInRequest(
     val email: String,
     val password: String,
 )
+
+@Serializable
+data class Notification(
+    val id: String = "",
+    val user_id: String = "",
+    val type: String? = null,
+    val title: String? = null,
+    val body: String? = null,
+    val read: Boolean = false,
+    val created_at: String? = null,
+)
+
+@Serializable
+data class NutritionProfile(
+    val id: String? = null,
+    val user_id: String = "",
+    val age: Int? = null,
+    val weight: Double? = null,
+    val height: Double? = null,
+    val gender: String? = "male",
+    val activity_level: String? = "moderate",
+    val diet_goal: String? = "maintain",
+    val bmr: Int? = null,
+    val tdee: Int? = null,
+    val target_calories: Int? = null,
+    val target_protein: Int? = null,
+    val target_carbs: Int? = null,
+    val target_fat: Int? = null,
+)
+
+@Serializable
+data class FoodLog(
+    val id: String? = null,
+    val user_id: String = "",
+    val food_name: String = "",
+    val brand: String? = null,
+    val serving_size: String? = null,
+    val calories: Int = 0,
+    val protein: Int = 0,
+    val carbs: Int = 0,
+    val fat: Int = 0,
+    val fiber: Int = 0,
+    val sugar: Int = 0,
+    val meal_type: String? = "snack",
+    val source: String? = null,
+    val logged_at: String? = null,
+    val created_at: String? = null,
+)
+
+@Serializable
+data class WaterLog(
+    val user_id: String = "",
+    val logged_at: String = "",
+    val glasses: Int = 0,
+)
