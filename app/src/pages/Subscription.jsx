@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getSellAppEmbedAttrs } from '../lib/sellapp'
+import { openSellAppCheckout } from '../lib/sellapp'
 import { RiVipCrownFill, RiBrainFill, RiBarChart2Fill, RiTeamFill, RiDownloadFill, RiShieldCheckFill, RiSparklingFill, RiArrowLeftLine, RiPaletteFill, RiFlashlightFill, RiCheckFill, RiStarFill, RiChat3Fill, RiLeafFill, RiTimerFlashFill, RiRocketFill, RiLoader4Fill, RiCloseLine, RiSendPlaneFill } from '@remixicon/react'
 
 const TIERS = {
@@ -82,10 +82,23 @@ export default function Subscription() {
     setMessage('')
   }, [selectedTier])
 
-  // Build embed attributes for the selected tier (only when logged in)
-  const embedAttrs = user?.id
-    ? getSellAppEmbedAttrs(selectedTier, { email: user.email, userId: user.id })
-    : {}
+  function handleCheckout(tier) {
+    if (!user?.id) {
+      navigate('/auth?mode=signup')
+      return
+    }
+
+    setMessage('')
+
+    const result = openSellAppCheckout(tier, {
+      email: user.email,
+      userId: user.id,
+    })
+
+    if (!result.ok) {
+      setMessage(result.error)
+    }
+  }
 
   // Already subscribed view
   if (subscriptionTier === 'pro' || subscriptionTier === 'ultra') {
@@ -227,8 +240,7 @@ export default function Subscription() {
 
               <button
                 className="btn btn-primary btn-full btn-lg"
-                {...(user?.id ? embedAttrs : {})}
-                onClick={!user?.id ? () => navigate('/auth?mode=signup') : undefined}
+                onClick={() => handleCheckout(selectedTier)}
                 style={{
                   marginTop: 20, fontSize: '1.05rem', fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
