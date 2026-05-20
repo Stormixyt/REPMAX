@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { getSellAppMissingConfig, openSellAppCheckout } from '../lib/sellapp'
 import { RiVipCrownFill, RiBrainFill, RiBarChart2Fill, RiTeamFill, RiDownloadFill, RiShieldCheckFill, RiSparklingFill, RiArrowLeftLine, RiPaletteFill, RiFlashlightFill, RiCheckFill, RiStarFill, RiChat3Fill, RiLeafFill, RiTimerFlashFill, RiRocketFill, RiLoader4Fill, RiCloseLine, RiSendPlaneFill } from '@remixicon/react'
 
 const TIERS = {
   pro: {
     name: 'PRO',
-    price: '3',
+    price: '9.99',
     currency: '€',
-    period: '/week',
+    period: '/month',
     color: 'var(--accent)',
     icon: RiVipCrownFill,
     tagline: 'For serious lifters',
@@ -28,9 +28,9 @@ const TIERS = {
   },
   ultra: {
     name: 'ULTRA',
-    price: '5',
+    price: '19.99',
     currency: '€',
-    period: '/week',
+    period: '/month',
     color: '#ff2a85',
     icon: RiRocketFill,
     tagline: '15 exclusive features',
@@ -73,54 +73,40 @@ const COMPARISON = [
 ]
 
 export default function Subscription() {
-  const { user, profile, isPro, isUltra, subscriptionTier, updateProfile } = useAuth()
+  const { user, subscriptionTier } = useAuth()
   const navigate = useNavigate()
-  const [requesting, setRequesting] = useState(false)
-  const [requestTier, setRequestTier] = useState(null)
-  const [existingRequest, setExistingRequest] = useState(null)
-  const [loadingRequest, setLoadingRequest] = useState(true)
   const [message, setMessage] = useState('')
-  const [showConfirm, setShowConfirm] = useState(false)
+  const [checkingOutTier, setCheckingOutTier] = useState(null)
   const [selectedTier, setSelectedTier] = useState('ultra')
 
   useEffect(() => {
-    loadExistingRequest()
-  }, [user?.id])
+    setMessage('')
+  }, [selectedTier])
 
-  async function loadExistingRequest() {
-    if (!user?.id) return
-    const { data } = await supabase
-      .from('subscription_requests')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-    setExistingRequest(data?.[0] || null)
-    setLoadingRequest(false)
-  }
+  function handleCheckout(tier) {
+    if (!user?.id) {
+      navigate('/auth?mode=signup')
+      return
+    }
 
-  async function handleRequest(tier) {
-    setRequestTier(tier)
-    setShowConfirm(true)
-  }
+    const missingConfig = getSellAppMissingConfig(tier)
+    if (missingConfig.length > 0) {
+      setMessage(`Sell.app checkout is missing: ${missingConfig.join(', ')}`)
+      return
+    }
 
-  async function submitRequest() {
-    setRequesting(true)
+    setMessage('')
+    setCheckingOutTier(tier)
 
-    await supabase.from('subscription_requests').insert({
-      user_id: user.id,
-      requested_tier: requestTier,
-      status: 'pending'
+    const result = openSellAppCheckout(tier, {
+      email: user.email,
+      userId: user.id,
     })
 
-    await updateProfile({
-      pro_request_status: 'pending',
-      pro_requested_at: new Date().toISOString()
-    })
-
-    setShowConfirm(false)
-    setRequesting(false)
-    await loadExistingRequest()
+    if (!result.ok) {
+      setCheckingOutTier(null)
+      setMessage(result.error)
+    }
   }
 
   // Already subscribed view
@@ -163,68 +149,6 @@ export default function Subscription() {
     )
   }
 
-  // Pending request view
-  if (existingRequest?.status === 'pending') {
-    const tier = TIERS[existingRequest.requested_tier] || TIERS.pro
-    return (
-      <div className="page">
-        <button onClick={() => navigate(-1)} className="back-btn">
-          <RiArrowLeftLine size={20} /> Back
-        </button>
-        <div style={{ textAlign: 'center', padding: '60px 24px' }}>
-          <div className="pro-crown-float" style={{ marginBottom: 20 }}>
-            <RiTimerFlashFill size={56} style={{ color: 'var(--accent)' }} />
-          </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 800, marginBottom: 8 }}>
-            Request <span style={{ color: tier.color }}>{tier.name}</span> Pending
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: 340, margin: '0 auto 24px', lineHeight: 1.6 }}>
-            Your request for REPMAX {tier.name} is being reviewed. You'll be notified once it's approved.
-          </p>
-
-          <div className="card" style={{ background: 'rgba(204,255,0,0.05)', border: '1px solid rgba(204,255,0,0.15)', textAlign: 'left' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent)', animation: 'pulseGlow 2s ease-in-out infinite' }} />
-              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Awaiting review</span>
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: 8 }}>
-              Requested {new Date(existingRequest.created_at).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Rejected view
-  if (existingRequest?.status === 'rejected') {
-    return (
-      <div className="page">
-        <button onClick={() => navigate(-1)} className="back-btn">
-          <RiArrowLeftLine size={20} /> Back
-        </button>
-        <div style={{ textAlign: 'center', padding: '60px 24px' }}>
-          <div style={{ fontSize: '3rem', marginBottom: 16 }}>😔</div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, marginBottom: 8 }}>
-            Request Not Approved
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: 340, margin: '0 auto 16px' }}>
-            {existingRequest.reason || 'Your request was not approved at this time.'}
-          </p>
-          <button
-            className="btn btn-primary"
-            onClick={async () => {
-              await updateProfile({ pro_request_status: null })
-              setExistingRequest(null)
-            }}
-          >
-            Request Again
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="pro-page" style={{ background: 'var(--bg-primary)' }}>
       <button onClick={() => navigate(-1)} style={{
@@ -246,6 +170,15 @@ export default function Subscription() {
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: 340, margin: '0 auto', lineHeight: 1.6 }}>
           Free is powerful. PRO refines the whole app. ULTRA unlocks the lab: intelligence, import studio, and social edge.
         </p>
+      </div>
+
+      <div style={{ margin: '0 24px 20px', padding: '14px 16px', borderRadius: 18, border: '1px solid rgba(204,255,0,0.18)', background: 'rgba(204,255,0,0.06)', textAlign: 'center' }}>
+        <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent)' }}>
+          Launch promo
+        </div>
+        <div style={{ marginTop: 6, fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+          Use code REPMAXISOUT20 through May 31, 2026 for 10% off all subscriptions.
+        </div>
       </div>
 
       {/* Tier Toggle */}
@@ -301,6 +234,10 @@ export default function Subscription() {
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>{tier.period}</span>
               </div>
 
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Promo code <strong style={{ color: 'var(--accent)' }}>REPMAXISOUT20</strong> auto-applies at checkout.
+              </div>
+
               <div style={{ marginTop: 20, textAlign: 'left' }}>
                 {tier.features.map((f, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0' }}>
@@ -312,16 +249,48 @@ export default function Subscription() {
 
               <button
                 className="btn btn-primary btn-full btn-lg"
-                onClick={() => handleRequest(selectedTier)}
+                onClick={() => handleCheckout(selectedTier)}
                 style={{
                   marginTop: 20, fontSize: '1.05rem', fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   background: isUltraTier ? 'linear-gradient(135deg, #ff2a85, #ff6b6b)' : '',
                   animation: 'pulseGlow 2s ease-in-out infinite'
                 }}
+                disabled={checkingOutTier === selectedTier}
               >
-                <RiSendPlaneFill size={18} /> Request {tier.name} Access
+                {checkingOutTier === selectedTier ? (
+                  <>
+                    <RiLoader4Fill size={18} className="spin" /> Opening checkout...
+                  </>
+                ) : !user?.id ? (
+                  <>
+                    <RiSendPlaneFill size={18} /> Create Account To Buy {tier.name}
+                  </>
+                ) : (
+                  <>
+                    <RiSendPlaneFill size={18} /> Start {tier.name} Checkout
+                  </>
+                )}
               </button>
+
+              <div style={{ marginTop: 10, fontSize: '0.76rem', color: 'var(--text-tertiary)' }}>
+                Secure Sell.app checkout. Your REPMAX account email and user id are prefilled automatically.
+              </div>
+
+              {message && (
+                <div style={{
+                  marginTop: 12,
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  textAlign: 'left',
+                }}>
+                  {message}
+                </div>
+              )}
             </div>
           </div>
         )
@@ -361,28 +330,6 @@ export default function Subscription() {
         </div>
       </div>
 
-      {/* Confirm Modal */}
-      {showConfirm && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowConfirm(false) }}>
-          <div className="modal" style={{ maxWidth: 380 }}>
-            <h2 className="modal-title" style={{ marginBottom: 8 }}>
-              Request {TIERS[requestTier]?.name} Access
-            </h2>
-            <p className="modal-subtitle" style={{ marginBottom: 16 }}>
-              Your request will be reviewed by the REPMAX team. You'll be notified once approved.
-            </p>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 16 }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Price:</strong> {TIERS[requestTier]?.currency}{TIERS[requestTier]?.price}{TIERS[requestTier]?.period}
-            </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowConfirm(false)}>Cancel</button>
-              <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={submitRequest} disabled={requesting}>
-                {requesting ? <RiLoader4Fill size={18} className="spin" /> : <><RiSendPlaneFill size={16} /> Submit</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
