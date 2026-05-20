@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 
 export default function Auth() {
   const [mode, setMode] = useState('login')
@@ -8,53 +8,47 @@ export default function Auth() {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
   const { signIn, signUp } = useAuth()
+  const location = useLocation()
 
-  async function checkWaitlistApproval(emailToCheck) {
-    try {
-      const { data, error } = await supabase
-        .from('waitlist')
-        .select('approved')
-        .eq('email', emailToCheck.toLowerCase().trim())
-        .maybeSingle()
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const nextMode = params.get('mode')
+    const nextEmail = params.get('email')
 
-      if (error) {
-        console.error('Waitlist check failed:', error.message)
-        return false
-      }
-
-      // No entry = never joined waitlist
-      if (!data) return false
-
-      return data.approved === true
-    } catch (err) {
-      console.error('Waitlist check exception:', err)
-      return false
+    if (nextMode === 'signup' || nextMode === 'login') {
+      setMode(nextMode)
+      setError('')
+      setNotice('')
     }
-  }
+
+    if (nextEmail) {
+      setEmail(nextEmail.toLowerCase().trim())
+    }
+  }, [location.search])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setNotice('')
     setLoading(true)
 
     const cleanEmail = email.toLowerCase().trim()
 
     try {
-      // Check waitlist approval first
-      const isApproved = await checkWaitlistApproval(cleanEmail)
-      if (!isApproved) {
-        setError('Your access has not been approved yet. Join the waitlist on the main page and wait for approval.')
-        setLoading(false)
-        return
-      }
-
       if (mode === 'signup') {
         if (!name.trim()) { setError('Enter your name'); setLoading(false); return }
         if (password.length < 6) { setError('Password must be at least 6 characters'); setLoading(false); return }
-        const { error } = await signUp(cleanEmail, password, name.trim())
+        const { data, error } = await signUp(cleanEmail, password, name.trim())
         if (error) throw error
+        if (!data?.session) {
+          setNotice('Account created. Check your email to confirm your address, then sign in.')
+          setMode('login')
+          setPassword('')
+          return
+        }
       } else {
         const { error } = await signIn(cleanEmail, password)
         if (error) throw error
@@ -124,20 +118,29 @@ export default function Auth() {
           </div>
         )}
 
+        {notice && (
+          <div className="auth-success-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            <span>{notice}</span>
+          </div>
+        )}
+
         <button className="btn btn-primary btn-full btn-lg" type="submit" disabled={loading}>
           {loading ? <span className="spinner" /> : mode === 'signup' ? 'Create Account' : 'Sign In'}
         </button>
 
         <div className="auth-switch">
           {mode === 'login' ? (
-            <>Don't have an account? <button type="button" onClick={() => { setMode('signup'); setError('') }}>Sign up</button></>
+            <>Don't have an account? <button type="button" onClick={() => { setMode('signup'); setError(''); setNotice('') }}>Sign up</button></>
           ) : (
-            <>Already have an account? <button type="button" onClick={() => { setMode('login'); setError('') }}>Sign in</button></>
+            <>Already have an account? <button type="button" onClick={() => { setMode('login'); setError(''); setNotice('') }}>Sign in</button></>
           )}
         </div>
 
         <p className="auth-waitlist-note">
-          Access is invite-only. <a href="/" target="_blank" rel="noopener">Join the waitlist</a> to request access.
+          Anyone can sign up now. Best on phone: add REPMAX to your home screen during setup for the cleanest app-like experience.
         </p>
       </form>
     </div>

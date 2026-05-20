@@ -40,7 +40,7 @@ export default function Social() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   function openDiscord() {
-    window.open('https://discord.gg/repmax', '_blank', 'noopener,noreferrer')
+    window.open('https://discord.gg/46XgPVaccJ', '_blank', 'noopener,noreferrer')
   }
 
   function formatApptDate(dateStr) {

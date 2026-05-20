@@ -3932,6 +3932,24 @@ body.coach-route-active.keyboard-open .coach-composer {
     margin-top: 1px;
     color: #ef4444;
 }
+.auth-success-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 16px;
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    border-radius: var(--radius-md);
+    color: #bbf7d0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+.auth-success-box svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #22c55e;
+}
 .auth-waitlist-note {
     text-align: center;
     font-size: 0.78rem;

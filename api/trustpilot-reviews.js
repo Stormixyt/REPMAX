@@ -1,6 +1,68 @@
 const TRUSTPILOT_URL = 'https://nl.trustpilot.com/review/rep-max.app'
 const MIN_RATING = 3.5
 const MAX_REVIEWS = 6
+const TRUSTPILOT_FALLBACK = {
+  business: {
+    name: 'REPMAX',
+    trustScore: 4.0,
+    stars: 4,
+    numberOfReviews: 5,
+    score: 4.0
+  },
+  reviews: [
+    {
+      id: 'fallback-isabel-villa-2026-04-12',
+      title: 'Strong first impression',
+      text: 'Clear early results and a genuinely useful training experience after the first few days.',
+      rating: 5,
+      publishedDate: '2026-04-12T00:00:00.000Z',
+      consumer: {
+        displayName: 'Isabel Villa',
+        countryCode: 'VE',
+        imageUrl: '',
+        numberOfReviews: 1
+      },
+      verification: {
+        isVerified: false,
+        level: null
+      }
+    },
+    {
+      id: 'fallback-ouxus-ousio-2026-04-12',
+      title: 'Top app',
+      text: 'Great layout, useful for serious gym users, and the overall product feels polished.',
+      rating: 4,
+      publishedDate: '2026-04-12T00:00:00.000Z',
+      consumer: {
+        displayName: 'ouxus ousio',
+        countryCode: 'NL',
+        imageUrl: '',
+        numberOfReviews: 1
+      },
+      verification: {
+        isVerified: false,
+        level: null
+      }
+    },
+    {
+      id: 'fallback-saida-ahaddouch-2026-04-12',
+      title: 'Helpful and motivating',
+      text: 'Simple to use, good for staying on target, and the step tracking adds a nice extra push.',
+      rating: 5,
+      publishedDate: '2026-04-12T00:00:00.000Z',
+      consumer: {
+        displayName: 'Saida Ahaddouch',
+        countryCode: 'NL',
+        imageUrl: '',
+        numberOfReviews: 6
+      },
+      verification: {
+        isVerified: false,
+        level: null
+      }
+    }
+  ]
+}
 
 function extractNextData(html) {
   const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/)
@@ -31,6 +93,18 @@ function normalizeReview(review) {
   }
 }
 
+function buildFallbackPayload() {
+  return {
+    business: TRUSTPILOT_FALLBACK.business,
+    minimumRating: MIN_RATING,
+    reviews: TRUSTPILOT_FALLBACK.reviews,
+    hasQualifyingReviews: TRUSTPILOT_FALLBACK.reviews.length > 0,
+    sourceUrl: TRUSTPILOT_URL,
+    fetchedAt: new Date().toISOString(),
+    fallback: true
+  }
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
@@ -50,6 +124,9 @@ module.exports = async (req, res) => {
     }
 
     const html = await response.text()
+    if (/Verifying Connection|awswaf|interstitial/i.test(html)) {
+      throw new Error('Trustpilot anti-bot interstitial returned instead of reviews')
+    }
     const payload = extractNextData(html)
     const pageProps = payload?.props?.pageProps || {}
     const businessUnit = pageProps.businessUnit || {}
@@ -79,18 +156,7 @@ module.exports = async (req, res) => {
     console.error('[REPMAX] Trustpilot reviews fetch failed:', error)
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600')
     return res.status(200).json({
-      business: {
-        name: 'REPMAX',
-        trustScore: 0,
-        stars: 0,
-        numberOfReviews: 0,
-        score: null
-      },
-      minimumRating: MIN_RATING,
-      reviews: [],
-      hasQualifyingReviews: false,
-      sourceUrl: TRUSTPILOT_URL,
-      fetchedAt: new Date().toISOString(),
+      ...buildFallbackPayload(),
       error: 'unavailable'
     })
   }

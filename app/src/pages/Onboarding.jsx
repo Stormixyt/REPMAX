@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { generateProgram } from '../lib/groq'
 import { supabase } from '../lib/supabase'
+import InstallGuideCard from '../components/InstallGuideCard'
 import { RiRocketFill, RiFlashlightFill, RiSpeedFill, RiFireFill, RiSeedlingFill, RiLineChartFill, RiTrophyFill, RiBodyScanFill, RiBrainFill, RiCheckFill, RiArrowRightLine, RiTimerFill, RiHeartPulseFill, RiScalesFill, RiCalendarCheckFill, RiMagicFill, RiStarFill, RiArrowLeftLine, RiSparklingFill } from '@remixicon/react'
 
 const GOALS = [
@@ -366,6 +367,8 @@ export default function Onboarding() {
             <RiTimerFill size={14} /> ~45 seconds <span style={{ margin: '0 4px', opacity: 0.4 }}>·</span> <RiMagicFill size={14} /> You still choose your split
           </div>
         </button>
+
+        <InstallGuideCard />
       </div>
     )
   }

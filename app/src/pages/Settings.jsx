@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { invokeServerApi, supabase } from '../lib/supabase'
 import { triggerPushNotification } from '../lib/notifications'
 import ProBadge from '../components/ProBadge'
+import InstallGuideCard from '../components/InstallGuideCard'
 import { RiArrowLeftLine, RiUser3Fill, RiLockPasswordFill, RiScales3Fill, RiNotification3Fill, RiEyeOffFill, RiVipCrownFill, RiDownloadFill, RiDeleteBin6Fill, RiInformationFill, RiLogoutBoxRFill, RiPaletteFill, RiRefreshLine, RiCheckFill, RiArrowRightSLine, RiImageFill, RiTranslate2 } from '@remixicon/react'
 import { getPushDeviceStatus, getPushSupportState, requestNotificationPermission, showLocalNotification, subscribeToPush } from '../lib/pushNotifications'
 import { useV2 } from '../context/V2Context'
@@ -415,14 +416,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {pushSupport.requiresInstalledApp && (
-        <div className="card" style={{ marginTop: 12, marginBottom: 4, padding: 16, background: 'rgba(204,255,0,0.05)', borderColor: 'rgba(204,255,0,0.16)' }}>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>iPhone note</div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', lineHeight: 1.6 }}>
-            Install REPMAX to your home screen first if you want phone notifications on iPhone.
-          </div>
-        </div>
-      )}
+      <InstallGuideCard compact alwaysShow={pushSupport.isiPhone || !pushSupport.standalone} />
 
       {/* Privacy */}
       <div className="settings-section-title">Privacy</div>
@@ -449,7 +443,7 @@ export default function Settings() {
               {isUltra ? 'Manage ULTRA' : isPro ? 'Manage PRO' : 'Upgrade Your Plan'}
             </div>
             <div className="settings-value">
-              {isUltra ? 'ULTRA active · €5/week' : isPro ? 'PRO active · €3/week' : 'Free, PRO, and ULTRA tiers'}
+              {isUltra ? 'ULTRA active · €19.99/month' : isPro ? 'PRO active · €9.99/month' : 'Free, PRO, and ULTRA tiers'}
             </div>
           </div>
         </div>

@@ -607,10 +607,22 @@ img {
   background: var(--bg-secondary);
 }
 
+.marquee-section.promo-marquee {
+  background:
+    linear-gradient(90deg, rgba(204, 255, 0, 0.08), rgba(255, 42, 133, 0.08), rgba(204, 255, 0, 0.08)),
+    var(--bg-secondary);
+  border-top-color: rgba(204, 255, 0, 0.16);
+  border-bottom-color: rgba(255, 42, 133, 0.16);
+}
+
 .marquee-track {
   display: flex;
   animation: marquee 25s linear infinite;
   width: max-content;
+}
+
+.promo-marquee .marquee-track {
+  animation-duration: 18s;
 }
 
 .marquee-item {
@@ -625,6 +637,10 @@ img {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 2px;
+}
+
+.promo-marquee .marquee-item {
+  color: var(--text-primary);
 }
 
 .marquee-item .sep {

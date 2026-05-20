@@ -124,6 +124,16 @@ body[data-v2="true"] .auth-error-box {
   margin-bottom: 14px;
 }
 
+body[data-v2="true"] .auth-success-box {
+  padding: 10px 14px;
+  border-radius: var(--v2-r-md);
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #bbf7d0;
+  font-size: var(--v2-fs-13);
+  margin-bottom: 14px;
+}
+
 body[data-v2="true"] .auth-form .btn.btn-primary.btn-full.btn-lg {
   width: 100%;
   height: 50px;
