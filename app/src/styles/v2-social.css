@@ -636,6 +636,23 @@ body[data-v2="true"] .invite-card-bolt {
   opacity: 0.12;
   pointer-events: none;
 }
+body[data-v2="true"] .invite-card-kicker {
+  font-size: var(--v2-fs-11);
+  color: var(--text-tertiary);
+  letter-spacing: var(--v2-tracking-wide);
+}
+body[data-v2="true"] .invite-card-state {
+  font-size: var(--v2-fs-11);
+}
+body[data-v2="true"] .invite-card-location {
+  font-size: var(--v2-fs-16);
+}
+body[data-v2="true"] .invite-card-meta-item {
+  border-radius: 14px;
+  background: var(--v2-surface-ghost);
+  border: 1px solid var(--v2-border-hair);
+  font-size: var(--v2-fs-11);
+}
 body[data-v2="true"] .invite-accept-btn {
   height: 40px;
   padding: 0 18px;
@@ -657,7 +674,7 @@ body[data-v2="true"] .invite-accepted-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 6px 10px;
   border-radius: var(--v2-r-pill);
   background: var(--v2-surface-ghost);
   border: 1px solid var(--v2-border-hair);

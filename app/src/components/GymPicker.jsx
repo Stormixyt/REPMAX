@@ -67,7 +67,7 @@ export default function GymPicker({ value, onChange }) {
         <label className="input-label">Gym or Location</label>
         <input
           className="input"
-          placeholder="e.g. Gold's Gym Downtown"
+          placeholder="Basic-Fit Amsterdam Centraal"
           value={value}
           onChange={e => onChange(e.target.value)}
           autoFocus

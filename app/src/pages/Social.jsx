@@ -821,7 +821,7 @@ export default function Social() {
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>{t('social_plan_workout')}</h3>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                  Invite {friends.find(f => f.id === inviteFriendId)?.display_name || 'your friend'} to the gym
+                  Send {friends.find(f => f.id === inviteFriendId)?.display_name || 'your friend'} a session invite
                 </p>
               </div>
             </div>

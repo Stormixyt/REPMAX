@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { sendNotification } from '../lib/notifications'
 import GymPicker from '../components/GymPicker'
 import { startCall, answerCall } from '../lib/webrtc'
-import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiMapPin2Fill, RiTimeFill, RiPhoneFill, RiVideoOnFill, RiCloseLine, RiMicLine, RiReplyLine, RiCloseFill, RiImageAddLine } from '@remixicon/react'
+import { RiArrowLeftLine, RiSendPlaneFill, RiFlashlightFill, RiCheckLine, RiDeleteBinLine, RiTeamFill, RiCheckDoubleLine, RiTimeFill, RiPhoneFill, RiVideoOnFill, RiCloseLine, RiMicLine, RiReplyLine, RiCloseFill, RiImageAddLine } from '@remixicon/react'
 
 function sortChatMessagesChronologically(items = []) {
   return [...items].sort(
@@ -803,10 +803,10 @@ export default function ChatRoom() {
     const { error: statusError } = await supabase.from('messages').insert({
       id: statusMessageId,
       chat_id: chatId, sender_id: user.id,
-      content: `${myName} is in! ⚡`, type: 'status'
+      content: `${myName} joined the session`, type: 'status'
     })
     if (!statusError) {
-      notifyChatRecipients(statusMessageId, 'status', `${myName} is in! ⚡`).catch((notifyError) => {
+      notifyChatRecipients(statusMessageId, 'status', `${myName} joined the session`).catch((notifyError) => {
         console.warn('[REPMAX] Failed to notify status recipients:', notifyError)
       })
     }
@@ -1015,38 +1015,31 @@ export default function ChatRoom() {
                   /* GYM INVITE CARD — Inline for better control */
                   <div className="invite-card msg-enter">
                     <div className="invite-card-bolt"><RiFlashlightFill size={100} /></div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                      <RiFlashlightFill size={14} color="var(--accent)" />
-                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{senderName} sent a gym invite</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <RiMapPin2Fill size={18} color="var(--accent)" />
-                        <div>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>LOCATION</div>
-                          <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{inviteData.location}</div>
-                        </div>
+                    <div className="invite-card-topline">
+                      <div className="invite-card-kicker">
+                        <RiFlashlightFill size={13} />
+                        <span>Session invite</span>
                       </div>
-	                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-	                        <RiTimeFill size={18} color="var(--accent)" />
-	                        <div>
-	                          <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>TIME</div>
-	                          <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{inviteData.time}</div>
-	                        </div>
-	                      </div>
-	                    </div>
+                    </div>
+                    <div className="invite-card-location">{inviteData.location}</div>
+                    <div className="invite-card-meta">
+                      <div className="invite-card-meta-item">
+                        <RiTimeFill size={14} />
+                        <span>{inviteData.time}</span>
+                      </div>
+                    </div>
 
 	                    {inviteData.seriesCount > 1 && (
-	                      <div style={{ marginBottom: 12 }}>
-	                        <div className="invite-accepted-chip">
-	                          <RiFlashlightFill size={12} /> {inviteData.seriesCount}-week lock-in series
-	                        </div>
-	                      </div>
+                        <div className="invite-card-meta" style={{ marginTop: 10, marginBottom: 2 }}>
+                          <div className="invite-accepted-chip">
+                            <RiFlashlightFill size={12} /> {inviteData.seriesCount}-week series
+                          </div>
+                        </div>
 	                    )}
 
 	                    {/* Accepted chips — VISIBLE TO EVERYONE */}
                     {inviteData.acceptedBy?.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2, marginBottom: 4 }}>
                         {inviteData.acceptedBy.map((name, i) => (
                           <div key={i} className="invite-accepted-chip">
                             <RiCheckLine size={12} /> {name}
@@ -1058,17 +1051,17 @@ export default function ChatRoom() {
                     {/* Accept button — only non-senders who haven't accepted yet */}
                     {!isMe && !alreadyAccepted && (
                       <button className="invite-accept-btn" onClick={() => acceptInvite(msg)}>
-                        <RiFlashlightFill size={16} style={{ marginRight: 6 }} /> Accept
+                        <RiFlashlightFill size={16} style={{ marginRight: 6 }} /> Join session
                       </button>
                     )}
                     {!isMe && alreadyAccepted && (
-                      <div style={{ textAlign: 'center', color: 'var(--success)', fontWeight: 700, fontSize: '0.88rem', padding: '10px 0' }}>
-                        <RiCheckDoubleLine size={16} style={{ marginRight: 4 }} /> You're in!
+                      <div className="invite-card-state joined">
+                        <RiCheckDoubleLine size={16} style={{ marginRight: 4 }} /> Joined
                       </div>
                     )}
                     {isMe && (
-                      <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.82rem', padding: '8px 0' }}>
-                        {inviteData.acceptedBy?.length > 0 ? `${inviteData.acceptedBy.length} accepted` : 'Waiting for responses...'}
+                      <div className="invite-card-state">
+                        {inviteData.acceptedBy?.length > 0 ? `${inviteData.acceptedBy.length} joined` : 'Waiting to hear back'}
                       </div>
                     )}
                   </div>
