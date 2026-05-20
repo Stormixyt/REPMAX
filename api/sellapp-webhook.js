@@ -154,10 +154,12 @@ function detectTierFromPayload(body) {
 function extractUserId(body) {
   return findFieldValue(body, [
     'repmax_user_id',
+    'repmax user id',
     'user_id',
     'supabase_user_id',
     'repmaxuserid',
     'supabaseuserid',
+    '83db47d0036f01213da4cca3c11f9722',
   ])
 }
 
