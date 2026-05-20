@@ -89,14 +89,7 @@ export default function Subscription() {
       return
     }
 
-    const missingConfig = getSellAppMissingConfig(tier)
-    if (missingConfig.length > 0) {
-      setMessage(`Sell.app checkout is missing: ${missingConfig.join(', ')}`)
-      return
-    }
-
     setMessage('')
-    setCheckingOutTier(tier)
 
     const result = openSellAppCheckout(tier, {
       email: user.email,
@@ -104,7 +97,6 @@ export default function Subscription() {
     })
 
     if (!result.ok) {
-      setCheckingOutTier(null)
       setMessage(result.error)
     }
   }
