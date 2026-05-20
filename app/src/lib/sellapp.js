@@ -1,15 +1,11 @@
 const env = import.meta?.env || {}
 
 const PROMO_CODE = (env.VITE_SELLAPP_PROMO_CODE || 'REPMAXISOUT20').trim()
-const CHECKOUT_FIELD_KEY = (
-  env.VITE_SELLAPP_CHECKOUT_FIELD_KEY ||
-  env.VITE_SELLAPP_PRO_FIELD_KEY ||
-  ''
-).trim()
+const CHECKOUT_FIELD_KEY = (env.VITE_SELLAPP_CHECKOUT_FIELD_KEY || '83db47d0036f01213da4cca3c11f9722').trim()
 
 const PRODUCT_URLS = {
-  pro: (env.VITE_SELLAPP_PRO_URL || '').trim(),
-  ultra: (env.VITE_SELLAPP_ULTRA_URL || '').trim(),
+  pro: (env.VITE_SELLAPP_PRO_URL || 'https://repmax.sell.app/product/product-1779286957').trim(),
+  ultra: (env.VITE_SELLAPP_ULTRA_URL || 'https://repmax.sell.app/product/product-1779287005').trim(),
 }
 
 function normalizeTier(tier) {
@@ -17,22 +13,11 @@ function normalizeTier(tier) {
 }
 
 export function getSellAppMissingConfig(tier) {
-  const normalizedTier = normalizeTier(tier)
-  const missing = []
-
-  if (!PRODUCT_URLS[normalizedTier]) {
-    missing.push(`VITE_SELLAPP_${normalizedTier.toUpperCase()}_URL`)
-  }
-
-  if (!CHECKOUT_FIELD_KEY) {
-    missing.push('VITE_SELLAPP_CHECKOUT_FIELD_KEY')
-  }
-
-  return missing
+  return []
 }
 
 export function isSellAppConfigured(tier) {
-  return getSellAppMissingConfig(tier).length === 0
+  return true
 }
 
 export function getSellAppCheckoutUrl(tier, { email, userId, coupon = PROMO_CODE } = {}) {
