@@ -7,7 +7,7 @@ import { RiVipCrownFill, RiBrainFill, RiBarChart2Fill, RiTeamFill, RiDownloadFil
 const TIERS = {
   pro: {
     name: 'PRO',
-    price: '9.99',
+    price: '4.99',
     currency: '€',
     period: '/month',
     color: 'var(--accent)',
@@ -28,7 +28,7 @@ const TIERS = {
   },
   ultra: {
     name: 'ULTRA',
-    price: '19.99',
+    price: '7.99',
     currency: '€',
     period: '/month',
     color: '#ff2a85',
