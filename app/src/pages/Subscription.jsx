@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getSellAppMissingConfig, openSellAppCheckout } from '../lib/sellapp'
+import { getSellAppEmbedAttrs } from '../lib/sellapp'
 import { RiVipCrownFill, RiBrainFill, RiBarChart2Fill, RiTeamFill, RiDownloadFill, RiShieldCheckFill, RiSparklingFill, RiArrowLeftLine, RiPaletteFill, RiFlashlightFill, RiCheckFill, RiStarFill, RiChat3Fill, RiLeafFill, RiTimerFlashFill, RiRocketFill, RiLoader4Fill, RiCloseLine, RiSendPlaneFill } from '@remixicon/react'
 
 const TIERS = {
@@ -76,30 +76,16 @@ export default function Subscription() {
   const { user, subscriptionTier } = useAuth()
   const navigate = useNavigate()
   const [message, setMessage] = useState('')
-  const [checkingOutTier, setCheckingOutTier] = useState(null)
   const [selectedTier, setSelectedTier] = useState('ultra')
 
   useEffect(() => {
     setMessage('')
   }, [selectedTier])
 
-  function handleCheckout(tier) {
-    if (!user?.id) {
-      navigate('/auth?mode=signup')
-      return
-    }
-
-    setMessage('')
-
-    const result = openSellAppCheckout(tier, {
-      email: user.email,
-      userId: user.id,
-    })
-
-    if (!result.ok) {
-      setMessage(result.error)
-    }
-  }
+  // Build embed attributes for the selected tier (only when logged in)
+  const embedAttrs = user?.id
+    ? getSellAppEmbedAttrs(selectedTier, { email: user.email, userId: user.id })
+    : {}
 
   // Already subscribed view
   if (subscriptionTier === 'pro' || subscriptionTier === 'ultra') {
@@ -241,20 +227,16 @@ export default function Subscription() {
 
               <button
                 className="btn btn-primary btn-full btn-lg"
-                onClick={() => handleCheckout(selectedTier)}
+                {...(user?.id ? embedAttrs : {})}
+                onClick={!user?.id ? () => navigate('/auth?mode=signup') : undefined}
                 style={{
                   marginTop: 20, fontSize: '1.05rem', fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   background: isUltraTier ? 'linear-gradient(135deg, #ff2a85, #ff6b6b)' : '',
                   animation: 'pulseGlow 2s ease-in-out infinite'
                 }}
-                disabled={checkingOutTier === selectedTier}
               >
-                {checkingOutTier === selectedTier ? (
-                  <>
-                    <RiLoader4Fill size={18} className="spin" /> Opening checkout...
-                  </>
-                ) : !user?.id ? (
+                {!user?.id ? (
                   <>
                     <RiSendPlaneFill size={18} /> Create Account To Buy {tier.name}
                   </>
