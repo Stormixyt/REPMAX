@@ -1,7 +1,11 @@
 const env = import.meta?.env || {}
 
 const PROMO_CODE = (env.VITE_SELLAPP_PROMO_CODE || 'REPMAXISOUT20').trim()
-const CHECKOUT_FIELD_KEY = (env.VITE_SELLAPP_CHECKOUT_FIELD_KEY || '').trim()
+const CHECKOUT_FIELD_KEY = (
+  env.VITE_SELLAPP_CHECKOUT_FIELD_KEY ||
+  env.VITE_SELLAPP_PRO_FIELD_KEY ||
+  ''
+).trim()
 
 const PRODUCT_URLS = {
   pro: (env.VITE_SELLAPP_PRO_URL || '').trim(),
